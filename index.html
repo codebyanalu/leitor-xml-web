@@ -180,8 +180,8 @@ const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random
 const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','Tp_NF','Data_Emissao',
   'CNPJ_Emitente','Nome_Emitente','NomeFantasia_Emit','IE_Emitente','UF_Emitente','Mun_Emitente',
   'CNPJ_Destinatario','CPF_Destinatario','Nome_Destinatario','IE_Destinatario','UF_Destinatario','Mun_Destinatario',
-  'vFrete','vSeg','vDesc','vOutro','vNF','vTotTrib',
-  'Item','cProd','cEAN','xProd','NCM','CEST','CFOP','uCom','qCom','vUnCom','vProd','indEscala','nFCI',
+  'vFrete','vSeg','vDesc','vOutro','vNF','vTotTrib','infCpl',
+  'Item','cProd','cEAN','xProd','NCM','CEST','CFOP','uCom','qCom','vUnCom','vProd','vDesc_item','vFrete_item','vSeg_item','vOutro_item','infAdProd','indEscala','nFCI',
   'ICMS_orig','ICMS_CST','ICMS_modBC','ICMS_vBC','ICMS_pICMS','ICMS_vICMS',
   'ICMS_vBCSTRet','ICMS_pST','ICMS_vICMSSubstituto','ICMS_vICMSSTRet',
   'ICMS_pRedBCEfet','ICMS_vBCEfet','ICMS_pICMSEfet','ICMS_vICMSEfet',
@@ -241,6 +241,7 @@ function extrairNFE(nome,texto){
   const chave=(inf.getAttribute('Id')||'').replace('NFe','');
   const dets=inf.querySelectorAll('det');const produtos=[];
   const totI=inf.querySelector('total ICMSTot');
+  const infAdic=inf.querySelector('infAdic');const infCpl=infAdic?t(infAdic,'infCpl'):'';
   const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS70','ICMS90','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
   const tagsPIS=['PISAliq','PISQtde','PISNT','PISOutr','PISSN'];
   const tagsCOFINS=['COFINSAliq','COFINSQtde','COFINSNT','COFINSOutr','COFINSSN'];
@@ -254,10 +255,11 @@ function extrairNFE(nome,texto){
       IE_Emitente:t(emit,'IE'),UF_Emitente:ee?t(ee,'UF'):t(emit,'UF'),Mun_Emitente:ee?t(ee,'xMun'):'',
       CNPJ_Destinatario:t(dest,'CNPJ'),CPF_Destinatario:t(dest,'CPF'),Nome_Destinatario:t(dest,'xNome'),
       IE_Destinatario:t(dest,'IE'),UF_Destinatario:ed?t(ed,'UF'):'',Mun_Destinatario:ed?t(ed,'xMun'):'',
-      vFrete:t(totI,'vFrete'),vSeg:t(totI,'vSeg'),vDesc:t(totI,'vDesc'),vOutro:t(totI,'vOutro'),vNF:t(totI,'vNF'),vTotTrib:t(totI,'vTotTrib'),
+      vFrete:t(totI,'vFrete'),vSeg:t(totI,'vSeg'),vDesc:t(totI,'vDesc'),vOutro:t(totI,'vOutro'),vNF:t(totI,'vNF'),vTotTrib:t(totI,'vTotTrib'),infCpl,
       Item:det.getAttribute('nItem')||'',cProd:t(prod,'cProd'),cEAN:t(prod,'cEAN'),
       xProd:t(prod,'xProd'),NCM:t(prod,'NCM'),CEST:t(prod,'CEST'),CFOP:t(prod,'CFOP'),
       uCom:t(prod,'uCom'),qCom:t(prod,'qCom'),vUnCom:t(prod,'vUnCom'),vProd:t(prod,'vProd'),
+      vDesc_item:t(prod,'vDesc'),vFrete_item:t(prod,'vFrete'),vSeg_item:t(prod,'vSeg'),vOutro_item:t(prod,'vOutro'),infAdProd:t(prod,'infAdProd'),
       indEscala:t(prod,'indEscala'),nFCI:t(prod,'nFCI'),
       ICMS_orig:'',ICMS_CST:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
       ICMS_vBCSTRet:'',ICMS_pST:'',ICMS_vICMSSubstituto:'',ICMS_vICMSSTRet:'',
@@ -511,6 +513,20 @@ function nfeItemDetalhe(p){
   </tr>
   <tr style="background:#f0f4f8!important"><td colspan="13" style="padding:4px 6px">
     <div class="det-section">
+      <div class="det-title" style="cursor:pointer">💰 Financeiro do Item</div>
+      <div class="det-body">
+        <table><thead><tr><th>V.Produto</th><th>Desconto</th><th>Frete</th><th>Seguro</th><th>Outras Desp.</th><th>V.Líquido Item</th></tr></thead><tbody><tr>
+          <td><strong>${moeda(p.vProd)}</strong></td>
+          <td style="color:var(--err)">${f(p.vDesc_item)?`- ${moeda(p.vDesc_item)}`:moeda(p.vDesc_item)}</td>
+          <td>${moeda(p.vFrete_item)}</td>
+          <td>${moeda(p.vSeg_item)}</td>
+          <td>${moeda(p.vOutro_item)}</td>
+          <td><strong>${moeda(f(p.vProd)-f(p.vDesc_item)+f(p.vFrete_item)+f(p.vSeg_item)+f(p.vOutro_item))}</strong></td>
+        </tr></tbody></table>
+        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)"><strong>Inf. Adicionais:</strong> ${p.infAdProd}</div>`:''}
+      </div>
+    </div>
+    <div class="det-section">
       <div class="det-title" style="cursor:pointer">📊 ICMS — Detalhamento completo</div>
       <div class="det-body">${icms}</div>
     </div>
@@ -598,6 +614,7 @@ function renderNFE(){
           <span><strong>Mod:</strong> ${n.Mod_NFe||'-'}</span>
           <span><strong>TpNF:</strong> ${n.Tp_NF||'-'}</span>
         </div>
+        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--tex2);border-left:3px solid var(--sec)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
         ${totLinhas.length?`<div class="det-section">
           <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--texto)">💰 RESUMO FINANCEIRO DA NOTA</div>
           <div class="det-body open">
