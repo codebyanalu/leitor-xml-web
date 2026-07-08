@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCON/SIAN — NF-e / NFS-e</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--prim:#1a5276;--sec:#2980b9;--acent:#e67e22;--fundo:#f0f3f7;--f2:#fff;--side:#1c2833;--side2:#2c3e50;--texto:#1a252f;--tex2:#5d6d7e;--borda:#d5d8dc;--ok:#1e8449;--warn:#d68910;--err:#c0392b;--info:#2471a3}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fundo);color:var(--texto);display:flex;height:100vh;overflow:hidden}
+#sidebar{width:250px;min-width:250px;background:var(--side);display:flex;flex-direction:column;height:100vh}
+#logo{background:var(--prim);padding:16px;text-align:center}
+#logo h1{color:#fff;font-size:18px;font-weight:700}
+#logo p{color:#aed6f1;font-size:11px;margin-top:2px}
+#logo .bar{height:3px;background:var(--acent);margin:10px -16px -16px}
+.nav-section{padding:8px 16px 2px;color:#7f8c8d;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;color:#bdc3c7;cursor:pointer;font-size:12px;transition:.15s;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.nav-btn:hover{background:var(--side2);color:#fff}
+.nav-btn.active{background:var(--prim);color:#fff;font-weight:600}
+.nav-btn .icon{font-size:15px;width:20px;text-align:center}
+#sidebar .spacer{flex:1}
+#btn-fechar{background:var(--err);color:#fff;padding:14px 16px;cursor:pointer;font-weight:600;font-size:12px;border:none;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:8px;transition:.15s}
+#btn-fechar:hover{background:#a93226}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{background:var(--prim);padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+#topbar h2{color:#fff;font-size:14px;font-weight:600}
+#topbar .hora{color:#aed6f1;font-size:11px}
+#accent-bar{height:3px;background:var(--acent)}
+#content{flex:1;overflow-y:auto;padding:12px 20px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-bottom:10px}
+.kpi-card{background:var(--f2);border-radius:4px;border:1px solid var(--borda);overflow:hidden}
+.kpi-card .bar{height:4px}
+.kpi-card .body{padding:6px 10px}
+.kpi-card .label{font-size:9px;font-weight:700;color:var(--tex2);text-transform:uppercase}
+.kpi-card .value{font-size:18px;font-weight:700;color:var(--texto);margin-top:1px}
+.kpi-card .sub{font-size:9px;color:var(--tex2);margin-top:1px}
+#upload-area{border:2px dashed var(--borda);border-radius:8px;padding:30px 20px;text-align:center;background:var(--f2);cursor:pointer;transition:.2s;margin-bottom:12px}
+#upload-area:hover,#upload-area.dragover{border-color:var(--sec);background:#eaf2fb}
+#upload-area .icon{font-size:40px;color:var(--tex2)}
+#upload-area p{color:var(--tex2);margin-top:6px;font-size:13px}
+#upload-area .sub{font-size:10px;color:var(--tex2);margin-top:3px}
+#file-input{display:none}
+.tab-content{display:none}.tab-content.active{display:block}
+.nota-card{background:var(--f2);border:1px solid var(--borda);border-radius:6px;margin-bottom:10px;overflow:hidden}
+.nota-card .header{background:var(--prim);color:#fff;padding:8px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;user-select:none}
+.nota-card .header .tipo{border:1px solid rgba(255,255,255,.4);padding:1px 7px;border-radius:3px;font-size:9px;font-weight:600}
+.nota-card .header .toggle{font-size:11px;opacity:.7;transition:.2s}
+.nota-card .header .toggle.open{transform:rotate(180deg)}
+.nota-card .body-detail{padding:14px;display:none;border-top:1px solid var(--borda)}
+.nota-card .body-detail.open{display:block}
+.nota-card table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+.nota-card table th,.nota-card table td{padding:3px 6px;border:1px solid var(--borda);text-align:left}
+.nota-card table th{background:var(--prim);color:#fff;font-weight:600;font-size:10px}
+.nota-card table tr:nth-child(even){background:#f7f9fc}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.info-box{border:1px solid var(--borda);border-radius:4px;padding:6px 10px}
+.info-box h4{font-size:10px;color:var(--prim);font-weight:700;margin-bottom:3px;text-transform:uppercase}
+.info-box .row{font-size:11px;padding:1px 0;display:flex}
+.info-box .row .lbl{color:var(--tex2);width:80px;flex-shrink:0}
+.table-wrap{overflow-x:auto;margin-bottom:8px;border:1px solid var(--borda);border-radius:4px}
+.table-wrap table{margin-bottom:0}
+.det-section{margin:6px 0;border:1px solid var(--borda);border-radius:4px;overflow:hidden}
+.det-section .det-title{padding:4px 10px;background:#eaf2fb;font-size:10px;font-weight:700;color:var(--prim);cursor:pointer;user-select:none}
+.det-section .det-body{padding:6px;display:none;overflow-x:auto}
+.det-section .det-body.open{display:block}
+.det-section .det-body table{font-size:10px;margin-bottom:0}
+.det-section .det-body table th{font-size:9px;background:var(--side2);padding:2px 5px}
+.det-section .det-body table td{padding:2px 5px}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:12px}
+.dash-card{background:var(--f2);border:1px solid var(--borda);border-radius:6px;padding:10px;min-height:220px}
+.dash-card h4{font-size:11px;font-weight:700;color:var(--prim);margin-bottom:6px;text-transform:uppercase}
+.dash-card .chart-wrap{position:relative;height:200px}
+.filter-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.filter-bar input,.filter-bar select{padding:5px 8px;font-size:11px;border:1px solid var(--borda);border-radius:4px;font-family:inherit;background:var(--f2)}
+.filter-bar input{flex:1;min-width:120px}
+.filter-bar .count{font-size:11px;color:var(--tex2);margin-left:auto}
+.btn{padding:6px 14px;font-size:11px;font-weight:600;border:none;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn-prim{background:var(--prim);color:#fff}.btn-prim:hover{background:#154360}
+.btn-sec{background:var(--sec);color:#fff}.btn-sec:hover{background:#1f618d}
+.btn-acent{background:var(--acent);color:#fff}.btn-acent:hover{background:#ca6f1e}
+.btn-ok{background:var(--ok);color:#fff}.btn-ok:hover{background:#196f3d}
+#status-bar{background:var(--f2);border:1px solid var(--borda);border-radius:4px;padding:6px 10px;margin-bottom:10px;font-size:11px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.empty-state{text-align:center;padding:40px;color:var(--tex2)}
+.empty-state .icon{font-size:40px;margin-bottom:10px}
+.empty-state p{font-size:13px}
+#import-log{background:#1c2833;color:#d5d8dc;border-radius:4px;padding:10px;font-family:Consolas,monospace;font-size:11px;max-height:250px;overflow-y:auto;white-space:pre-wrap}
+#loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999}
+#loading-overlay.active{display:flex}
+#loading-box{background:#fff;padding:24px 36px;border-radius:8px;text-align:center}
+#loading-box .spinner{width:36px;height:36px;border:3px solid var(--borda);border-top-color:var(--prim);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--borda);border-radius:3px}
+#error-banner{background:#c0392b;color:#fff;padding:8px 14px;border-radius:4px;margin-bottom:10px;font-size:12px;display:none}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><div id="loading-msg">Processando...</div></div></div>
+
+<nav id="sidebar">
+  <div id="logo"><h1>GCON / SIAN</h1><p>NF-e | NFS-e</p><div class="bar"></div></div>
+  <div class="nav-section">IMPORTAR</div>
+  <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
+  <div class="nav-section">VISUALIZAR</div>
+  <button class="nav-btn" data-tab="nfe"><span class="icon">📦</span><span>NF-e (Peças)</span></button>
+  <button class="nav-btn" data-tab="nfse"><span class="icon">📋</span><span>NFS-e (Serviços)</span></button>
+  <button class="nav-btn" data-tab="dashboard"><span class="icon">📊</span><span>Dashboard</span></button>
+  <div class="nav-section">EXPORTAR</div>
+  <button class="nav-btn" data-tab="exportar"><span class="icon">⬇</span><span>Exportar Dados</span></button>
+  <div class="spacer"></div>
+  <button id="btn-fechar"><span>✕</span> FECHAR SISTEMA</button>
+</nav>
+
+<div id="main">
+  <div id="topbar"><h2>SISTEMA DE EXTRAÇÃO — NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
+  <div id="accent-bar"></div>
+  <div id="content">
+    <div id="status-bar">
+      <span>📦 <span id="s-nfe">0</span> produtos NF-e</span>
+      <span>📋 <span id="s-nfse">0</span> serviços NFS-e</span>
+      <span>📁 <span id="s-arqs">0</span> XMLs</span>
+      <span style="margin-left:auto;font-size:9px;color:var(--tex2)" id="s-sessao"></span>
+    </div>
+
+    <div class="tab-content active" id="tab-importar">
+      <div id="error-banner"></div>
+      <div id="upload-area">
+        <div class="icon">📂</div>
+        <p><strong>Clique aqui</strong> ou arraste XMLs</p>
+        <p class="sub">NF-e (modelo 55) e NFS-e (CompNFe / NFSe Nacional)</p>
+      </div>
+      <div id="import-log"></div>
+    </div>
+
+    <div class="tab-content" id="tab-nfe">
+      <div class="filter-bar">
+        <input type="text" id="filtro-nfe" placeholder="Buscar na NF-e..." oninput="renderNFE()">
+        <select id="filtro-nfe-cnpj" onchange="renderNFE()"><option value="">Todos emitentes</option></select>
+        <span class="count" id="nfe-count"></span>
+      </div>
+      <div id="nfe-list"></div>
+    </div>
+
+    <div class="tab-content" id="tab-nfse">
+      <div class="filter-bar">
+        <input type="text" id="filtro-nfse" placeholder="Buscar na NFS-e..." oninput="renderNFSe()">
+        <select id="filtro-nfse-cnpj" onchange="renderNFSe()"><option value="">Todos prestadores</option></select>
+        <span class="count" id="nfse-count"></span>
+      </div>
+      <div id="nfse-list"></div>
+    </div>
+
+    <div class="tab-content" id="tab-dashboard">
+      <div class="kpi-row" id="dash-kpis"></div>
+      <div class="dash-grid" id="dash-charts"></div>
+    </div>
+
+    <div class="tab-content" id="tab-exportar">
+      <div style="padding:20px 0;text-align:center">
+        <p style="margin-bottom:14px;color:var(--tex2)">Exporte os dados processados para CSV ou Excel.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-prim" onclick="exportCSV('nfe')">⬇ CSV NF-e</button>
+          <button class="btn btn-sec" onclick="exportCSV('nfse')">⬇ CSV NFS-e</button>
+          <button class="btn btn-acent" onclick="exportXLSX('nfe')">⬇ Excel NF-e</button>
+          <button class="btn btn-ok" onclick="exportXLSX('nfse')">⬇ Excel NFS-e</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+console.log('GCON/SIAN iniciado');
+
+// ═══ DATA ═══
+const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
+const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','Tp_NF','Data_Emissao',
+  'CNPJ_Emitente','Nome_Emitente','NomeFantasia_Emit','IE_Emitente','UF_Emitente','Mun_Emitente',
+  'CNPJ_Destinatario','CPF_Destinatario','Nome_Destinatario','IE_Destinatario','UF_Destinatario','Mun_Destinatario',
+  'Item','cProd','cEAN','xProd','NCM','CEST','CFOP','uCom','qCom','vUnCom','vProd','indEscala','nFCI',
+  'ICMS_orig','ICMS_CST','ICMS_modBC','ICMS_vBC','ICMS_pICMS','ICMS_vICMS',
+  'ICMS_vBCSTRet','ICMS_pST','ICMS_vICMSSubstituto','ICMS_vICMSSTRet',
+  'ICMS_pRedBCEfet','ICMS_vBCEfet','ICMS_pICMSEfet','ICMS_vICMSEfet',
+  'IPI_cEnq','IPI_CST','IPI_vBC','IPI_pIPI','IPI_vIPI',
+  'PIS_CST','PIS_vBC','PIS_pPIS','PIS_vPIS',
+  'COFINS_CST','COFINS_vBC','COFINS_pCOFINS','COFINS_vCOFINS',
+  'IBS_CST','cClassTrib','IBS_vBC','pIBSUF','vIBSUF','pIBSMun','vIBSMun','IBS_vIBS','pCBS','CBS_vCBS',
+  'Arquivo_Origem'];
+const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
+  'Data_Emissao','Data_Competencia','Municipio_Prestacao',
+  'cTribNac','xDescServ','cNBS_DPS','Cod_Servico_Mun','Desc_Servico','Cod_Item_Lei116','Cod_NBS',
+  'ISS_Retido','BC_ISS','Aliq_ISS','Valor_ISS','pAliq_ISS','tpRetISSQN',
+  'BC_CSRF','Valor_PIS','Valor_COFINS','Valor_CSLL','BC_IRRF','Valor_IRRF','BC_INSS','Valor_INSS',
+  'pTotTribSN','IBS_vBC','IBS_pIBSUF','IBS_vIBSUF','IBS_pIBSMun','IBS_vIBSMun',
+  'CBS_pCBS','CBS_vCBS','cClassTrib',
+  'Valor_Bruto','Valor_Liquido','Discriminacao',
+  'CNPJ_Prestador','IM_Prestador','Nome_Prestador','NomeFantasia_Prestador',
+  'UF_Prestador','Mun_Prestador','Email_Prestador','Simples_Nacional',
+  'CNPJ_Tomador','IM_Tomador','Nome_Tomador','Mun_Tomador','UF_Tomador','Email_Tomador',
+  'Arquivo_Origem'];
+
+// ═══ UTILITIES ═══
+function t(el,tag,def){if(!el)return def||'';const e=el.querySelector(tag);return e&&e.textContent?e.textContent.trim():def||''}
+function rmNS(x){return x.replace(/xmlns(:[^=]+)?="[^"]+"/g,'').replace(/<\?xml[^?>]*\?>/g,'')}
+function parseXML(texto){
+  const doc=new DOMParser().parseFromString(rmNS(texto),'text/xml');
+  const err=doc.querySelector('parsererror');
+  if(err)throw new Error('Erro ao parsear XML: '+(err.textContent||'').slice(0,100));
+  return doc;
+}
+function f(v){if(v===null||v===undefined)return 0;const s=String(v).replace(/[^0-9,\-]/g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n}
+function moeda(v){const x=f(v);return x?`R$ ${x.toFixed(2).replace('.',',')}`:''}
+function vl(v){const s=String(v||'').trim();return(!s||s==='nan'||s==='None')?'':s}
+function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
+function agora(){const d=new Date();return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+
+// ═══ FILE READING ═══
+function readFileAsText(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(new Error('Erro ao ler '+file.name));
+    reader.readAsText(file,'UTF-8');
+  });
+}
+
+// ═══ EXTRACT NF-e ═══
+function extrairNFE(nome,texto){
+  const doc=parseXML(texto);const root=doc.documentElement;
+  let nfe=root.querySelector('NFe')||(root.tagName.includes('NFe')?root:null);
+  if(!nfe)return{ok:false,msg:'Tag NFe nao encontrada'};
+  const inf=nfe.querySelector('infNFe');if(!inf)return{ok:false,msg:'Tag infNFe nao encontrada'};
+  const ide=inf.querySelector('ide'),emit=inf.querySelector('emit'),dest=inf.querySelector('dest');
+  const ee=inf.querySelector('enderEmit'),ed=inf.querySelector('enderDest');
+  const chave=(inf.getAttribute('Id')||'').replace('NFe','');
+  const dets=inf.querySelectorAll('det');const produtos=[];
+  const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS70','ICMS90','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
+  const tagsPIS=['PISAliq','PISQtde','PISNT','PISOutr','PISSN'];
+  const tagsCOFINS=['COFINSAliq','COFINSQtde','COFINSNT','COFINSOutr','COFINSSN'];
+  for(const det of dets){
+    const prod=det.querySelector('prod');if(!prod)continue;
+    const imp=det.querySelector('imposto');
+    const base={
+      Tipo_Nota:'NF-e',Chave_NFe:chave,Numero_NFe:t(ide,'nNF'),Serie_NFe:t(ide,'serie'),
+      Mod_NFe:t(ide,'mod'),NatOp:t(ide,'natOp'),Tp_NF:t(ide,'tpNF'),Data_Emissao:t(ide,'dhEmi'),
+      CNPJ_Emitente:t(emit,'CNPJ'),Nome_Emitente:t(emit,'xNome'),NomeFantasia_Emit:t(emit,'xFant'),
+      IE_Emitente:t(emit,'IE'),UF_Emitente:ee?t(ee,'UF'):t(emit,'UF'),Mun_Emitente:ee?t(ee,'xMun'):'',
+      CNPJ_Destinatario:t(dest,'CNPJ'),CPF_Destinatario:t(dest,'CPF'),Nome_Destinatario:t(dest,'xNome'),
+      IE_Destinatario:t(dest,'IE'),UF_Destinatario:ed?t(ed,'UF'):'',Mun_Destinatario:ed?t(ed,'xMun'):'',
+      Item:det.getAttribute('nItem')||'',cProd:t(prod,'cProd'),cEAN:t(prod,'cEAN'),
+      xProd:t(prod,'xProd'),NCM:t(prod,'NCM'),CEST:t(prod,'CEST'),CFOP:t(prod,'CFOP'),
+      uCom:t(prod,'uCom'),qCom:t(prod,'qCom'),vUnCom:t(prod,'vUnCom'),vProd:t(prod,'vProd'),
+      indEscala:t(prod,'indEscala'),nFCI:t(prod,'nFCI'),
+      ICMS_orig:'',ICMS_CST:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
+      ICMS_vBCSTRet:'',ICMS_pST:'',ICMS_vICMSSubstituto:'',ICMS_vICMSSTRet:'',
+      ICMS_pRedBCEfet:'',ICMS_vBCEfet:'',ICMS_pICMSEfet:'',ICMS_vICMSEfet:'',
+      IPI_cEnq:'',IPI_CST:'',IPI_vBC:'',IPI_pIPI:'',IPI_vIPI:'',
+      PIS_CST:'',PIS_vBC:'',PIS_pPIS:'',PIS_vPIS:'',
+      COFINS_CST:'',COFINS_vBC:'',COFINS_pCOFINS:'',COFINS_vCOFINS:'',
+      IBS_CST:'',cClassTrib:'',IBS_vBC:'',pIBSUF:'',vIBSUF:'',pIBSMun:'',vIBSMun:'',IBS_vIBS:'',pCBS:'',CBS_vCBS:'',
+      Arquivo_Origem:nome
+    };
+    if(imp){
+      const icms=imp.querySelector('ICMS');
+      if(icms)for(const f of icms.children){
+        if(tagsICMS.some(t=>f.tagName.includes(t))){
+          base.ICMS_orig=t(f,'orig');base.ICMS_CST=t(f,'CST');base.ICMS_modBC=t(f,'modBC');
+          base.ICMS_vBC=t(f,'vBC');base.ICMS_pICMS=t(f,'pICMS');base.ICMS_vICMS=t(f,'vICMS');
+          base.ICMS_vBCSTRet=t(f,'vBCSTRet');base.ICMS_pST=t(f,'pST');
+          base.ICMS_vICMSSubstituto=t(f,'vICMSSubstituto');base.ICMS_vICMSSTRet=t(f,'vICMSSTRet');
+          base.ICMS_pRedBCEfet=t(f,'pRedBCEfet');base.ICMS_vBCEfet=t(f,'vBCEfet');
+          base.ICMS_pICMSEfet=t(f,'pICMSEfet');base.ICMS_vICMSEfet=t(f,'vICMSEfet');break;
+        }
+      }
+      const ipi=imp.querySelector('IPI');
+      if(ipi){base.IPI_cEnq=t(ipi,'cEnq');for(const s of['IPITrib','IPINT']){const el=ipi.querySelector(s);if(el){base.IPI_CST=t(el,'CST');base.IPI_vBC=t(el,'vBC');base.IPI_pIPI=t(el,'pIPI');base.IPI_vIPI=t(el,'vIPI');break;}}}
+      const pis=imp.querySelector('PIS');
+      if(pis)for(const f of pis.children){if(tagsPIS.some(t=>f.tagName.includes(t))){base.PIS_CST=t(f,'CST');base.PIS_vBC=t(f,'vBC');base.PIS_pPIS=t(f,'pPIS');base.PIS_vPIS=t(f,'vPIS');break;}}
+      const cof=imp.querySelector('COFINS');
+      if(cof)for(const f of cof.children){if(tagsCOFINS.some(t=>f.tagName.includes(t))){base.COFINS_CST=t(f,'CST');base.COFINS_vBC=t(f,'vBC');base.COFINS_pCOFINS=t(f,'pCOFINS');base.COFINS_vCOFINS=t(f,'vCOFINS');break;}}
+      let ibscbs=imp.querySelector('IBSCBS')||imp.querySelector('IBS');
+      if(ibscbs){
+        base.IBS_CST=t(ibscbs,'CST');base.cClassTrib=t(ibscbs,'cClassTrib');
+        let g=ibscbs.querySelector('gIBSCBS')||ibscbs;
+        base.IBS_vBC=t(g,'vBC');
+        const guf=g.querySelector('gIBSUF');if(guf){base.pIBSUF=t(guf,'pIBSUF');base.vIBSUF=t(guf,'vIBSUF');}
+        const gmun=g.querySelector('gIBSMun');if(gmun){base.pIBSMun=t(gmun,'pIBSMun');base.vIBSMun=t(gmun,'vIBSMun');}
+        base.IBS_vIBS=t(g,'vIBS');
+        const gcbs=g.querySelector('gCBS');if(gcbs){base.pCBS=t(gcbs,'pCBS');base.CBS_vCBS=t(gcbs,'vCBS');}
+        else{const vcbs2=g.querySelector('vCBS')||det.querySelector('vCBS');if(vcbs2&&vcbs2.textContent)base.CBS_vCBS=vcbs2.textContent.trim();}
+      }else{const vcb=imp.querySelector('vCBS')||det.querySelector('vCBS');if(vcb&&vcb.textContent)base.CBS_vCBS=vcb.textContent.trim();}
+    }
+    produtos.push(base);
+  }
+  return{ok:true,produtos,msg:`${produtos.length} produto(s)`};
+}
+
+// ═══ EXTRACT NFS-e ═══
+function extrairNFSeNacional(root,nome){
+  const inf=root.querySelector('infNFSe');if(!inf)return{ok:false,msg:'infNFSe nao encontrado'};
+  const infdps=root.querySelector('infDPS');const emit=inf.querySelector('emit'),prest=infdps?infdps.querySelector('prest'):null;
+  const toma=infdps?infdps.querySelector('toma'):null,serv=infdps?infdps.querySelector('serv'):null;
+  const cserv=serv?serv.querySelector('cServ'):null;
+  const vn=inf.querySelector('valores'),vd=infdps?infdps.querySelector('valores'):null;
+  let trib=vd?vd.querySelector('trib'):null;if(!trib&&infdps)trib=infdps.querySelector('trib');
+  const tm=trib?trib.querySelector('tribMun'):null,rt=prest?prest.querySelector('regTrib'):null;
+  const ee=emit?emit.querySelector('enderNac'):null,et=toma?toma.querySelector('end'):null;
+  const d={
+    Tipo_Nota:'NFS-e',Formato:'NFSe Nacional',
+    Chave_NFSe:(inf.getAttribute('Id')||'').replace('NFS',''),Numero_NFSe:t(inf,'nNFSe'),
+    Serie_RPS:infdps?t(infdps,'serie'):'',Data_Emissao:infdps?t(infdps,'dhEmi'):t(inf,'dhProc'),
+    Data_Competencia:infdps?t(infdps,'dCompet'):'',Municipio_Prestacao:t(inf,'xLocPrestacao'),
+    cTribNac:t(cserv,'cTribNac'),xDescServ:(t(cserv,'xDescServ')||'').slice(0,200),
+    cNBS_DPS:t(cserv,'cNBS'),Cod_Servico_Mun:'',Desc_Servico:t(inf,'xTribNac'),
+    Cod_Item_Lei116:'',Cod_NBS:t(inf,'xNBS'),
+    ISS_Retido:tm?t(tm,'tpRetISSQN'):'',BC_ISS:t(vn,'vBC'),Aliq_ISS:t(vn,'pAliqAplic'),Valor_ISS:t(vn,'vISSQN'),
+    pAliq_ISS:tm?t(tm,'pAliq'):t(vn,'pAliqAplic'),tpRetISSQN:tm?t(tm,'tpRetISSQN'):'',
+    BC_CSRF:t(vn,'vBC'),Valor_PIS:t(trib,'vPis'),Valor_COFINS:t(trib,'vCofins'),Valor_CSLL:t(trib,'vRetCSLL'),
+    BC_IRRF:'',Valor_IRRF:t(trib,'vRetIRRF'),BC_INSS:'',Valor_INSS:t(trib,'vRetINSS'),
+    pTotTribSN:t(trib,'pTotTribSN'),
+    IBS_vBC:'',IBS_pIBSUF:'',IBS_vIBSUF:'',IBS_pIBSMun:'',IBS_vIBSMun:'',CBS_pCBS:'',CBS_vCBS:'',cClassTrib:'',
+    Valor_Bruto:'',Valor_Liquido:t(vn,'vLiq'),Discriminacao:(t(cserv,'xDescServ')||'').slice(0,200),
+    CNPJ_Prestador:t(emit,'CNPJ')||t(emit,'CPF')||t(prest,'CNPJ')||t(prest,'CPF'),
+    IM_Prestador:t(emit,'IM'),Nome_Prestador:t(emit,'xNome'),NomeFantasia_Prestador:t(emit,'xFant'),
+    UF_Prestador:t(ee,'UF')||'',Mun_Prestador:t(inf,'xLocEmi'),Email_Prestador:t(emit,'email')||t(prest,'email'),
+    Simples_Nacional:rt?t(rt,'opSimpNac'):'',
+    CNPJ_Tomador:t(toma,'CNPJ')||t(toma,'CPF'),IM_Tomador:t(toma,'IM'),Nome_Tomador:t(toma,'xNome'),
+    Mun_Tomador:t(inf,'xLocPrestacao'),UF_Tomador:et?t(et.querySelector('endNac'),'UF'):'',Email_Tomador:t(toma,'email'),
+    Arquivo_Origem:nome
+  };
+  const vs=vd?vd.querySelector('vServPrest'):null;let vServ='';
+  if(vs)vServ=t(vs,'vServ');
+  d.Valor_Bruto=vServ||d.BC_ISS||d.Valor_Liquido;
+  let ibscbs=inf.querySelector('IBSCBS');if(!ibscbs)ibscbs=root.querySelector('IBSCBS');
+  if(ibscbs){
+    const vi=ibscbs.querySelector('valores');
+    if(vi){d.IBS_vBC=t(vi,'vBC');d.IBS_pIBSUF=t(ibscbs.querySelector('uf'),'pIBSUF');d.IBS_pIBSMun=t(ibscbs.querySelector('mun'),'pIBSMun');d.CBS_pCBS=t(ibscbs.querySelector('fed'),'pCBS');}
+    const tot=ibscbs.querySelector('totCIBS');
+    if(tot){d.IBS_vIBSUF=t(tot.querySelector('gIBSUFTot'),'vIBSUF');d.IBS_vIBSMun=t(tot.querySelector('gIBSMunTot'),'vIBSMun');d.CBS_vCBS=t(tot.querySelector('gCBS'),'vCBS');}
+    let gg=ibscbs.querySelector('gIBSCBS');if(!gg&&infdps){const id=infdps.querySelector('IBSCBS');gg=id?id.querySelector('gIBSCBS'):null;}
+    d.cClassTrib=gg?t(gg,'cClassTrib'):'';
+  }
+  return{ok:true,notas:[d],msg:`NFS-e Nacional: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
+}
+
+function extrairCompNFe(root,nome){
+  const nfe=root.querySelector('NFe');if(!nfe)return{ok:false,msg:'Tag NFe nao encontrada'};
+  const prest=nfe.querySelector('Prestador'),tomad=nfe.querySelector('Tomador');
+  const ibscbs=nfe.querySelector('IBSCBS');
+  let ibs_vbc='',ibs_uf='',ibs_vuf='',ibs_mun='',ibs_vmun='',cbs_p='',cbs_v='',ccl='';
+  if(ibscbs){
+    const vi=ibscbs.querySelector('valores');
+    if(vi){ibs_vbc=t(vi,'vBC');ibs_uf=t(ibscbs.querySelector('uf'),'pIBSUF');ibs_mun=t(ibscbs.querySelector('mun'),'pIBSMun');cbs_p=t(ibscbs.querySelector('fed'),'pCBS');ccl=t(ibscbs.querySelector('gIBSCBS'),'cClassTrib');}
+    const tot=ibscbs.querySelector('totCIBS');
+    if(tot){ibs_vuf=t(tot.querySelector('gIBSUFTot'),'vIBSUF');ibs_vmun=t(tot.querySelector('gIBSMunTot'),'vIBSMun');cbs_v=t(tot.querySelector('gCBS'),'vCBS');}
+  }
+  const dps=nfe.querySelector('DPS'),idps=dps?dps.querySelector('infDPS'):null;
+  const cs=idps?idps.querySelector('cServ'):null,tr=idps?idps.querySelector('trib'):null,tm=tr?tr.querySelector('tribMun'):null;
+  const vb=(nfe.querySelector('ValorNFe')?.textContent||'').trim(),vl=(nfe.querySelector('ValorLiquidoNFe')?.textContent||vb).trim();
+  const d={
+    Tipo_Nota:'NFS-e',Formato:'CompNFe',
+    Chave_NFSe:t(nfe,'CodigoVerificador'),Numero_NFSe:t(nfe,'NumeroNFe'),Serie_RPS:t(nfe,'SerieRPS'),
+    Data_Emissao:t(nfe,'DataEmissaoNFe'),Data_Competencia:t(nfe,'DataCompetenciaNFe'),Municipio_Prestacao:t(nfe,'MunicipioPrestacao'),
+    cTribNac:t(cs,'cTribNac'),xDescServ:(t(cs,'xDescServ')||'').slice(0,200),cNBS_DPS:t(cs,'cNBS'),
+    Cod_Servico_Mun:t(nfe,'CodigoServicoMunicipal'),Desc_Servico:t(nfe,'DescricaoServicoMunicipal'),
+    Cod_Item_Lei116:t(nfe,'CodigoItemLei116'),Cod_NBS:t(nfe,'CodigoNBS'),
+    ISS_Retido:t(nfe,'ISSRetido'),BC_ISS:t(nfe,'BaseCalculoISS'),Aliq_ISS:t(nfe,'AliquotaIss'),Valor_ISS:t(nfe,'ValorISS'),
+    pAliq_ISS:t(tm,'pAliq'),tpRetISSQN:t(tm,'tpRetISSQN'),
+    BC_CSRF:t(nfe,'BaseCalculoCSRF'),Valor_PIS:t(nfe,'ValorPIS'),Valor_COFINS:t(nfe,'ValorCOFINS'),Valor_CSLL:t(nfe,'ValorCSLL'),
+    BC_IRRF:t(nfe,'BaseCalculoIRRF'),Valor_IRRF:t(nfe,'ValorIRRF'),BC_INSS:t(nfe,'BaseCalculoINSS'),Valor_INSS:t(nfe,'ValorINSS'),
+    pTotTribSN:'',IBS_vBC:ibs_vbc,IBS_pIBSUF:ibs_uf,IBS_vIBSUF:ibs_vuf,IBS_pIBSMun:ibs_mun,IBS_vIBSMun:ibs_vmun,
+    CBS_pCBS:cbs_p,CBS_vCBS:cbs_v,cClassTrib:ccl,
+    Valor_Bruto:vb,Valor_Liquido:vl,Discriminacao:(t(nfe,'Discriminacao')||'').replace(/\n/g,' ').slice(0,200),
+    CNPJ_Prestador:t(prest,'CnpjCpf'),IM_Prestador:'',Nome_Prestador:t(prest,'RazaoSocialNome'),
+    NomeFantasia_Prestador:'',UF_Prestador:'',Mun_Prestador:t(nfe,'MunicipioPrestacao'),Email_Prestador:'',
+    Simples_Nacional:t(nfe,'PrestadorOptanteSimplesNacional'),
+    CNPJ_Tomador:t(tomad,'CnpjCpf'),IM_Tomador:t(tomad,'InscricaoMunicipal'),Nome_Tomador:t(tomad,'RazaoSocialNome'),
+    Mun_Tomador:t(tomad,'Municipio'),UF_Tomador:t(tomad,'UfSigla'),Email_Tomador:'',
+    Arquivo_Origem:nome
+  };
+  return{ok:true,notas:[d],msg:`NFS-e CompNFe: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
+}
+
+function extrairNFSe(nome,texto){
+  const doc=parseXML(texto);const root=doc.documentElement;
+  let tag=root.tagName;if(tag.includes('}'))tag=tag.split('}')[1];
+  if(tag==='CompNFe'||root.querySelector('CompNFe'))return extrairCompNFe(root,nome);
+  if(tag==='NFSe'||tag==='nfseProc'||root.querySelector('infNFSe'))return extrairNFSeNacional(root,nome);
+  return{ok:false,msg:`Formato nao reconhecido (${tag})`};
+}
+
+// ═══ FILE HANDLING ═══
+function detectType(texto){return(/CompNFe|<NFSe|infNFSe|nNFSe/i).test(texto.slice(0,600))?'nfse':'nfe';}
+
+function logHTML(texto,tipo){
+  const el=document.getElementById('import-log');
+  const d=document.createElement('div');d.textContent=texto;
+  const cores={err:'#e74c3c',ok:'#2ecc71',nfe:'#5dade2',nfse:'#f5b942',brd:'#2c3e50',info:'#95a5a6'};
+  d.style.color=cores[tipo]||'#d5d8dc';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+async function handleFiles(files){
+  const overlay=document.getElementById('loading-overlay');
+  const msg=document.getElementById('loading-msg');
+  const log=document.getElementById('import-log');
+  const errb=document.getElementById('error-banner');
+  errb.style.display='none';
+  overlay.classList.add('active');
+  log.innerHTML='';
+
+  const arr=Array.from(files);
+  msg.textContent=`Processando ${arr.length} arquivo(s)...`;
+  logHTML(`📁 ${arr.length} arquivo(s) selecionados`,'info');
+  logHTML('','brd');
+
+  let nfeTotal=0,nfseTotal=0,errCount=0;
+  const novosNFE=[],novosNFSE=[];
+
+  for(let i=0;i<arr.length;i++){
+    const file=arr[i];
+    msg.textContent=`[${i+1}/${arr.length}] ${file.name}`;
+    try{
+      const texto=await readFileAsText(file);
+      console.log(`OK ${file.name} (${texto.length} chars)`);
+      const tipo=detectType(texto);
+      if(tipo==='nfse'){
+        const r=extrairNFSe(file.name,texto);
+        if(r.ok&&r.notas&&r.notas.length){
+          novosNFSE.push(...r.notas);nfseTotal+=r.notas.length;
+          logHTML(`  [${i+1}/${arr.length}] [NFS-e] ${(file.name||'').slice(0,48).padEnd(48)} ${r.notas.length} nota(s)  [${(r.msg||'').slice(0,30)}]`,'nfse');
+        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NFS-e] ⚠ ${(file.name||'').slice(0,48)}  →  ${(r.msg||'erro').slice(0,50)}`,'err');}
+      }else{
+        const r=extrairNFE(file.name,texto);
+        if(r.ok&&r.produtos&&r.produtos.length){
+          novosNFE.push(...r.produtos);nfeTotal+=r.produtos.length;
+          logHTML(`  [${i+1}/${arr.length}] [NF-e]  ${(file.name||'').slice(0,48).padEnd(48)} ${r.produtos.length} produto(s)  [${(r.msg||'').slice(0,30)}]`,'nfe');
+        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NF-e]  ⚠ ${(file.name||'').slice(0,48)}  →  ${(r.msg||'erro').slice(0,50)}`,'err');}
+      }
+    }catch(e){
+      errCount++;const emsg=e.message||String(e);
+      logHTML(`  [${i+1}/${arr.length}] ⚠ ${(file.name||'').slice(0,48)}  →  ${emsg.slice(0,80)}`,'err');
+      console.error(`ERRO ${file.name}:`,e);
+    }
+  }
+
+  DB.nfe.push(...novosNFE);DB.nfse.push(...novosNFSE);DB.arquivos+=arr.length;
+  // Dedup
+  const ck=new Set();DB.nfe=DB.nfe.filter(p=>{const k=`${p.Chave_NFe}_${p.Item}_${p.cProd}`;if(ck.has(k))return false;ck.add(k);return true;});
+  const ck2=new Set();DB.nfse=DB.nfse.filter(n=>{const k=n.Chave_NFSe||n.Numero_NFSe||JSON.stringify(n);if(ck2.has(k))return false;ck2.add(k);return true;});
+
+  logHTML('','brd');
+  logHTML(`✅ Processados ${arr.length} arquivo(s) — ${novosNFE.length} produtos NF-e, ${novosNFSE.length} notas NFS-e${errCount?` (${errCount} erro(s))`:''}`,'ok');
+  if(errCount&&!novosNFE.length&&!novosNFSE.length){
+    errb.textContent='⚠ Nenhum XML foi processado. Verifique o console (F12 > Console) para detalhes do erro.';
+    errb.style.display='block';
+  }
+  updateStatus();populateFilters();
+  overlay.classList.remove('active');
+  console.log(`DB: ${DB.nfe.length} NFE, ${DB.nfse.length} NFSE`);
+}
+
+function updateStatus(){
+  document.getElementById('s-nfe').textContent=DB.nfe.length;
+  document.getElementById('s-nfse').textContent=DB.nfse.length;
+  document.getElementById('s-arqs').textContent=DB.arquivos;
+  document.getElementById('s-sessao').textContent=`Sessão: ${DB.sessaoId}`;
+}
+
+function populateFilters(){
+  const sn=document.getElementById('filtro-nfe-cnpj');
+  const ss=document.getElementById('filtro-nfse-cnpj');
+  sn.innerHTML='<option value="">Todos emitentes</option>'+[...new Set(DB.nfe.map(p=>p.CNPJ_Emitente).filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('');
+  ss.innerHTML='<option value="">Todos prestadores</option>'+[...new Set(DB.nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+// ═══ RENDER NF-e (COMPLETO) ═══
+function nfeItemDetalhe(p){
+  const icms=`<table><thead><tr><th>orig</th><th>CST</th><th>modBC</th><th>vBC</th><th>pICMS</th><th>vICMS</th><th>vBCSTRet</th><th>pST</th><th>vICMSSubstituto</th><th>vICMSSTRet</th><th>pRedBCEfet</th><th>vBCEfet</th><th>pICMSEfet</th><th>vICMSEfet</th></tr></thead><tbody><tr>
+    <td>${p.ICMS_orig||'-'}</td><td>${p.ICMS_CST||'-'}</td><td>${p.ICMS_modBC||'-'}</td><td>${moeda(p.ICMS_vBC)}</td>
+    <td>${vl(p.ICMS_pICMS)}%</td><td>${moeda(p.ICMS_vICMS)}</td><td>${moeda(p.ICMS_vBCSTRet)}</td>
+    <td>${vl(p.ICMS_pST)}%</td><td>${moeda(p.ICMS_vICMSSubstituto)}</td><td>${moeda(p.ICMS_vICMSSTRet)}</td>
+    <td>${vl(p.ICMS_pRedBCEfet)}%</td><td>${moeda(p.ICMS_vBCEfet)}</td><td>${vl(p.ICMS_pICMSEfet)}%</td><td>${moeda(p.ICMS_vICMSEfet)}</td>
+  </tr></tbody></table>`;
+  const ipi=`<table><thead><tr><th>cEnq</th><th>CST</th><th>vBC</th><th>pIPI</th><th>vIPI</th></tr></thead><tbody><tr>
+    <td>${p.IPI_cEnq||'-'}</td><td>${p.IPI_CST||'-'}</td><td>${moeda(p.IPI_vBC)}</td><td>${vl(p.IPI_pIPI)}%</td><td>${moeda(p.IPI_vIPI)}</td>
+  </tr></tbody></table>`;
+  const pis=`<table><thead><tr><th>CST</th><th>vBC</th><th>pPIS</th><th>vPIS</th></tr></thead><tbody><tr>
+    <td>${p.PIS_CST||'-'}</td><td>${moeda(p.PIS_vBC)}</td><td>${vl(p.PIS_pPIS)}%</td><td>${moeda(p.PIS_vPIS)}</td>
+  </tr></tbody></table>`;
+  const cofins=`<table><thead><tr><th>CST</th><th>vBC</th><th>pCOFINS</th><th>vCOFINS</th></tr></thead><tbody><tr>
+    <td>${p.COFINS_CST||'-'}</td><td>${moeda(p.COFINS_vBC)}</td><td>${vl(p.COFINS_pCOFINS)}%</td><td>${moeda(p.COFINS_vCOFINS)}</td>
+  </tr></tbody></table>`;
+  const ibs=p.IBS_vIBS||p.CBS_vCBS?`<table><thead><tr><th>CST</th><th>cClassTrib</th><th>vBC</th><th>pIBSUF</th><th>vIBSUF</th><th>pIBSMun</th><th>vIBSMun</th><th>vIBS</th><th>pCBS</th><th>vCBS</th></tr></thead><tbody><tr>
+    <td>${p.IBS_CST||'-'}</td><td>${p.cClassTrib||'-'}</td><td>${moeda(p.IBS_vBC)}</td><td>${vl(p.pIBSUF)}%</td><td>${moeda(p.vIBSUF)}</td>
+    <td>${vl(p.pIBSMun)}%</td><td>${moeda(p.vIBSMun)}</td><td>${moeda(p.IBS_vIBS)}</td><td>${vl(p.pCBS)}%</td><td>${moeda(p.CBS_vCBS)}</td>
+  </tr></tbody></table>`:'';
+  return `<tr>
+    <td>${p.Item}</td><td>${p.cProd||'-'}</td><td>${p.cEAN||'-'}</td><td>${(p.xProd||'').slice(0,40)}</td>
+    <td>${p.NCM||'-'}</td><td>${p.CEST||'-'}</td><td>${p.CFOP||'-'}</td>
+    <td>${vl(p.qCom)}</td><td>${p.uCom||'-'}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
+    <td>${p.indEscala||'-'}</td><td>${p.nFCI||'-'}</td>
+  </tr>
+  <tr style="background:#f0f4f8!important"><td colspan="13" style="padding:4px 6px">
+    <div class="det-section">
+      <div class="det-title" style="cursor:pointer">📊 ICMS — Detalhamento completo</div>
+      <div class="det-body">${icms}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-title" style="cursor:pointer">🏷 IPI — Detalhamento</div>
+      <div class="det-body">${ipi}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-title" style="cursor:pointer">📋 PIS — Detalhamento</div>
+      <div class="det-body">${pis}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-title" style="cursor:pointer">📋 COFINS — Detalhamento</div>
+      <div class="det-body">${cofins}</div>
+    </div>
+    ${ibs?`<div class="det-section">
+      <div class="det-title" style="cursor:pointer">🔄 IBS/CBS — Detalhamento (Reforma Tributária)</div>
+      <div class="det-body">${ibs}</div>
+    </div>`:''}
+  </td></tr>`;
+}
+function renderNFE(){
+  try{
+  const c=document.getElementById('nfe-list');
+  if(!c){console.error('nfe-list not found');return;}
+  const filtro=document.getElementById('filtro-nfe').value.toLowerCase();
+  const fc=document.getElementById('filtro-nfe-cnpj').value;
+  let d=DB.nfe;
+  if(filtro)d=d.filter(p=>Object.values(p).some(v=>String(v).toLowerCase().includes(filtro)));
+  if(fc)d=d.filter(p=>p.CNPJ_Emitente===fc);
+  document.getElementById('nfe-count').textContent=`${d.length} registro(s)`;
+  if(!d.length){c.innerHTML='<div class="empty-state"><div class="icon">📦</div><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
+  const grp={};for(const p of d){const k=p.Chave_NFe||'?';if(!grp[k])grp[k]={info:p,itens:[]};grp[k].itens.push(p);}
+  let html='';
+  for(const [chave,g] of Object.entries(grp)){
+    const n=g.info;
+    const itensBody=g.itens.map(p=>nfeItemDetalhe(p)).join('');
+    const tProd=g.itens.reduce((s,p)=>s+f(p.vProd),0);
+    const tICMS=g.itens.reduce((s,p)=>s+f(p.ICMS_vICMS),0);
+    const tIPI=g.itens.reduce((s,p)=>s+f(p.IPI_vIPI),0);
+    const tPIS=g.itens.reduce((s,p)=>s+f(p.PIS_vPIS),0);
+    const tCOFINS=g.itens.reduce((s,p)=>s+f(p.COFINS_vCOFINS),0);
+    const tIBS=g.itens.reduce((s,p)=>s+f(p.IBS_vIBS),0);
+    const tCBS=g.itens.reduce((s,p)=>s+f(p.CBS_vCBS),0);
+    const tBCST=g.itens.reduce((s,p)=>s+f(p.ICMS_vBCSTRet),0);
+    const tICMSST=g.itens.reduce((s,p)=>s+f(p.ICMS_vICMSSTRet),0);
+    const temST=tBCST||tICMSST;const temIBS=tIBS||tCBS;
+    const totLinhas=[];
+    if(tProd||tICMS||tIPI){
+      totLinhas.push(`<strong>${moeda(tProd)}</strong>`,moeda(tICMS),moeda(tIPI),moeda(tPIS),moeda(tCOFINS));
+      if(temIBS){totLinhas.push(moeda(tIBS),moeda(tCBS));}
+      if(temST){totLinhas.push(moeda(tBCST),moeda(tICMSST));}
+    }
+    const totHeaders=['Total Produtos','ICMS','IPI','PIS','COFINS'];
+    if(temIBS){totHeaders.push('IBS','CBS');}
+    if(temST){totHeaders.push('BC ST','ICMS ST');}
+    html+=`<div class="nota-card">
+      <div class="header" style="cursor:pointer">
+        <span><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="tipo">${g.itens.length} itens</span></span>
+        <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
+      </div>
+      <div class="body-detail">
+        <div class="info-grid">
+          <div class="info-box"><h4>Emitente</h4>
+            <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Emitente||'-'}</span></div>
+            <div class="row"><span class="lbl">Razão:</span><span>${n.Nome_Emitente||'-'}</span></div>
+            <div class="row"><span class="lbl">Fantasia:</span><span>${n.NomeFantasia_Emit||'-'}</span></div>
+            <div class="row"><span class="lbl">IE:</span><span>${n.IE_Emitente||'-'}</span></div>
+            <div class="row"><span class="lbl">UF:</span><span>${n.UF_Emitente||'-'}</span></div>
+            <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Emitente||'-'}</span></div>
+          </div>
+          <div class="info-box"><h4>Destinatário</h4>
+            <div class="row"><span class="lbl">CNPJ/CPF:</span><span>${n.CNPJ_Destinatario||n.CPF_Destinatario||'-'}</span></div>
+            <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Destinatario||'-'}</span></div>
+            <div class="row"><span class="lbl">IE:</span><span>${n.IE_Destinatario||'-'}</span></div>
+            <div class="row"><span class="lbl">UF:</span><span>${n.UF_Destinatario||'-'}</span></div>
+            <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Destinatario||'-'}</span></div>
+          </div>
+        </div>
+        <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--tex2);flex-wrap:wrap">
+          <span><strong>Chave:</strong> ${n.Chave_NFe||'-'}</span>
+          <span><strong>Série:</strong> ${n.Serie_NFe||'-'}</span>
+          <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
+          <span><strong>NatOp:</strong> ${n.NatOp||'-'}</span>
+          <span><strong>Mod:</strong> ${n.Mod_NFe||'-'}</span>
+          <span><strong>TpNF:</strong> ${n.Tp_NF||'-'}</span>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Item</th><th>cProd</th><th>cEAN</th><th>Produto</th><th>NCM</th><th>CEST</th><th>CFOP</th>
+            <th>Qtd</th><th>Un</th><th>V.Un</th><th>V.Total</th><th>indEscala</th><th>nFCI</th>
+          </tr></thead><tbody>${itensBody}</tbody></table>
+        </div>
+        ${totLinhas.length?`<div class="det-section">
+          <div class="det-title" style="cursor:pointer"><strong>💰 TOTAIS DA NOTA</strong></div>
+          <div class="det-body open">
+            <table><thead><tr>${totHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody><tr>${totLinhas.map(v=>`<td>${v}</td>`).join('')}</tr></tbody></table>
+          </div>
+        </div>`:''}
+        <div style="margin-top:4px;font-size:10px;color:var(--tex2);text-align:right;font-style:italic">Arquivo: ${g.itens[0].Arquivo_Origem||'-'}</div>
+      </div>
+    </div>`;
+  }
+  c.innerHTML=html;
+  }catch(e){console.error('renderNFE error:',e);document.getElementById('nfe-list').innerHTML='<div style="color:red;padding:20px">Erro ao renderizar: '+e.message+'</div>';}
+}
+function toggleDet(el){
+  const b=el.nextElementSibling;if(b)b.classList.toggle('open');
+}
+
+// ═══ RENDER NFS-e (COMPLETO) ═══
+function renderNFSe(){
+  const c=document.getElementById('nfse-list');
+  const filtro=document.getElementById('filtro-nfse').value.toLowerCase();
+  const fc=document.getElementById('filtro-nfse-cnpj').value;
+  let d=DB.nfse;
+  if(filtro)d=d.filter(n=>Object.values(n).some(v=>String(v).toLowerCase().includes(filtro)));
+  if(fc)d=d.filter(n=>n.CNPJ_Prestador===fc);
+  document.getElementById('nfse-count').textContent=`${d.length} registro(s)`;
+  if(!d.length){c.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
+  c.innerHTML=d.map(n=>`<div class="nota-card">
+    <div class="header" style="cursor:pointer">
+      <span><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="tipo">${n.Formato||'?'}</span></span>
+      <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
+    </div>
+    <div class="body-detail">
+      <div class="info-grid">
+        <div class="info-box"><h4>Prestador</h4>
+          <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">Fantasia:</span><span>${n.NomeFantasia_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">IM:</span><span>${n.IM_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">UF:</span><span>${n.UF_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">Email:</span><span>${n.Email_Prestador||'-'}</span></div>
+          <div class="row"><span class="lbl">Simples Nac:</span><span>${n.Simples_Nacional||'-'}</span></div>
+        </div>
+        <div class="info-box"><h4>Tomador</h4>
+          <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">IM:</span><span>${n.IM_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">UF:</span><span>${n.UF_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">Email:</span><span>${n.Email_Tomador||'-'}</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--tex2);flex-wrap:wrap">
+        <span><strong>Chave:</strong> ${n.Chave_NFSe||'-'}</span>
+        <span><strong>Número:</strong> ${n.Numero_NFSe||'-'}</span>
+        <span><strong>Série RPS:</strong> ${n.Serie_RPS||'-'}</span>
+        <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
+        <span><strong>Competência:</strong> ${dataBr(n.Data_Competencia)}</span>
+        <span><strong>Mun. Prestação:</strong> ${n.Municipio_Prestacao||'-'}</span>
+      </div>
+      <div class="info-grid">
+        <div class="info-box"><h4>Serviço</h4>
+          <div class="row"><span class="lbl">cTribNac:</span><span>${n.cTribNac||'-'}</span></div>
+          <div class="row"><span class="lbl">xDescServ:</span><span>${(n.xDescServ||'-').slice(0,80)}</span></div>
+          <div class="row"><span class="lbl">cNBS:</span><span>${n.cNBS_DPS||'-'}</span></div>
+          <div class="row"><span class="lbl">Cod.Serv.Mun:</span><span>${n.Cod_Servico_Mun||'-'}</span></div>
+          <div class="row"><span class="lbl">Desc.Serv.Mun:</span><span>${(n.Desc_Servico||'-').slice(0,80)}</span></div>
+          <div class="row"><span class="lbl">Item Lei 116:</span><span>${n.Cod_Item_Lei116||'-'}</span></div>
+          <div class="row"><span class="lbl">Cod NBS:</span><span>${n.Cod_NBS||'-'}</span></div>
+        </div>
+        <div class="info-box"><h4>ISS</h4>
+          <div class="row"><span class="lbl">Retido:</span><span>${n.ISS_Retido||'-'}</span></div>
+          <div class="row"><span class="lbl">BC ISS:</span><span>${moeda(n.BC_ISS)}</span></div>
+          <div class="row"><span class="lbl">Alíq ISS:</span><span>${vl(n.Aliq_ISS)}%</span></div>
+          <div class="row"><span class="lbl">Valor ISS:</span><span><strong>${moeda(n.Valor_ISS)}</strong></span></div>
+          <div class="row"><span class="lbl">pAliq ISS:</span><span>${vl(n.pAliq_ISS)}%</span></div>
+          <div class="row"><span class="lbl">tpRetISSQN:</span><span>${n.tpRetISSQN||'-'}</span></div>
+        </div>
+      </div>
+      <div class="det-section">
+        <div class="det-title" style="cursor:pointer">📋 CSRF — Pis/COFINS/CSLL/IRRF/INSS</div>
+        <div class="det-body">
+          <table><thead><tr><th>BC CSRF</th><th>Valor PIS</th><th>Valor COFINS</th><th>Valor CSLL</th><th>BC IRRF</th><th>Valor IRRF</th><th>BC INSS</th><th>Valor INSS</th></tr></thead><tbody><tr>
+            <td>${moeda(n.BC_CSRF)}</td><td>${moeda(n.Valor_PIS)}</td><td>${moeda(n.Valor_COFINS)}</td><td>${moeda(n.Valor_CSLL)}</td>
+            <td>${moeda(n.BC_IRRF)}</td><td>${moeda(n.Valor_IRRF)}</td><td>${moeda(n.BC_INSS)}</td><td>${moeda(n.Valor_INSS)}</td>
+          </tr></tbody></table>
+        </div>
+      </div>
+      <div class="det-section">
+        <div class="det-title" style="cursor:pointer">🔄 IBS/CBS (Reforma Tributária)</div>
+        <div class="det-body">
+          <table><thead><tr><th>IBS vBC</th><th>pIBSUF</th><th>vIBSUF</th><th>pIBSMun</th><th>vIBSMun</th><th>CBS pCBS</th><th>CBS vCBS</th><th>cClassTrib</th></tr></thead><tbody><tr>
+            <td>${moeda(n.IBS_vBC)}</td><td>${vl(n.IBS_pIBSUF)}%</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${vl(n.IBS_pIBSMun)}%</td><td>${moeda(n.IBS_vIBSMun)}</td>
+            <td>${vl(n.CBS_pCBS)}%</td><td>${moeda(n.CBS_vCBS)}</td><td>${n.cClassTrib||'-'}</td>
+          </tr></tbody></table>
+          ${n.pTotTribSN?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)">pTotTribSN: ${vl(n.pTotTribSN)}%</div>`:''}
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-box"><h4>Valores</h4>
+          <div class="row"><span class="lbl">Valor Bruto:</span><span><strong>${moeda(n.Valor_Bruto)}</strong></span></div>
+          <div class="row"><span class="lbl">Valor Líquido:</span><span><strong>${moeda(n.Valor_Liquido)}</strong></span></div>
+        </div>
+        <div class="info-box"><h4>Resumo Tributos</h4>
+          <div class="row"><span class="lbl">ISS:</span><span>${moeda(n.Valor_ISS)}</span></div>
+          <div class="row"><span class="lbl">PIS:</span><span>${moeda(n.Valor_PIS)}</span></div>
+          <div class="row"><span class="lbl">COFINS:</span><span>${moeda(n.Valor_COFINS)}</span></div>
+          <div class="row"><span class="lbl">CSLL:</span><span>${moeda(n.Valor_CSLL)}</span></div>
+          <div class="row"><span class="lbl">IRRF:</span><span>${moeda(n.Valor_IRRF)}</span></div>
+          <div class="row"><span class="lbl">INSS:</span><span>${moeda(n.Valor_INSS)}</span></div>
+        </div>
+      </div>
+      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--tex2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
+      <div style="margin-top:4px;font-size:10px;color:var(--tex2);text-align:right;font-style:italic">Arquivo: ${n.Arquivo_Origem||'-'}</div>
+    </div>
+  </div>`).join('');
+}
+
+// ═══ EVENT DELEGATION (em vez de onclick em innerHTML) ═══
+function toggleNota(el){
+  const b=el.nextElementSibling;const t=el.querySelector('.toggle');
+  if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');}
+}
+['nfe-list','nfse-list'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    const h=e.target.closest('.nota-card>.header');
+    if(h){toggleNota(h);return;}
+    const d=e.target.closest('.det-title');
+    if(d){toggleDet(d);return;}
+  });
+});
+
+// ═══ DASHBOARD ═══
+let dashCharts={};
+function renderDashboard(){
+  Object.values(dashCharts).forEach(c=>{try{c.destroy()}catch(e){}});dashCharts={};
+  const kpis=document.getElementById('dash-kpis');
+  const charts=document.getElementById('dash-charts');
+  const nfse=DB.nfse,nfe=DB.nfe;
+  const qN=nfse.length,qF=nfe.length,qt=qN+qF;
+  const vN=nfse.reduce((s,n)=>s+f(n.Valor_Bruto),0),vF=nfe.reduce((s,p)=>s+f(p.vProd),0);
+  const ti=nfse.reduce((s,n)=>s+f(n.Valor_ISS),0);
+  const qp=[...new Set(nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].length;
+  kpis.innerHTML=`
+    <div class="kpi-card"><div class="bar" style="background:var(--prim)"></div><div class="body">
+      <div class="label">Total Documentos</div><div class="value">${qt}</div><div class="sub">NFS-e: ${qN} | NF-e: ${qF}</div></div></div>
+    <div class="kpi-card"><div class="bar" style="background:var(--ok)"></div><div class="body">
+      <div class="label">Valor Serviços</div><div class="value">${moeda(vN)}</div><div class="sub">ISS total: ${moeda(ti)}</div></div></div>
+    <div class="kpi-card"><div class="bar" style="background:var(--sec)"></div><div class="body">
+      <div class="label">Valor Produtos</div><div class="value">${moeda(vF)}</div><div class="sub">Prestadores: ${qp}</div></div></div>
+  `;
+  if(!qt){charts.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>Sem dados para exibir.</p></div>';return;}
+  charts.innerHTML=`
+    <div class="dash-card"><h4>Documentos por Tipo</h4><div class="chart-wrap"><canvas id="c1"></canvas></div></div>
+    <div class="dash-card"><h4>ISS — Retenção</h4><div class="chart-wrap"><canvas id="c2"></canvas></div></div>
+    <div class="dash-card"><h4>NFS-e por Formato</h4><div class="chart-wrap"><canvas id="c3"></canvas></div></div>
+    <div class="dash-card"><h4>Top Prestadores (Qtd)</h4><div class="chart-wrap"><canvas id="c4"></canvas></div></div>
+    <div class="dash-card"><h4>Top Prestadores (Valor)</h4><div class="chart-wrap"><canvas id="c5"></canvas></div></div>
+    <div class="dash-card"><h4>ISS por Prestador</h4><div class="chart-wrap"><canvas id="c6"></canvas></div></div>
+  `;
+  const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9}}}}};
+  function pie(id,labels,data){if(data.some(v=>v>0))dashCharts[id]=new Chart(document.getElementById(id),{type:'pie',data:{labels,datasets:[{data,backgroundColor:['#2980b9','#e67e22','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:opts});}
+  function bar(id,labels,data,label,formatter){if(data.length)dashCharts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{label,data,backgroundColor:['#2980b9','#e67e22','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{font:{size:9},callback:formatter||(v=>v)}},x:{ticks:{font:{size:8}}}},plugins:{legend:{display:false}}}});}
+  const d1=[];if(qN)d1.push('NFS-e',qN);if(qF)d1.push('NF-e',qF);
+  pie('c1',d1.filter((_,i)=>i%2===0),d1.filter((_,i)=>i%2===1));
+  const mISS={'1':'Próprio','2':'Retido','':'N/I'};const cISS={};
+  nfse.forEach(n=>{const k=mISS[n.tpRetISSQN]||'Outro';cISS[k]=(cISS[k]||0)+1;});
+  const eISS=Object.entries(cISS);
+  pie('c2',eISS.map(([k])=>k),eISS.map(([,v])=>v));
+  const cF={};nfse.forEach(n=>{const fmt=n.Formato||'N/D';cF[fmt]=(cF[fmt]||0)+1;});
+  const eF=Object.entries(cF);
+  pie('c3',eF.map(([k])=>k),eF.map(([,v])=>v));
+  const qP={};nfse.forEach(n=>{const no=n.Nome_Prestador||n.CNPJ_Prestador||'?';qP[no]=(qP[no]||0)+1;});
+  const tQ=Object.entries(qP).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  bar('c4',tQ.map(([k])=>k.length>12?k.slice(0,12)+'…':k),tQ.map(([,v])=>v),'Notas');
+  const vP={};nfse.forEach(n=>{const no=n.Nome_Prestador||n.CNPJ_Prestador||'?';vP[no]=(vP[no]||0)+f(n.Valor_Bruto);});
+  const tV=Object.entries(vP).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  bar('c5',tV.map(([k])=>k.length>12?k.slice(0,12)+'…':k),tV.map(([,v])=>v),'Valor',v=>'R$'+(v/1000).toFixed(0)+'k');
+  const iP={};nfse.forEach(n=>{const no=n.Nome_Prestador||n.CNPJ_Prestador||'?';iP[no]=(iP[no]||0)+f(n.Valor_ISS);});
+  const tI=Object.entries(iP).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  bar('c6',tI.map(([k])=>k.length>12?k.slice(0,12)+'…':k),tI.map(([,v])=>v),'ISS',v=>'R$'+v.toFixed(0));
+}
+
+// ═══ EXPORT ═══
+function exportCSV(tipo){
+  const cab=tipo==='nfe'?HNFE:HNFSE;
+  const dados=tipo==='nfe'?DB.nfe:DB.nfse;
+  if(!dados.length){alert('Sem dados para exportar.');return;}
+  let csv='\ufeff'+cab.join(',')+'\n';
+  for(const row of dados){
+    csv+=cab.map(c=>{const v=String(row[c]||'').replace(/"/g,'""');return/[,"\n]/.test(v)?`"${v}"`:v;}).join(',')+'\n';
+  }
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`${tipo==='nfe'?'produtos_nfe':'servicos_nfse'}_${DB.sessaoId}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
+}
+function exportXLSX(tipo){
+  const cab=tipo==='nfe'?HNFE:HNFSE;
+  const dados=tipo==='nfe'?DB.nfe:DB.nfse;
+  if(!dados.length){alert('Sem dados para exportar.');return;}
+  const data=[cab,...dados.map(r=>cab.map(c=>r[c]||''))];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo==='nfe'?'Produtos_NFe':'Servicos_NFSe');
+  XLSX.writeFile(wb,`${tipo==='nfe'?'produtos_nfe':'servicos_nfse'}_${DB.sessaoId}.xlsx`);
+}
+
+// ═══ NAVIGATION ═══
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    const tab=document.getElementById('tab-'+btn.dataset.tab);
+    if(tab){tab.classList.add('active');
+      if(btn.dataset.tab==='dashboard')renderDashboard();
+      if(btn.dataset.tab==='nfe')renderNFE();
+      if(btn.dataset.tab==='nfse')renderNFSe();
+    }
+  });
+});
+document.getElementById('btn-fechar').addEventListener('click',()=>{if(confirm('Fechar sistema?'))window.close();});
+
+// ═══ UPLOAD SETUP ═══
+const fileInput=document.createElement('input');
+fileInput.type='file';fileInput.accept='.xml';fileInput.multiple=true;
+fileInput.style.display='none';document.body.appendChild(fileInput);
+fileInput.addEventListener('change',()=>{if(fileInput.files.length)handleFiles(fileInput.files);fileInput.value='';});
+document.getElementById('upload-area').addEventListener('click',()=>fileInput.click());
+document.getElementById('upload-area').addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('dragover');});
+document.getElementById('upload-area').addEventListener('dragleave',e=>{e.currentTarget.classList.remove('dragover');});
+document.getElementById('upload-area').addEventListener('drop',e=>{e.preventDefault();e.currentTarget.classList.remove('dragover');if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);});
+
+// ═══ START ═══
+function tick(){document.getElementById('hora').textContent=agora();setTimeout(tick,1000)}
+tick();updateStatus();
+console.log('GCON/SIAN pronto. DB:',DB.sessaoId);
+</script>
+</body>
+</html>
