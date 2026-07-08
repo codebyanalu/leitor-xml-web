@@ -321,13 +321,22 @@ function extrairNFE(nome,texto){
 // ═══ EXTRACT NFS-e ═══
 function extrairNFSeNacional(root,nome){
   const inf=root.querySelector('infNFSe');if(!inf)return{ok:false,msg:'infNFSe nao encontrado'};
-  const infdps=root.querySelector('infDPS');const emit=inf.querySelector('emit'),prest=infdps?infdps.querySelector('prest'):null;
+  const infdps=root.querySelector('infDPS')||(inf.querySelector('DPS')?inf.querySelector('DPS').querySelector('infDPS'):null);
+  const emit=inf.querySelector('emit'),prest=infdps?infdps.querySelector('prest'):null;
   const toma=infdps?infdps.querySelector('toma'):null,serv=infdps?infdps.querySelector('serv'):null;
   const cserv=serv?serv.querySelector('cServ'):null;
   const vn=inf.querySelector('valores'),vd=infdps?infdps.querySelector('valores'):null;
-  let trib=vd?vd.querySelector('trib'):null;if(!trib&&infdps)trib=infdps.querySelector('trib');
-  const tm=trib?trib.querySelector('tribMun'):null,rt=prest?prest.querySelector('regTrib'):null;
+  const vs=vd?vd.querySelector('vServPrest vServ'):null;
+  let trib=null;
+  if(vd){const tv=vd.querySelector('trib');if(tv&&tv.children.length)trib=tv;}
+  if(!trib&&infdps){const t2=infdps.querySelector('trib');if(t2&&t2.children.length)trib=t2;}
+  const tm=trib?trib.querySelector('tribMun'):null;
+  const tf=trib?trib.querySelector('tribFed'):null;
+  const pf=tf?tf.querySelector('piscofins'):null;
+  const pt=trib?trib.querySelector('totTrib pTotTrib'):null;
+  const rt=prest?prest.querySelector('regTrib'):null;
   const ee=emit?emit.querySelector('enderNac'):null,et=toma?toma.querySelector('end'):null;
+  const vServ=vs?t(vs,'vServ'):'';
   const d={
     Tipo_Nota:'NFS-e',Formato:'NFSe Nacional',
     Chave_NFSe:(inf.getAttribute('Id')||'').replace('NFS',''),Numero_NFSe:t(inf,'nNFSe'),
@@ -336,13 +345,23 @@ function extrairNFSeNacional(root,nome){
     cTribNac:t(cserv,'cTribNac'),xDescServ:(t(cserv,'xDescServ')||'').slice(0,200),
     cNBS_DPS:t(cserv,'cNBS'),Cod_Servico_Mun:'',Desc_Servico:t(inf,'xTribNac'),
     Cod_Item_Lei116:'',Cod_NBS:t(inf,'xNBS'),
-    ISS_Retido:tm?t(tm,'tpRetISSQN'):'',BC_ISS:t(vn,'vBC'),Aliq_ISS:t(vn,'pAliqAplic'),Valor_ISS:t(vn,'vISSQN'),
-    pAliq_ISS:tm?t(tm,'pAliq'):t(vn,'pAliqAplic'),tpRetISSQN:tm?t(tm,'tpRetISSQN'):'',
-    BC_CSRF:t(vn,'vBC'),Valor_PIS:t(trib,'vPis'),Valor_COFINS:t(trib,'vCofins'),Valor_CSLL:t(trib,'vRetCSLL'),
-    BC_IRRF:'',Valor_IRRF:t(trib,'vRetIRRF'),BC_INSS:'',Valor_INSS:t(trib,'vRetINSS'),
-    pTotTribSN:t(trib,'pTotTribSN'),
+    ISS_Retido:tm?(t(tm,'tpRetISSQN')||'-'):'',
+    BC_ISS:t(tm,'vBC')||t(vn,'vBC')||vServ,
+    Aliq_ISS:t(tm,'pAliq')||t(vn,'pAliqAplic')||'',
+    Valor_ISS:t(tm,'vISSQN')||t(vn,'vISSQN')||'',
+    pAliq_ISS:t(tm,'pAliq')||t(vn,'pAliqAplic')||'',
+    tpRetISSQN:tm?t(tm,'tpRetISSQN'):'',
+    BC_CSRF:t(tf,'vBCPisCofins')||t(pf,'vBCPisCofins')||'',
+    Valor_PIS:t(pf,'vPis')||'',
+    Valor_COFINS:t(pf,'vCofins')||'',
+    Valor_CSLL:t(tf,'vRetCSLL')||'',
+    BC_IRRF:'',Valor_IRRF:t(tf,'vRetIRRF')||'',
+    BC_INSS:'',Valor_INSS:t(tf,'vRetINSS')||'',
+    pTotTribSN:t(pt,'pTotTribMun')||t(trib,'pTotTribSN')||'',
     IBS_vBC:'',IBS_pIBSUF:'',IBS_vIBSUF:'',IBS_pIBSMun:'',IBS_vIBSMun:'',CBS_pCBS:'',CBS_vCBS:'',cClassTrib:'',
-    Valor_Bruto:'',Valor_Liquido:t(vn,'vLiq'),Discriminacao:(t(cserv,'xDescServ')||'').slice(0,200),
+    Valor_Bruto:vServ||t(vn,'vBC')||t(vn,'vLiq')||'',
+    Valor_Liquido:t(vn,'vLiq')||vServ||'',
+    Discriminacao:(t(cserv,'xDescServ')||'').slice(0,200),
     CNPJ_Prestador:t(emit,'CNPJ')||t(emit,'CPF')||t(prest,'CNPJ')||t(prest,'CPF'),
     IM_Prestador:t(emit,'IM'),Nome_Prestador:t(emit,'xNome'),NomeFantasia_Prestador:t(emit,'xFant'),
     UF_Prestador:t(ee,'UF')||'',Mun_Prestador:t(inf,'xLocEmi'),Email_Prestador:t(emit,'email')||t(prest,'email'),
@@ -351,15 +370,12 @@ function extrairNFSeNacional(root,nome){
     Mun_Tomador:t(inf,'xLocPrestacao'),UF_Tomador:et?t(et.querySelector('endNac'),'UF'):'',Email_Tomador:t(toma,'email'),
     Arquivo_Origem:nome
   };
-  const vs=vd?vd.querySelector('vServPrest'):null;let vServ='';
-  if(vs)vServ=t(vs,'vServ');
-  d.Valor_Bruto=vServ||d.BC_ISS||d.Valor_Liquido;
   let ibscbs=inf.querySelector('IBSCBS');if(!ibscbs)ibscbs=root.querySelector('IBSCBS');
   if(ibscbs){
     const vi=ibscbs.querySelector('valores');
     if(vi){d.IBS_vBC=t(vi,'vBC');d.IBS_pIBSUF=t(ibscbs.querySelector('uf'),'pIBSUF');d.IBS_pIBSMun=t(ibscbs.querySelector('mun'),'pIBSMun');d.CBS_pCBS=t(ibscbs.querySelector('fed'),'pCBS');}
     const tot=ibscbs.querySelector('totCIBS');
-    if(tot){d.IBS_vIBSUF=t(tot.querySelector('gIBSUFTot'),'vIBSUF');d.IBS_vIBSMun=t(tot.querySelector('gIBSMunTot'),'vIBSMun');d.CBS_vCBS=t(tot.querySelector('gCBS'),'vCBS');}
+    if(tot){d.IBS_vIBSUF=t(tot.querySelector('gIBSUFTot'),'vIBSUF')||t(tot,'vIBSUF');d.IBS_vIBSMun=t(tot.querySelector('gIBSMunTot'),'vIBSMun')||t(tot,'vIBSMun');d.CBS_vCBS=t(tot.querySelector('gCBS'),'vCBS')||t(tot,'vCBS');}
     let gg=ibscbs.querySelector('gIBSCBS');if(!gg&&infdps){const id=infdps.querySelector('IBSCBS');gg=id?id.querySelector('gIBSCBS'):null;}
     d.cClassTrib=gg?t(gg,'cClassTrib'):'';
   }
