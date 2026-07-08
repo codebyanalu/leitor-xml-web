@@ -515,22 +515,22 @@ function populateFilters(){
 
 // ═══ RENDER NF-e (COMPLETO) ═══
 function nfeItemDetalhe(p){
-  const icms=`<table><thead><tr><th>orig</th><th>CST</th><th>modBC</th><th>vBC</th><th>pICMS</th><th>vICMS</th><th>vBCSTRet</th><th>pST</th><th>vICMSSubstituto</th><th>vICMSSTRet</th><th>pRedBCEfet</th><th>vBCEfet</th><th>pICMSEfet</th><th>vICMSEfet</th></tr></thead><tbody><tr>
+  const icms=`<table><thead><tr><th>Origem</th><th>CST</th><th>Modalidade</th><th>BC ICMS</th><th>Alíq.ICMS</th><th>V.ICMS</th><th>BC ST Ret.</th><th>Alíq.ST</th><th>V.ICMS Subst.</th><th>V.ICMS ST Ret.</th><th>% Red.BC</th><th>BC Efetiva</th><th>Alíq.Efetiva</th><th>V.ICMS Efet.</th></tr></thead><tbody><tr>
     <td>${p.ICMS_orig||'-'}</td><td>${p.ICMS_CST||'-'}</td><td>${p.ICMS_modBC||'-'}</td><td>${moeda(p.ICMS_vBC)}</td>
     <td>${pct(p.ICMS_pICMS)}</td><td>${moeda(p.ICMS_vICMS)}</td><td>${moeda(p.ICMS_vBCSTRet)}</td>
     <td>${pct(p.ICMS_pST)}</td><td>${moeda(p.ICMS_vICMSSubstituto)}</td><td>${moeda(p.ICMS_vICMSSTRet)}</td>
     <td>${pct(p.ICMS_pRedBCEfet)}</td><td>${moeda(p.ICMS_vBCEfet)}</td><td>${pct(p.ICMS_pICMSEfet)}</td><td>${moeda(p.ICMS_vICMSEfet)}</td>
   </tr></tbody></table>`;
-  const ipi=`<table><thead><tr><th>cEnq</th><th>CST</th><th>vBC</th><th>pIPI</th><th>vIPI</th></tr></thead><tbody><tr>
+  const ipi=`<table><thead><tr><th>Cód.Enq.</th><th>CST</th><th>BC IPI</th><th>Alíq.IPI</th><th>V.IPI</th></tr></thead><tbody><tr>
     <td>${p.IPI_cEnq||'—'}</td><td>${p.IPI_CST||'—'}</td><td>${moeda(p.IPI_vBC)}</td><td>${pct(p.IPI_pIPI)}</td><td>${moeda(p.IPI_vIPI)}</td>
   </tr></tbody></table>`;
-  const pis=`<table><thead><tr><th>CST</th><th>vBC</th><th>pPIS</th><th>vPIS</th></tr></thead><tbody><tr>
+  const pis=`<table><thead><tr><th>CST</th><th>BC PIS</th><th>Alíq.PIS</th><th>V.PIS</th></tr></thead><tbody><tr>
     <td>${p.PIS_CST||'—'}</td><td>${moeda(p.PIS_vBC)}</td><td>${pct(p.PIS_pPIS)}</td><td>${moeda(p.PIS_vPIS)}</td>
   </tr></tbody></table>`;
-  const cofins=`<table><thead><tr><th>CST</th><th>vBC</th><th>pCOFINS</th><th>vCOFINS</th></tr></thead><tbody><tr>
+  const cofins=`<table><thead><tr><th>CST</th><th>BC COFINS</th><th>Alíq.COFINS</th><th>V.COFINS</th></tr></thead><tbody><tr>
     <td>${p.COFINS_CST||'—'}</td><td>${moeda(p.COFINS_vBC)}</td><td>${pct(p.COFINS_pCOFINS)}</td><td>${moeda(p.COFINS_vCOFINS)}</td>
   </tr></tbody></table>`;
-  const ibs=p.IBS_vIBS||p.CBS_vCBS?`<table><thead><tr><th>CST</th><th>cClassTrib</th><th>vBC</th><th>pIBSUF</th><th>vIBSUF</th><th>pIBSMun</th><th>vIBSMun</th><th>vIBS</th><th>pCBS</th><th>vCBS</th></tr></thead><tbody><tr>
+  const ibs=p.IBS_vIBS||p.CBS_vCBS?`<table><thead><tr><th>CST</th><th>Class.Trib.</th><th>BC</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>V.IBS</th><th>Alíq.CBS</th><th>V.CBS</th></tr></thead><tbody><tr>
     <td>${p.IBS_CST||'—'}</td><td>${p.cClassTrib||'—'}</td><td>${moeda(p.IBS_vBC)}</td><td>${pct(p.pIBSUF)}</td><td>${moeda(p.vIBSUF)}</td>
     <td>${pct(p.pIBSMun)}</td><td>${moeda(p.vIBSMun)}</td><td>${moeda(p.IBS_vIBS)}</td><td>${pct(p.pCBS)}</td><td>${moeda(p.CBS_vCBS)}</td>
   </tr></tbody></table>`:'';
@@ -609,7 +609,7 @@ function renderNFE(){
       if(temIBS){totLinhas.push(moeda(tIBS),moeda(tCBS));}
       if(temST){totLinhas.push(moeda(tBCST),moeda(tICMSST));}
     }
-    const totHeaders=['Total Produtos','ICMS','IPI','PIS','COFINS'];
+    const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS'];
     if(temIBS){totHeaders.push('IBS','CBS');}
     if(temST){totHeaders.push('BC ST','ICMS ST');}
     html+=`<div class="nota-card">
@@ -653,7 +653,7 @@ function renderNFE(){
               <div><span style="color:var(--tex2)">Frete</span><br><strong>${moeda(n.vFrete)}</strong></div>
               <div><span style="color:var(--tex2)">Seguro</span><br><strong>${moeda(n.vSeg)}</strong></div>
               <div><span style="color:var(--tex2)">Outras Desp.</span><br><strong>${moeda(n.vOutro)}</strong></div>
-              <div><span style="color:var(--tex2)">Valor Líquido</span><br><strong style="font-size:14px;color:var(--prim)">${moeda(n.vNF)}</strong></div>
+              <div><span style="color:var(--tex2)">V.Líquido NF</span><br><strong style="font-size:14px;color:var(--prim)">${moeda(n.vNF)}</strong></div>
             </div>
             <table style="font-size:10px"><thead><tr>${totHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody><tr>${totLinhas.map(v=>`<td>${v}</td>`).join('')}</tr></tbody></table>
             ${n.vTotTrib?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)">Tributos Totais: ${moeda(n.vTotTrib)}</div>`:''}
@@ -723,12 +723,12 @@ function renderNFSe(){
       <div class="info-grid">
         <div class="info-box"><h4>Serviço</h4>
           <div class="row"><span class="lbl">cTribNac:</span><span>${n.cTribNac||'-'}</span></div>
-          <div class="row"><span class="lbl">xDescServ:</span><span>${(n.xDescServ||'-').slice(0,80)}</span></div>
+          <div class="row"><span class="lbl">Desc.Serv.:</span><span>${(n.xDescServ||'-').slice(0,80)}</span></div>
           <div class="row"><span class="lbl">cNBS:</span><span>${n.cNBS_DPS||'-'}</span></div>
-          <div class="row"><span class="lbl">Cod.Serv.Mun:</span><span>${n.Cod_Servico_Mun||'-'}</span></div>
-          <div class="row"><span class="lbl">Desc.Serv.Mun:</span><span>${(n.Desc_Servico||'-').slice(0,80)}</span></div>
+          <div class="row"><span class="lbl">Serv.Mun.:</span><span>${n.Cod_Servico_Mun||'-'}</span></div>
+          <div class="row"><span class="lbl">Desc.Mun.:</span><span>${(n.Desc_Servico||'-').slice(0,80)}</span></div>
           <div class="row"><span class="lbl">Item Lei 116:</span><span>${n.Cod_Item_Lei116||'-'}</span></div>
-          <div class="row"><span class="lbl">Cod NBS:</span><span>${n.Cod_NBS||'-'}</span></div>
+          <div class="row"><span class="lbl">Cód.NBS:</span><span>${n.Cod_NBS||'-'}</span></div>
         </div>
         <div class="info-box"><h4>ISS</h4>
           <div class="row"><span class="lbl">Retido:</span><span>${n.ISS_Retido||'-'}</span></div>
@@ -742,7 +742,7 @@ function renderNFSe(){
       <div class="det-section">
         <div class="det-title" style="cursor:pointer">📋 CSRF — Pis/COFINS/CSLL/IRRF/INSS</div>
         <div class="det-body">
-          <table><thead><tr><th>BC CSRF</th><th>Valor PIS</th><th>Valor COFINS</th><th>Valor CSLL</th><th>BC IRRF</th><th>Valor IRRF</th><th>BC INSS</th><th>Valor INSS</th></tr></thead><tbody><tr>
+          <table><thead><tr><th>BC CSRF</th><th>V.PIS Ret.</th><th>V.COFINS Ret.</th><th>V.CSLL Ret.</th><th>BC IRRF</th><th>V.IRRF Ret.</th><th>BC INSS</th><th>V.INSS Ret.</th></tr></thead><tbody><tr>
             <td>${moeda(n.BC_CSRF)}</td><td>${moeda(n.Valor_PIS)}</td><td>${moeda(n.Valor_COFINS)}</td><td>${moeda(n.Valor_CSLL)}</td>
             <td>${moeda(n.BC_IRRF)}</td><td>${moeda(n.Valor_IRRF)}</td><td>${moeda(n.BC_INSS)}</td><td>${moeda(n.Valor_INSS)}</td>
           </tr></tbody></table>
@@ -751,7 +751,7 @@ function renderNFSe(){
       <div class="det-section">
         <div class="det-title" style="cursor:pointer">🔄 IBS/CBS (Reforma Tributária)</div>
         <div class="det-body">
-          <table><thead><tr><th>IBS vBC</th><th>pIBSUF</th><th>vIBSUF</th><th>pIBSMun</th><th>vIBSMun</th><th>CBS pCBS</th><th>CBS vCBS</th><th>cClassTrib</th></tr></thead><tbody><tr>
+          <table><thead><tr><th>BC IBS/CBS</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>Alíq.CBS</th><th>V.CBS</th><th>Class.Trib.</th></tr></thead><tbody><tr>
             <td>${moeda(n.IBS_vBC)}</td><td>${pct(n.IBS_pIBSUF)}</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${pct(n.IBS_pIBSMun)}</td><td>${moeda(n.IBS_vIBSMun)}</td>
             <td>${pct(n.CBS_pCBS)}</td><td>${moeda(n.CBS_vCBS)}</td><td>${n.cClassTrib||'—'}</td>
           </tr></tbody></table>
