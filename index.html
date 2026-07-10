@@ -72,7 +72,8 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 .nota-card .header .badge.ok{background:rgba(16,185,129,.85)}
 .nota-card .header .toggle{font-size:10px;opacity:.6;transition:transform .35s;margin-left:8px}
 .nota-card .header .toggle.open{transform:rotate(180deg)}
-.nota-card .body-detail{padding:18px;border-top:1px solid var(--border);animation:fadeUp .25s ease}
+.nota-card .body-detail{padding:18px;border-top:1px solid var(--border);display:none}
+.nota-card .body-detail.open{display:block;animation:fadeUp .25s ease}
 .nota-card .body-detail.closed{display:none}
 .nota-card table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;margin-bottom:8px}
 .nota-card table th,.nota-card table td{padding:6px 10px;border:1px solid var(--border-light);text-align:left}
@@ -197,13 +198,25 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
     </div>
 
     <div class="tab-content" id="tab-exportar">
-      <div style="padding:20px 0;text-align:center">
-        <p style="margin-bottom:14px;color:var(--text2)">Exporte os dados processados para CSV ou Excel.</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-prim" onclick="exportCSV('nfe')">⬇ CSV NF-e</button>
-          <button class="btn btn-sec" onclick="exportCSV('nfse')">⬇ CSV NFS-e</button>
-          <button class="btn btn-acent" onclick="exportXLSX('nfe')">⬇ Excel NF-e</button>
-          <button class="btn btn-ok" onclick="exportXLSX('nfse')">⬇ Excel NFS-e</button>
+      <div style="padding:10px 0;max-width:600px;margin:0 auto">
+        <p style="margin-bottom:20px;color:var(--text2);text-align:center">Escolha o formato para cada tipo de documento:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
+            <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📦 NF-e (Produtos)</h4>
+            <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de produtos — itens e tributos</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-prim" onclick="exportCSV('nfe')" style="flex:1">⬇ CSV</button>
+              <button class="btn btn-ok" onclick="exportXLSX('nfe')" style="flex:1">⬇ Excel</button>
+            </div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
+            <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📋 NFS-e (Serviços)</h4>
+            <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de serviços — valores e retenções</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-prim" onclick="exportCSV('nfse')" style="flex:1">⬇ CSV</button>
+              <button class="btn btn-ok" onclick="exportXLSX('nfse')" style="flex:1">⬇ Excel</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -258,6 +271,7 @@ function moeda(v){return existe(v)?`R$ ${f(v).toFixed(2).replace('.',',')}`:'—
 function pct(v){return existe(v)?`${f(v).toFixed(2).replace('.',',')}%`:'—'}
 function vl(v){const s=String(v||'').trim();return(!s||s==='nan'||s==='None')?'':s}
 function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
+function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
 function agora(){const d=new Date();return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 
 // ═══ FILE READING ═══
@@ -654,7 +668,9 @@ function renderNFE(){
     html+=`<div class="nota-card">
       <div class="header" style="cursor:pointer">
         <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✕ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
-        <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle open">▼</span></span>
+        <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
+      </div>
+      <div class="body-detail">
         <div class="info-grid">
           <div class="info-box"><h4>Emitente</h4>
             <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Emitente||'-'}</span></div>
@@ -682,7 +698,7 @@ function renderNFE(){
         </div>
         ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
         ${totLinhas.length?`<div class="det-section">
-          <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--texto)">💰 RESUMO FINANCEIRO DA NOTA</div>
+          <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--text)">💰 RESUMO FINANCEIRO DA NOTA</div>
           <div class="det-body open">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:6px;font-size:11px">
               <div><span style="color:var(--text2)">Produtos</span><br><strong>${moeda(tProd)}</strong></div>
@@ -726,8 +742,10 @@ function renderNFSe(){
   c.innerHTML=d.map(n=>`<div class="nota-card">
     <div class="header" style="cursor:pointer">
       <span class="info"><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="badge">${n.Formato||'?'}</span></span>
-      <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle open">▼</span></span>
-      <div class="info-grid">
+      <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
+      </div>
+      <div class="body-detail">
+        <div class="info-grid">
         <div class="info-box"><h4>Prestador</h4>
           <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Prestador||'-'}</span></div>
           <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Prestador||'-'}</span></div>
@@ -816,7 +834,7 @@ function renderNFSe(){
 // ═══ EVENT DELEGATION (em vez de onclick em innerHTML) ═══
 function toggleNota(el){
   const b=el.nextElementSibling;const t=el.querySelector('.toggle');
-  if(b){b.classList.toggle('closed');if(t)t.classList.toggle('open');}
+  if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');}
 }
 ['nfe-list','nfse-list'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{
@@ -883,9 +901,9 @@ function exportCSV(tipo){
   const cab=tipo==='nfe'?HNFE:HNFSE;
   const dados=tipo==='nfe'?DB.nfe:DB.nfse;
   if(!dados.length){alert('Sem dados para exportar.');return;}
-  let csv='\ufeff'+cab.join(',')+'\n';
+  let csv='\ufeff'+cab.join(';')+'\n';
   for(const row of dados){
-    csv+=cab.map(c=>{const v=String(row[c]||'').replace(/"/g,'""');return/[,"\n]/.test(v)?`"${v}"`:v;}).join(',')+'\n';
+    csv+=cab.map(c=>{const v=String(formatoBr(row[c])||'').replace(/"/g,'""');return/[;\n"]/.test(v)?`"${v}"`:v;}).join(';')+'\n';
   }
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
@@ -896,7 +914,7 @@ function exportXLSX(tipo){
   const cab=tipo==='nfe'?HNFE:HNFSE;
   const dados=tipo==='nfe'?DB.nfe:DB.nfse;
   if(!dados.length){alert('Sem dados para exportar.');return;}
-  const data=[cab,...dados.map(r=>cab.map(c=>r[c]||''))];
+  const data=[cab,...dados.map(r=>cab.map(c=>formatoBr(r[c])||''))];
   const ws=XLSX.utils.aoa_to_sheet(data);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo==='nfe'?'Produtos_NFe':'Servicos_NFSe');
   XLSX.writeFile(wb,`${tipo==='nfe'?'produtos_nfe':'servicos_nfse'}_${DB.sessaoId}.xlsx`);
