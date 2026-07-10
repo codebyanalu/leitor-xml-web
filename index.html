@@ -7,100 +7,139 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--prim:#1a5276;--sec:#2980b9;--acent:#e67e22;--fundo:#f0f3f7;--f2:#fff;--side:#1c2833;--side2:#2c3e50;--texto:#1a252f;--tex2:#5d6d7e;--borda:#d5d8dc;--ok:#1e8449;--warn:#d68910;--err:#c0392b;--info:#2471a3}
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fundo);color:var(--texto);display:flex;height:100vh;overflow:hidden}
-#sidebar{width:250px;min-width:250px;background:var(--side);display:flex;flex-direction:column;height:100vh}
-#logo{background:var(--prim);padding:16px;text-align:center}
-#logo h1{color:#fff;font-size:18px;font-weight:700}
-#logo p{color:#aed6f1;font-size:11px;margin-top:2px}
-#logo .bar{height:3px;background:var(--acent);margin:10px -16px -16px}
-.nav-section{padding:8px 16px 2px;color:#7f8c8d;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-.nav-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;color:#bdc3c7;cursor:pointer;font-size:12px;transition:.15s;border:none;background:none;width:100%;text-align:left;font-family:inherit}
-.nav-btn:hover{background:var(--side2);color:#fff}
-.nav-btn.active{background:var(--prim);color:#fff;font-weight:600}
-.nav-btn .icon{font-size:15px;width:20px;text-align:center}
+:root{
+  --primary:#1a4b8c;--primary-light:#2563af;--primary-dark:#0e2d5a;
+  --accent:#f59e0b;--accent-light:#fbbf24;
+  --surface:#f8fafc;--card:#fff;--sidebar:#0f172a;--sidebar-hover:#1e293b;
+  --text:#0f172a;--text2:#64748b;--text3:#94a3b8;
+  --border:#e2e8f0;--border-light:#f1f5f9;
+  --success:#10b981;--warn:#f59e0b;--err:#ef4444;--info:#3b82f6;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+  --radius:10px;--radius-sm:6px;--radius-lg:14px;
+}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;z-index:10}
+#logo{padding:22px 18px 18px;text-align:center}
+#logo h1{color:#fff;font-size:20px;font-weight:800;letter-spacing:-.3px}
+#logo h1 span{color:var(--accent)}
+#logo p{color:rgba(255,255,255,.4);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
+.nav-section{padding:16px 18px 4px;color:rgba(255,255,255,.25);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 18px;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;border-right:3px solid transparent}
+.nav-btn:hover{background:var(--sidebar-hover);color:#fff}
+.nav-btn.active{background:rgba(26,75,140,.3);color:#fff;font-weight:600;border-right-color:var(--accent)}
+.nav-btn .icon{font-size:16px;width:22px;text-align:center;opacity:.7}
+.nav-btn.active .icon{opacity:1}
 #sidebar .spacer{flex:1}
-#btn-fechar{background:var(--err);color:#fff;padding:14px 16px;cursor:pointer;font-weight:600;font-size:12px;border:none;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:8px;transition:.15s}
-#btn-fechar:hover{background:#a93226}
+#btn-fechar{background:rgba(239,68,68,.15);color:#fca5a5;padding:12px 18px;cursor:pointer;font-weight:600;font-size:12px;border:none;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;margin:8px;width:auto;border-radius:6px}
+#btn-fechar:hover{background:rgba(239,68,68,.25);color:#fff}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#topbar{background:var(--prim);padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
-#topbar h2{color:#fff;font-size:14px;font-weight:600}
-#topbar .hora{color:#aed6f1;font-size:11px}
-#accent-bar{height:3px;background:var(--acent)}
-#content{flex:1;overflow-y:auto;padding:12px 20px}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-bottom:10px}
-.kpi-card{background:var(--f2);border-radius:4px;border:1px solid var(--borda);overflow:hidden}
-.kpi-card .bar{height:4px}
-.kpi-card .body{padding:6px 10px}
-.kpi-card .label{font-size:9px;font-weight:700;color:var(--tex2);text-transform:uppercase}
-.kpi-card .value{font-size:18px;font-weight:700;color:var(--texto);margin-top:1px}
-.kpi-card .sub{font-size:9px;color:var(--tex2);margin-top:1px}
-#upload-area{border:2px dashed var(--borda);border-radius:8px;padding:30px 20px;text-align:center;background:var(--f2);cursor:pointer;transition:.2s;margin-bottom:12px}
-#upload-area:hover,#upload-area.dragover{border-color:var(--sec);background:#eaf2fb}
-#upload-area .icon{font-size:40px;color:var(--tex2)}
-#upload-area p{color:var(--tex2);margin-top:6px;font-size:13px}
-#upload-area .sub{font-size:10px;color:var(--tex2);margin-top:3px}
+#topbar{background:var(--card);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+#topbar h2{color:var(--text);font-size:13px;font-weight:700}
+#topbar h2 span{color:var(--primary)}
+#topbar .hora{color:var(--text3);font-size:11px;font-weight:500}
+#accent-bar{height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-light),var(--accent))}
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+#content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}#content::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
+.kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.kpi-card .bar{height:3px}
+.kpi-card .body{padding:14px 16px}
+.kpi-card .label{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.kpi-card .value{font-size:24px;font-weight:800;color:var(--text);margin-top:3px;letter-spacing:-.5px}
+.kpi-card .sub{font-size:11px;color:var(--text3);margin-top:2px}
+#upload-area{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;background:var(--card);cursor:pointer;transition:all .25s;margin-bottom:18px;box-shadow:var(--shadow)}
+#upload-area:hover,#upload-area.dragover{border-color:var(--primary-light);background:#f0f4fe;box-shadow:0 0 0 4px rgba(26,75,140,.08)}
+#upload-area .icon{font-size:48px;color:var(--text3);transition:transform .35s}
+#upload-area:hover .icon{transform:scale(1.12) translateY(-2px)}
+#upload-area strong{color:var(--primary)}
+#upload-area p{color:var(--text2);margin-top:8px;font-size:14px}
+#upload-area .sub{font-size:11px;color:var(--text3);margin-top:4px}
 #file-input{display:none}
-.tab-content{display:none}.tab-content.active{display:block}
-.nota-card{background:var(--f2);border:1px solid var(--borda);border-radius:6px;margin-bottom:10px;overflow:hidden}
-.nota-card .header{background:var(--prim);color:#fff;padding:8px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;user-select:none}
-.nota-card .header .tipo{border:1px solid rgba(255,255,255,.4);padding:1px 7px;border-radius:3px;font-size:9px;font-weight:600}
-.nota-card .header .toggle{font-size:11px;opacity:.7;transition:.2s}
+.tab-content{display:none;animation:fadeUp .3s ease}.tab-content.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.nota-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
+.nota-card:hover{box-shadow:var(--shadow-md)}
+.nota-card .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:12px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;user-select:none;transition:opacity .2s}
+.nota-card .header:hover{opacity:.95}
+.nota-card .header .info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nota-card .header .badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;background:rgba(255,255,255,.2);letter-spacing:.3px}
+.nota-card .header .badge.err{background:rgba(239,68,68,.85)}
+.nota-card .header .badge.ok{background:rgba(16,185,129,.85)}
+.nota-card .header .toggle{font-size:10px;opacity:.6;transition:transform .35s;margin-left:8px}
 .nota-card .header .toggle.open{transform:rotate(180deg)}
-.nota-card .body-detail{padding:14px;display:none;border-top:1px solid var(--borda)}
-.nota-card .body-detail.open{display:block}
-.nota-card table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
-.nota-card table th,.nota-card table td{padding:3px 6px;border:1px solid var(--borda);text-align:left}
-.nota-card table th{background:var(--prim);color:#fff;font-weight:600;font-size:10px}
-.nota-card table tr:nth-child(even){background:#f7f9fc}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.info-box{border:1px solid var(--borda);border-radius:4px;padding:6px 10px}
-.info-box h4{font-size:10px;color:var(--prim);font-weight:700;margin-bottom:3px;text-transform:uppercase}
-.info-box .row{font-size:11px;padding:1px 0;display:flex}
-.info-box .row .lbl{color:var(--tex2);width:80px;flex-shrink:0}
-.table-wrap{overflow-x:auto;margin-bottom:8px;border:1px solid var(--borda);border-radius:4px}
+.nota-card .body-detail{padding:18px;border-top:1px solid var(--border);animation:fadeUp .25s ease}
+.nota-card .body-detail.closed{display:none}
+.nota-card table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;margin-bottom:8px}
+.nota-card table th,.nota-card table td{padding:6px 10px;border:1px solid var(--border-light);text-align:left}
+.nota-card table th{background:var(--primary);color:#fff;font-weight:600;font-size:10px;letter-spacing:.3px}
+.nota-card table th:first-child{border-radius:var(--radius-sm) 0 0 0}
+.nota-card table th:last-child{border-radius:0 var(--radius-sm) 0 0}
+.nota-card table td{background:var(--card)}
+.nota-card table tr:nth-child(even) td{background:#f8fafc}
+.nota-card table tbody tr:hover td{background:#eef2f7}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.info-box{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;background:var(--card);transition:box-shadow .2s}
+.info-box:hover{box-shadow:var(--shadow)}
+.info-box h4{font-size:10px;color:var(--primary);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border-light);padding-bottom:5px;display:flex;align-items:center;gap:5px}
+.info-box .row{font-size:11px;padding:3px 0;display:flex}
+.info-box .row .lbl{color:var(--text2);min-width:88px;flex-shrink:0}
+.info-box .row .val{color:var(--text);font-weight:500}
+.table-wrap{overflow-x:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius-sm)}
 .table-wrap table{margin-bottom:0}
-.det-section{margin:6px 0;border:1px solid var(--borda);border-radius:4px;overflow:hidden}
-.det-section .det-title{padding:4px 10px;background:#eaf2fb;font-size:10px;font-weight:700;color:var(--prim);cursor:pointer;user-select:none}
-.det-section .det-body{padding:6px;display:none;overflow-x:auto}
-.det-section .det-body.open{display:block}
+.det-section{margin:10px 0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:box-shadow .2s}
+.det-section:hover{box-shadow:var(--shadow)}
+.det-section .det-title{padding:8px 12px;background:#f1f4f9;font-size:10px;font-weight:600;color:var(--primary);cursor:pointer;user-select:none;transition:background .2s;display:flex;align-items:center;gap:6px}
+.det-section .det-title:hover{background:#e8edf5}
+.det-section .det-body{padding:10px;display:none;overflow-x:auto}
+.det-section .det-body.open{display:block;animation:fadeUp .2s ease}
 .det-section .det-body table{font-size:10px;margin-bottom:0}
-.det-section .det-body table th{font-size:9px;background:var(--side2);padding:2px 5px}
-.det-section .det-body table td{padding:2px 5px}
-.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:12px}
-.dash-card{background:var(--f2);border:1px solid var(--borda);border-radius:6px;padding:10px;min-height:220px}
-.dash-card h4{font-size:11px;font-weight:700;color:var(--prim);margin-bottom:6px;text-transform:uppercase}
-.dash-card .chart-wrap{position:relative;height:200px}
-.filter-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
-.filter-bar input,.filter-bar select{padding:5px 8px;font-size:11px;border:1px solid var(--borda);border-radius:4px;font-family:inherit;background:var(--f2)}
-.filter-bar input{flex:1;min-width:120px}
-.filter-bar .count{font-size:11px;color:var(--tex2);margin-left:auto}
-.btn{padding:6px 14px;font-size:11px;font-weight:600;border:none;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
-.btn-prim{background:var(--prim);color:#fff}.btn-prim:hover{background:#154360}
-.btn-sec{background:var(--sec);color:#fff}.btn-sec:hover{background:#1f618d}
-.btn-acent{background:var(--acent);color:#fff}.btn-acent:hover{background:#ca6f1e}
-.btn-ok{background:var(--ok);color:#fff}.btn-ok:hover{background:#196f3d}
-#status-bar{background:var(--f2);border:1px solid var(--borda);border-radius:4px;padding:6px 10px;margin-bottom:10px;font-size:11px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.empty-state{text-align:center;padding:40px;color:var(--tex2)}
-.empty-state .icon{font-size:40px;margin-bottom:10px}
-.empty-state p{font-size:13px}
-#import-log{background:#1c2833;color:#d5d8dc;border-radius:4px;padding:10px;font-family:Consolas,monospace;font-size:11px;max-height:250px;overflow-y:auto;white-space:pre-wrap}
-#loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:999}
+.det-section .det-body table th{font-size:9px;background:var(--primary-dark);color:#fff;padding:4px 7px}
+.det-section .det-body table td{padding:4px 7px}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px}
+.dash-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-height:250px;box-shadow:var(--shadow);transition:all .2s}
+.dash-card:hover{box-shadow:var(--shadow-md)}
+.dash-card h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.dash-card .chart-wrap{position:relative;height:210px}
+.filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:var(--card);padding:12px 16px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)}
+.filter-bar input,.filter-bar select{padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;background:var(--card);transition:all .2s;color:var(--text)}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--primary-light);outline:none;box-shadow:0 0 0 3px rgba(26,75,140,.1)}
+.filter-bar input{flex:1;min-width:160px}
+.filter-bar .count{font-size:12px;color:var(--text2);margin-left:auto;font-weight:600;background:var(--surface);padding:4px 12px;border-radius:20px;white-space:nowrap}
+.btn{padding:8px 18px;font-size:11px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.btn:active{transform:translateY(0)}
+.btn-prim{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff}
+.btn-sec{background:linear-gradient(135deg,#475569,#64748b);color:#fff}
+.btn-acent{background:linear-gradient(135deg,#d97706,var(--accent));color:#fff}
+.btn-ok{background:linear-gradient(135deg,#059669,var(--success));color:#fff}
+#status-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:18px;font-size:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
+#status-bar .stat{display:flex;align-items:center;gap:6px}
+#status-bar .stat .num{font-weight:700;color:var(--primary);font-size:14px}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state .icon{font-size:56px;margin-bottom:14px;opacity:.4}
+.empty-state p{font-size:14px;color:var(--text2)}
+#import-log{background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);line-height:1.6}
+#import-log::-webkit-scrollbar{width:5px}#import-log::-webkit-scrollbar-track{background:transparent}#import-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
+#loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
 #loading-overlay.active{display:flex}
-#loading-box{background:#fff;padding:24px 36px;border-radius:8px;text-align:center}
-#loading-box .spinner{width:36px;height:36px;border:3px solid var(--borda);border-top-color:var(--prim);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+#loading-box{background:var(--card);padding:36px 48px;border-radius:var(--radius-lg);text-align:center;box-shadow:var(--shadow-lg);border:1px solid var(--border)}
+#loading-box p{color:var(--text2);font-size:13px;font-weight:500;margin-top:10px}
+#loading-box .spinner{width:42px;height:42px;border:4px solid var(--border-light);border-top-color:var(--primary);border-radius:50%;animation:spin .7s cubic-bezier(.4,0,.2,1) infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
-#content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--borda);border-radius:3px}
-#error-banner{background:#c0392b;color:#fff;padding:8px 14px;border-radius:4px;margin-bottom:10px;font-size:12px;display:none}
+#error-banner{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;display:none;box-shadow:0 2px 8px rgba(239,68,68,.2);font-weight:500}
 </style>
 </head>
 <body>
 
-<div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><div id="loading-msg">Processando...</div></div></div>
+<div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
 
 <nav id="sidebar">
-  <div id="logo"><h1>GCON / SIAN</h1><p>NF-e | NFS-e</p><div class="bar"></div></div>
+  <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
   <div class="nav-section">IMPORTAR</div>
   <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
   <div class="nav-section">VISUALIZAR</div>
@@ -114,22 +153,22 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fundo);color:var(-
 </nav>
 
 <div id="main">
-  <div id="topbar"><h2>SISTEMA DE EXTRAÇÃO — NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
+  <div id="topbar"><h2>📋 <span>GCON·SIAN</span> — Extrator NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
   <div id="accent-bar"></div>
   <div id="content">
     <div id="status-bar">
-      <span>📦 <span id="s-nfe">0</span> produtos NF-e</span>
-      <span>📋 <span id="s-nfse">0</span> serviços NFS-e</span>
-      <span>📁 <span id="s-arqs">0</span> XMLs</span>
-      <span style="margin-left:auto;font-size:9px;color:var(--tex2)" id="s-sessao"></span>
+      <div class="stat">📦 <span class="num" id="s-nfe">0</span> produtos NF-e</div>
+      <div class="stat">📋 <span class="num" id="s-nfse">0</span> serviços NFS-e</div>
+      <div class="stat">📁 <span class="num" id="s-arqs">0</span> XMLs</div>
+      <div style="margin-left:auto;font-size:10px;color:var(--text3)" id="s-sessao"></div>
     </div>
 
     <div class="tab-content active" id="tab-importar">
       <div id="error-banner"></div>
       <div id="upload-area">
         <div class="icon">📂</div>
-        <p><strong>Clique aqui</strong> ou arraste XMLs</p>
-        <p class="sub">NF-e (modelo 55) e NFS-e (CompNFe / NFSe Nacional)</p>
+        <p><strong>Clique aqui</strong> ou arraste os XMLs</p>
+        <p class="sub">NF-e (modelo 55) · NFS-e (CompNFe / Nacional)</p>
       </div>
       <div id="import-log"></div>
     </div>
@@ -159,7 +198,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fundo);color:var(-
 
     <div class="tab-content" id="tab-exportar">
       <div style="padding:20px 0;text-align:center">
-        <p style="margin-bottom:14px;color:var(--tex2)">Exporte os dados processados para CSV ou Excel.</p>
+        <p style="margin-bottom:14px;color:var(--text2)">Exporte os dados processados para CSV ou Excel.</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="btn btn-prim" onclick="exportCSV('nfe')">⬇ CSV NF-e</button>
           <button class="btn btn-sec" onclick="exportCSV('nfse')">⬇ CSV NFS-e</button>
@@ -183,14 +222,14 @@ const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','
   'Status_NFe','Motivo_Status_NFe',
   'vFrete','vSeg','vDesc','vOutro','vNF','vTotTrib','infCpl',
   'Item','cProd','cEAN','xProd','NCM','CEST','CFOP','uCom','qCom','vUnCom','vProd','vDesc_item','vFrete_item','vSeg_item','vOutro_item','infAdProd','indEscala','nFCI',
-  'ICMS_orig','ICMS_CST','ICMS_modBC','ICMS_vBC','ICMS_pICMS','ICMS_vICMS',
+  'ICMS_orig','ICMS_CST','ICMS_CSOSN','ICMS_modBC','ICMS_vBC','ICMS_pICMS','ICMS_vICMS',
   'ICMS_vBCSTRet','ICMS_pST','ICMS_vICMSSubstituto','ICMS_vICMSSTRet',
   'ICMS_pRedBCEfet','ICMS_vBCEfet','ICMS_pICMSEfet','ICMS_vICMSEfet',
   'IPI_cEnq','IPI_CST','IPI_vBC','IPI_pIPI','IPI_vIPI',
   'PIS_CST','PIS_vBC','PIS_pPIS','PIS_vPIS',
   'COFINS_CST','COFINS_vBC','COFINS_pCOFINS','COFINS_vCOFINS',
-  'IBS_CST','cClassTrib','IBS_vBC','pIBSUF','vIBSUF','pIBSMun','vIBSMun','IBS_vIBS','pCBS','CBS_vCBS',
-  'Arquivo_Origem'];
+   'IBS_CST','cClassTrib','IBS_vBC','pIBSUF','vIBSUF','pIBSMun','vIBSMun','IBS_vIBS','pCBS','CBS_vCBS',
+   'Arquivo_Origem'];
 const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
   'Data_Emissao','Data_Competencia','Municipio_Prestacao',
   'cTribNac','xDescServ','cNBS_DPS','Cod_Servico_Mun','Desc_Servico','Cod_Item_Lei116','Cod_NBS',
@@ -274,7 +313,7 @@ function extrairNFE(nome,texto){
       uCom:t(prod,'uCom'),qCom:t(prod,'qCom'),vUnCom:t(prod,'vUnCom'),vProd:t(prod,'vProd'),
       vDesc_item:t(prod,'vDesc'),vFrete_item:t(prod,'vFrete'),vSeg_item:t(prod,'vSeg'),vOutro_item:t(prod,'vOutro'),infAdProd:t(prod,'infAdProd'),
       indEscala:t(prod,'indEscala'),nFCI:t(prod,'nFCI'),
-      ICMS_orig:'',ICMS_CST:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
+      ICMS_orig:'',ICMS_CST:'',ICMS_CSOSN:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
       ICMS_vBCSTRet:'',ICMS_pST:'',ICMS_vICMSSubstituto:'',ICMS_vICMSSTRet:'',
       ICMS_pRedBCEfet:'',ICMS_vBCEfet:'',ICMS_pICMSEfet:'',ICMS_vICMSEfet:'',
       IPI_cEnq:'',IPI_CST:'',IPI_vBC:'',IPI_pIPI:'',IPI_vIPI:'',
@@ -287,7 +326,7 @@ function extrairNFE(nome,texto){
       const icms=imp.querySelector('ICMS');
       if(icms)for(const f of icms.children){
         if(tagsICMS.some(t=>f.tagName.includes(t))){
-          base.ICMS_orig=t(f,'orig');base.ICMS_CST=t(f,'CST');base.ICMS_modBC=t(f,'modBC');
+          base.ICMS_orig=t(f,'orig');base.ICMS_CST=t(f,'CST');base.ICMS_CSOSN=t(f,'CSOSN');base.ICMS_modBC=t(f,'modBC');
           base.ICMS_vBC=t(f,'vBC');base.ICMS_pICMS=t(f,'pICMS');base.ICMS_vICMS=t(f,'vICMS');
           base.ICMS_vBCSTRet=t(f,'vBCSTRet');base.ICMS_pST=t(f,'pST');
           base.ICMS_vICMSSubstituto=t(f,'vICMSSubstituto');base.ICMS_vICMSSTRet=t(f,'vICMSSTRet');
@@ -515,8 +554,8 @@ function populateFilters(){
 
 // ═══ RENDER NF-e (COMPLETO) ═══
 function nfeItemDetalhe(p){
-  const icms=`<table><thead><tr><th>Origem</th><th>CST</th><th>Modalidade</th><th>BC ICMS</th><th>Alíq.ICMS</th><th>V.ICMS</th><th>BC ST Ret.</th><th>Alíq.ST</th><th>V.ICMS Subst.</th><th>V.ICMS ST Ret.</th><th>% Red.BC</th><th>BC Efetiva</th><th>Alíq.Efetiva</th><th>V.ICMS Efet.</th></tr></thead><tbody><tr>
-    <td>${p.ICMS_orig||'-'}</td><td>${p.ICMS_CST||'-'}</td><td>${p.ICMS_modBC||'-'}</td><td>${moeda(p.ICMS_vBC)}</td>
+  const icms=`<table><thead><tr><th>Origem</th><th>CST</th><th>CSOSN</th><th>Modalidade</th><th>BC ICMS</th><th>Alíq.ICMS</th><th>V.ICMS</th><th>BC ST Ret.</th><th>Alíq.ST</th><th>V.ICMS Subst.</th><th>V.ICMS ST Ret.</th><th>% Red.BC</th><th>BC Efetiva</th><th>Alíq.Efetiva</th><th>V.ICMS Efet.</th></tr></thead><tbody><tr>
+    <td>${p.ICMS_orig||'-'}</td><td>${p.ICMS_CST||'-'}</td><td>${p.ICMS_CSOSN||'-'}</td><td>${p.ICMS_modBC||'-'}</td><td>${moeda(p.ICMS_vBC)}</td>
     <td>${pct(p.ICMS_pICMS)}</td><td>${moeda(p.ICMS_vICMS)}</td><td>${moeda(p.ICMS_vBCSTRet)}</td>
     <td>${pct(p.ICMS_pST)}</td><td>${moeda(p.ICMS_vICMSSubstituto)}</td><td>${moeda(p.ICMS_vICMSSTRet)}</td>
     <td>${pct(p.ICMS_pRedBCEfet)}</td><td>${moeda(p.ICMS_vBCEfet)}</td><td>${pct(p.ICMS_pICMSEfet)}</td><td>${moeda(p.ICMS_vICMSEfet)}</td>
@@ -552,7 +591,7 @@ function nfeItemDetalhe(p){
           <td>${moeda(p.vOutro_item)}</td>
           <td><strong>${moeda(f(p.vProd)-f(p.vDesc_item)+f(p.vFrete_item)+f(p.vSeg_item)+f(p.vOutro_item))}</strong></td>
         </tr></tbody></table>
-        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)"><strong>Inf. Adicionais:</strong> ${p.infAdProd}</div>`:''}
+        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${p.infAdProd}</div>`:''}
       </div>
     </div>
     <div class="det-section">
@@ -614,10 +653,8 @@ function renderNFE(){
     if(temST){totHeaders.push('BC ST','ICMS ST');}
     html+=`<div class="nota-card">
       <div class="header" style="cursor:pointer">
-        <span><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="tipo">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="tipo" style="background:var(--err);border-color:var(--err)">✕ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="tipo" style="background:#1e8449;border-color:var(--ok)">✓ AUTORIZADA</span>':''}</span>
-        <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
-      </div>
-      <div class="body-detail">
+        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✕ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
+        <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle open">▼</span></span>
         <div class="info-grid">
           <div class="info-box"><h4>Emitente</h4>
             <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Emitente||'-'}</span></div>
@@ -635,7 +672,7 @@ function renderNFE(){
             <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Destinatario||'-'}</span></div>
           </div>
         </div>
-        <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--tex2);flex-wrap:wrap">
+        <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
           <span><strong>Chave:</strong> ${n.Chave_NFe||'-'}</span>
           <span><strong>Série:</strong> ${n.Serie_NFe||'-'}</span>
           <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
@@ -643,20 +680,20 @@ function renderNFE(){
           <span><strong>Mod:</strong> ${n.Mod_NFe||'-'}</span>
           <span><strong>TpNF:</strong> ${n.Tp_NF||'-'}</span>
         </div>
-        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--tex2);border-left:3px solid var(--sec)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
+        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
         ${totLinhas.length?`<div class="det-section">
           <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--texto)">💰 RESUMO FINANCEIRO DA NOTA</div>
           <div class="det-body open">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:6px;font-size:11px">
-              <div><span style="color:var(--tex2)">Produtos</span><br><strong>${moeda(tProd)}</strong></div>
-              <div><span style="color:var(--tex2)">Desconto</span><br><strong style="color:var(--err)">${f(n.vDesc)?`- ${moeda(n.vDesc)}`:moeda(n.vDesc)}</strong></div>
-              <div><span style="color:var(--tex2)">Frete</span><br><strong>${moeda(n.vFrete)}</strong></div>
-              <div><span style="color:var(--tex2)">Seguro</span><br><strong>${moeda(n.vSeg)}</strong></div>
-              <div><span style="color:var(--tex2)">Outras Desp.</span><br><strong>${moeda(n.vOutro)}</strong></div>
-              <div><span style="color:var(--tex2)">V.Líquido NF</span><br><strong style="font-size:14px;color:var(--prim)">${moeda(n.vNF)}</strong></div>
+              <div><span style="color:var(--text2)">Produtos</span><br><strong>${moeda(tProd)}</strong></div>
+              <div><span style="color:var(--text2)">Desconto</span><br><strong style="color:var(--err)">${f(n.vDesc)?`- ${moeda(n.vDesc)}`:moeda(n.vDesc)}</strong></div>
+              <div><span style="color:var(--text2)">Frete</span><br><strong>${moeda(n.vFrete)}</strong></div>
+              <div><span style="color:var(--text2)">Seguro</span><br><strong>${moeda(n.vSeg)}</strong></div>
+              <div><span style="color:var(--text2)">Outras Desp.</span><br><strong>${moeda(n.vOutro)}</strong></div>
+              <div><span style="color:var(--text2)">V.Líquido NF</span><br><strong style="font-size:14px;color:var(--primary)">${moeda(n.vNF)}</strong></div>
             </div>
             <table style="font-size:10px"><thead><tr>${totHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody><tr>${totLinhas.map(v=>`<td>${v}</td>`).join('')}</tr></tbody></table>
-            ${n.vTotTrib?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)">Tributos Totais: ${moeda(n.vTotTrib)}</div>`:''}
+            ${n.vTotTrib?`<div style="margin-top:4px;font-size:10px;color:var(--text2)">Tributos Totais: ${moeda(n.vTotTrib)}</div>`:''}
           </div>
         </div>`:''}
         <div class="table-wrap">
@@ -665,7 +702,7 @@ function renderNFE(){
             <th>Qtd</th><th>Un</th><th>V.Unit</th><th>V.Total</th><th>Escala</th><th>FCI</th>
           </tr></thead><tbody>${itensBody}</tbody></table>
         </div>
-        <div style="margin-top:4px;font-size:10px;color:var(--tex2);text-align:right;font-style:italic">Arquivo: ${g.itens[0].Arquivo_Origem||'-'}</div>
+        <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${g.itens[0].Arquivo_Origem||'-'}</div>
       </div>
     </div>`;
   }
@@ -688,10 +725,8 @@ function renderNFSe(){
   if(!d.length){c.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
   c.innerHTML=d.map(n=>`<div class="nota-card">
     <div class="header" style="cursor:pointer">
-      <span><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="tipo">${n.Formato||'?'}</span></span>
-      <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
-    </div>
-    <div class="body-detail">
+      <span class="info"><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="badge">${n.Formato||'?'}</span></span>
+      <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle open">▼</span></span>
       <div class="info-grid">
         <div class="info-box"><h4>Prestador</h4>
           <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Prestador||'-'}</span></div>
@@ -712,7 +747,7 @@ function renderNFSe(){
           <div class="row"><span class="lbl">Email:</span><span>${n.Email_Tomador||'-'}</span></div>
         </div>
       </div>
-      <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--tex2);flex-wrap:wrap">
+      <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
         <span><strong>Chave:</strong> ${n.Chave_NFSe||'-'}</span>
         <span><strong>Número:</strong> ${n.Numero_NFSe||'-'}</span>
         <span><strong>Série RPS:</strong> ${n.Serie_RPS||'-'}</span>
@@ -755,7 +790,7 @@ function renderNFSe(){
             <td>${moeda(n.IBS_vBC)}</td><td>${pct(n.IBS_pIBSUF)}</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${pct(n.IBS_pIBSMun)}</td><td>${moeda(n.IBS_vIBSMun)}</td>
             <td>${pct(n.CBS_pCBS)}</td><td>${moeda(n.CBS_vCBS)}</td><td>${n.cClassTrib||'—'}</td>
           </tr></tbody></table>
-          ${n.pTotTribSN?`<div style="margin-top:4px;font-size:10px;color:var(--tex2)">pTotTribSN: ${pct(n.pTotTribSN)}</div>`:''}
+          ${n.pTotTribSN?`<div style="margin-top:4px;font-size:10px;color:var(--text2)">pTotTribSN: ${pct(n.pTotTribSN)}</div>`:''}
         </div>
       </div>
       <div class="info-grid">
@@ -772,8 +807,8 @@ function renderNFSe(){
           <div class="row"><span class="lbl">INSS:</span><span>${moeda(n.Valor_INSS)}</span></div>
         </div>
       </div>
-      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--tex2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
-      <div style="margin-top:4px;font-size:10px;color:var(--tex2);text-align:right;font-style:italic">Arquivo: ${n.Arquivo_Origem||'-'}</div>
+      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
+      <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${n.Arquivo_Origem||'-'}</div>
     </div>
   </div>`).join('');
 }
@@ -781,7 +816,7 @@ function renderNFSe(){
 // ═══ EVENT DELEGATION (em vez de onclick em innerHTML) ═══
 function toggleNota(el){
   const b=el.nextElementSibling;const t=el.querySelector('.toggle');
-  if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');}
+  if(b){b.classList.toggle('closed');if(t)t.classList.toggle('open');}
 }
 ['nfe-list','nfse-list'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{
@@ -804,11 +839,11 @@ function renderDashboard(){
   const ti=nfse.reduce((s,n)=>s+f(n.Valor_ISS),0);
   const qp=[...new Set(nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].length;
   kpis.innerHTML=`
-    <div class="kpi-card"><div class="bar" style="background:var(--prim)"></div><div class="body">
+    <div class="kpi-card"><div class="bar" style="background:var(--primary)"></div><div class="body">
       <div class="label">Total Documentos</div><div class="value">${qt}</div><div class="sub">NFS-e: ${qN} | NF-e: ${qF}</div></div></div>
-    <div class="kpi-card"><div class="bar" style="background:var(--ok)"></div><div class="body">
+    <div class="kpi-card"><div class="bar" style="background:var(--success)"></div><div class="body">
       <div class="label">Valor Serviços</div><div class="value">${moeda(vN)}</div><div class="sub">ISS total: ${moeda(ti)}</div></div></div>
-    <div class="kpi-card"><div class="bar" style="background:var(--sec)"></div><div class="body">
+    <div class="kpi-card"><div class="bar" style="background:var(--info)"></div><div class="body">
       <div class="label">Valor Produtos</div><div class="value">${moeda(vF)}</div><div class="sub">Prestadores: ${qp}</div></div></div>
   `;
   if(!qt){charts.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>Sem dados para exibir.</p></div>';return;}
