@@ -237,10 +237,11 @@ const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','
   'Item','cProd','cEAN','xProd','NCM','CEST','CFOP','uCom','qCom','vUnCom','vProd','vDesc_item','vFrete_item','vSeg_item','vOutro_item','infAdProd','indEscala','nFCI',
   'ICMS_orig','ICMS_CST','ICMS_CSOSN','ICMS_modBC','ICMS_vBC','ICMS_pICMS','ICMS_vICMS',
   'ICMS_vBCSTRet','ICMS_pST','ICMS_vICMSSubstituto','ICMS_vICMSSTRet',
+  'ICMS_qBCMonoRet','ICMS_adRemICMSRet','ICMS_vICMSMonoRet',
   'ICMS_pRedBCEfet','ICMS_vBCEfet','ICMS_pICMSEfet','ICMS_vICMSEfet',
   'IPI_cEnq','IPI_CST','IPI_vBC','IPI_pIPI','IPI_vIPI',
-  'PIS_CST','PIS_vBC','PIS_pPIS','PIS_vPIS',
-  'COFINS_CST','COFINS_vBC','COFINS_pCOFINS','COFINS_vCOFINS',
+  'PIS_CST','PIS_vBC','PIS_pPIS','PIS_vPIS','PIS_qBCProd','PIS_vAliqProd',
+  'COFINS_CST','COFINS_vBC','COFINS_pCOFINS','COFINS_vCOFINS','COFINS_qBCProd','COFINS_vAliqProd',
    'IBS_CST','cClassTrib','IBS_vBC','pIBSUF','vIBSUF','pIBSMun','vIBSMun','IBS_vIBS','pCBS','CBS_vCBS',
    'Arquivo_Origem'];
 const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
@@ -266,9 +267,8 @@ function parseXML(texto){
   return doc;
 }
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
-function existe(v){return v!==null&&v!==undefined&&String(v).trim()!==''&&String(v).toLowerCase()!=='nan'&&String(v).toLowerCase()!=='none'}
-function moeda(v){return existe(v)?`R$ ${f(v).toFixed(2).replace('.',',')}`:'—'}
-function pct(v){return existe(v)?`${f(v).toFixed(2).replace('.',',')}%`:'—'}
+function moeda(v){return `R$ ${f(v).toFixed(2).replace('.',',')}`}
+function pct(v){return `${f(v).toFixed(2).replace('.',',')}%`}
 function vl(v){const s=String(v||'').trim();return(!s||s==='nan'||s==='None')?'':s}
 function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
 function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
@@ -307,7 +307,7 @@ function extrairNFE(nome,texto){
   else if(cStat==='110'){Status_NFe='Denegada';Motivo_Status_NFe=xMotivo}
   else if(cStat){Status_NFe=cStat;Motivo_Status_NFe=xMotivo}
   else Status_NFe='Desconhecido';
-  const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS70','ICMS90','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
+  const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS61','ICMS70','ICMS90','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
   const tagsPIS=['PISAliq','PISQtde','PISNT','PISOutr','PISSN'];
   const tagsCOFINS=['COFINSAliq','COFINSQtde','COFINSNT','COFINSOutr','COFINSSN'];
   for(const det of dets){
@@ -329,10 +329,11 @@ function extrairNFE(nome,texto){
       indEscala:t(prod,'indEscala'),nFCI:t(prod,'nFCI'),
       ICMS_orig:'',ICMS_CST:'',ICMS_CSOSN:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
       ICMS_vBCSTRet:'',ICMS_pST:'',ICMS_vICMSSubstituto:'',ICMS_vICMSSTRet:'',
+      ICMS_qBCMonoRet:'',ICMS_adRemICMSRet:'',ICMS_vICMSMonoRet:'',
       ICMS_pRedBCEfet:'',ICMS_vBCEfet:'',ICMS_pICMSEfet:'',ICMS_vICMSEfet:'',
       IPI_cEnq:'',IPI_CST:'',IPI_vBC:'',IPI_pIPI:'',IPI_vIPI:'',
-      PIS_CST:'',PIS_vBC:'',PIS_pPIS:'',PIS_vPIS:'',
-      COFINS_CST:'',COFINS_vBC:'',COFINS_pCOFINS:'',COFINS_vCOFINS:'',
+      PIS_CST:'',PIS_vBC:'',PIS_pPIS:'',PIS_vPIS:'',PIS_qBCProd:'',PIS_vAliqProd:'',
+      COFINS_CST:'',COFINS_vBC:'',COFINS_pCOFINS:'',COFINS_vCOFINS:'',COFINS_qBCProd:'',COFINS_vAliqProd:'',
       IBS_CST:'',cClassTrib:'',IBS_vBC:'',pIBSUF:'',vIBSUF:'',pIBSMun:'',vIBSMun:'',IBS_vIBS:'',pCBS:'',CBS_vCBS:'',
       Arquivo_Origem:nome
     };
@@ -344,6 +345,7 @@ function extrairNFE(nome,texto){
           base.ICMS_vBC=t(f,'vBC');base.ICMS_pICMS=t(f,'pICMS');base.ICMS_vICMS=t(f,'vICMS');
           base.ICMS_vBCSTRet=t(f,'vBCSTRet');base.ICMS_pST=t(f,'pST');
           base.ICMS_vICMSSubstituto=t(f,'vICMSSubstituto');base.ICMS_vICMSSTRet=t(f,'vICMSSTRet');
+          base.ICMS_qBCMonoRet=t(f,'qBCMonoRet');base.ICMS_adRemICMSRet=t(f,'adRemICMSRet');base.ICMS_vICMSMonoRet=t(f,'vICMSMonoRet');
           base.ICMS_pRedBCEfet=t(f,'pRedBCEfet');base.ICMS_vBCEfet=t(f,'vBCEfet');
           base.ICMS_pICMSEfet=t(f,'pICMSEfet');base.ICMS_vICMSEfet=t(f,'vICMSEfet');break;
         }
@@ -351,9 +353,9 @@ function extrairNFE(nome,texto){
       const ipi=imp.querySelector('IPI');
       if(ipi){base.IPI_cEnq=t(ipi,'cEnq');for(const s of['IPITrib','IPINT']){const el=ipi.querySelector(s);if(el){base.IPI_CST=t(el,'CST');base.IPI_vBC=t(el,'vBC');base.IPI_pIPI=t(el,'pIPI');base.IPI_vIPI=t(el,'vIPI');break;}}}
       const pis=imp.querySelector('PIS');
-      if(pis)for(const f of pis.children){if(tagsPIS.some(t=>f.tagName.includes(t))){base.PIS_CST=t(f,'CST');base.PIS_vBC=t(f,'vBC');base.PIS_pPIS=t(f,'pPIS');base.PIS_vPIS=t(f,'vPIS');break;}}
+      if(pis)for(const f of pis.children){if(tagsPIS.some(t=>f.tagName.includes(t))){base.PIS_CST=t(f,'CST');base.PIS_vBC=t(f,'vBC');base.PIS_pPIS=t(f,'pPIS');base.PIS_vPIS=t(f,'vPIS');base.PIS_qBCProd=t(f,'qBCProd');base.PIS_vAliqProd=t(f,'vAliqProd');break;}}
       const cof=imp.querySelector('COFINS');
-      if(cof)for(const f of cof.children){if(tagsCOFINS.some(t=>f.tagName.includes(t))){base.COFINS_CST=t(f,'CST');base.COFINS_vBC=t(f,'vBC');base.COFINS_pCOFINS=t(f,'pCOFINS');base.COFINS_vCOFINS=t(f,'vCOFINS');break;}}
+      if(cof)for(const f of cof.children){if(tagsCOFINS.some(t=>f.tagName.includes(t))){base.COFINS_CST=t(f,'CST');base.COFINS_vBC=t(f,'vBC');base.COFINS_pCOFINS=t(f,'pCOFINS');base.COFINS_vCOFINS=t(f,'vCOFINS');base.COFINS_qBCProd=t(f,'qBCProd');base.COFINS_vAliqProd=t(f,'vAliqProd');break;}}
       let ibscbs=imp.querySelector('IBSCBS')||imp.querySelector('IBS');
       if(ibscbs){
         base.IBS_CST=t(ibscbs,'CST');base.cClassTrib=t(ibscbs,'cClassTrib');
@@ -567,26 +569,66 @@ function populateFilters(){
 }
 
 // ═══ RENDER NF-e (COMPLETO) ═══
+function cellsTable(cells){
+  if(!cells.length)return'';
+  return `<table><thead><tr>${cells.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody><tr>${cells.map(c=>`<td>${c[1]}</td>`).join('')}</tr></tbody></table>`;
+}
 function nfeItemDetalhe(p){
-  const icms=`<table><thead><tr><th>Origem</th><th>CST</th><th>CSOSN</th><th>Modalidade</th><th>BC ICMS</th><th>Alíq.ICMS</th><th>V.ICMS</th><th>BC ST Ret.</th><th>Alíq.ST</th><th>V.ICMS Subst.</th><th>V.ICMS ST Ret.</th><th>% Red.BC</th><th>BC Efetiva</th><th>Alíq.Efetiva</th><th>V.ICMS Efet.</th></tr></thead><tbody><tr>
-    <td>${p.ICMS_orig||'-'}</td><td>${p.ICMS_CST||'-'}</td><td>${p.ICMS_CSOSN||'-'}</td><td>${p.ICMS_modBC||'-'}</td><td>${moeda(p.ICMS_vBC)}</td>
-    <td>${pct(p.ICMS_pICMS)}</td><td>${moeda(p.ICMS_vICMS)}</td><td>${moeda(p.ICMS_vBCSTRet)}</td>
-    <td>${pct(p.ICMS_pST)}</td><td>${moeda(p.ICMS_vICMSSubstituto)}</td><td>${moeda(p.ICMS_vICMSSTRet)}</td>
-    <td>${pct(p.ICMS_pRedBCEfet)}</td><td>${moeda(p.ICMS_vBCEfet)}</td><td>${pct(p.ICMS_pICMSEfet)}</td><td>${moeda(p.ICMS_vICMSEfet)}</td>
-  </tr></tbody></table>`;
-  const ipi=`<table><thead><tr><th>Cód.Enq.</th><th>CST</th><th>BC IPI</th><th>Alíq.IPI</th><th>V.IPI</th></tr></thead><tbody><tr>
-    <td>${p.IPI_cEnq||'—'}</td><td>${p.IPI_CST||'—'}</td><td>${moeda(p.IPI_vBC)}</td><td>${pct(p.IPI_pIPI)}</td><td>${moeda(p.IPI_vIPI)}</td>
-  </tr></tbody></table>`;
-  const pis=`<table><thead><tr><th>CST</th><th>BC PIS</th><th>Alíq.PIS</th><th>V.PIS</th></tr></thead><tbody><tr>
-    <td>${p.PIS_CST||'—'}</td><td>${moeda(p.PIS_vBC)}</td><td>${pct(p.PIS_pPIS)}</td><td>${moeda(p.PIS_vPIS)}</td>
-  </tr></tbody></table>`;
-  const cofins=`<table><thead><tr><th>CST</th><th>BC COFINS</th><th>Alíq.COFINS</th><th>V.COFINS</th></tr></thead><tbody><tr>
-    <td>${p.COFINS_CST||'—'}</td><td>${moeda(p.COFINS_vBC)}</td><td>${pct(p.COFINS_pCOFINS)}</td><td>${moeda(p.COFINS_vCOFINS)}</td>
-  </tr></tbody></table>`;
-  const ibs=p.IBS_vIBS||p.CBS_vCBS?`<table><thead><tr><th>CST</th><th>Class.Trib.</th><th>BC</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>V.IBS</th><th>Alíq.CBS</th><th>V.CBS</th></tr></thead><tbody><tr>
-    <td>${p.IBS_CST||'—'}</td><td>${p.cClassTrib||'—'}</td><td>${moeda(p.IBS_vBC)}</td><td>${pct(p.pIBSUF)}</td><td>${moeda(p.vIBSUF)}</td>
-    <td>${pct(p.pIBSMun)}</td><td>${moeda(p.vIBSMun)}</td><td>${moeda(p.IBS_vIBS)}</td><td>${pct(p.pCBS)}</td><td>${moeda(p.CBS_vCBS)}</td>
-  </tr></tbody></table>`:'';
+  const icmsCells=[];
+  if(p.ICMS_orig)icmsCells.push(['Origem',p.ICMS_orig]);
+  if(p.ICMS_CST)icmsCells.push(['CST',p.ICMS_CST]);
+  if(p.ICMS_CSOSN)icmsCells.push(['CSOSN',p.ICMS_CSOSN]);
+  if(p.ICMS_modBC)icmsCells.push(['Mod.BC',p.ICMS_modBC]);
+  if(p.ICMS_qBCMonoRet)icmsCells.push(['BC Mono',formatoBr(p.ICMS_qBCMonoRet)]);
+  if(p.ICMS_adRemICMSRet)icmsCells.push(['Alíq. Mono (R$/un)',moeda(p.ICMS_adRemICMSRet)]);
+  if(p.ICMS_vICMSMonoRet)icmsCells.push(['V.ICMS Mono',moeda(p.ICMS_vICMSMonoRet)]);
+  if(p.ICMS_vBC)icmsCells.push(['BC ICMS',moeda(p.ICMS_vBC)]);
+  if(p.ICMS_pICMS)icmsCells.push(['Alíq. ICMS',pct(p.ICMS_pICMS)]);
+  if(p.ICMS_vICMS)icmsCells.push(['V.ICMS',moeda(p.ICMS_vICMS)]);
+  if(p.ICMS_vBCSTRet)icmsCells.push(['BC ST Ret.',moeda(p.ICMS_vBCSTRet)]);
+  if(p.ICMS_pST)icmsCells.push(['Alíq. ST',pct(p.ICMS_pST)]);
+  if(p.ICMS_vICMSSubstituto)icmsCells.push(['V.ICMS Subst.',moeda(p.ICMS_vICMSSubstituto)]);
+  if(p.ICMS_vICMSSTRet)icmsCells.push(['V.ICMS ST Ret.',moeda(p.ICMS_vICMSSTRet)]);
+  if(p.ICMS_pRedBCEfet)icmsCells.push(['% Red.BC',pct(p.ICMS_pRedBCEfet)]);
+  if(p.ICMS_vBCEfet)icmsCells.push(['BC Efetiva',moeda(p.ICMS_vBCEfet)]);
+  if(p.ICMS_pICMSEfet)icmsCells.push(['Alíq. Efetiva',pct(p.ICMS_pICMSEfet)]);
+  if(p.ICMS_vICMSEfet)icmsCells.push(['V.ICMS Efet.',moeda(p.ICMS_vICMSEfet)]);
+  const icms=cellsTable(icmsCells);
+  const ipiCells=[];
+  if(p.IPI_cEnq)ipiCells.push(['Cód.Enq.',p.IPI_cEnq]);
+  if(p.IPI_CST)ipiCells.push(['CST',p.IPI_CST]);
+  if(p.IPI_vBC)ipiCells.push(['BC IPI',moeda(p.IPI_vBC)]);
+  if(p.IPI_pIPI)ipiCells.push(['Alíq. IPI',pct(p.IPI_pIPI)]);
+  if(p.IPI_vIPI)ipiCells.push(['V.IPI',moeda(p.IPI_vIPI)]);
+  const ipi=cellsTable(ipiCells);
+  const pisCells=[];
+  if(p.PIS_CST)pisCells.push(['CST',p.PIS_CST]);
+  if(p.PIS_vBC)pisCells.push(['BC PIS',moeda(p.PIS_vBC)]);
+  if(p.PIS_pPIS)pisCells.push(['Alíq. PIS',pct(p.PIS_pPIS)]);
+  if(p.PIS_qBCProd)pisCells.push(['Qtd. Base',formatoBr(p.PIS_qBCProd)]);
+  if(p.PIS_vAliqProd)pisCells.push(['Alíq. (R$/un)',moeda(p.PIS_vAliqProd)]);
+  if(p.PIS_vPIS)pisCells.push(['V.PIS',moeda(p.PIS_vPIS)]);
+  const pis=cellsTable(pisCells);
+  const cofCells=[];
+  if(p.COFINS_CST)cofCells.push(['CST',p.COFINS_CST]);
+  if(p.COFINS_vBC)cofCells.push(['BC COFINS',moeda(p.COFINS_vBC)]);
+  if(p.COFINS_pCOFINS)cofCells.push(['Alíq. COFINS',pct(p.COFINS_pCOFINS)]);
+  if(p.COFINS_qBCProd)cofCells.push(['Qtd. Base',formatoBr(p.COFINS_qBCProd)]);
+  if(p.COFINS_vAliqProd)cofCells.push(['Alíq. (R$/un)',moeda(p.COFINS_vAliqProd)]);
+  if(p.COFINS_vCOFINS)cofCells.push(['V.COFINS',moeda(p.COFINS_vCOFINS)]);
+  const cofins=cellsTable(cofCells);
+  const ibsCells=[];
+  if(p.IBS_CST)ibsCells.push(['CST',p.IBS_CST]);
+  if(p.cClassTrib)ibsCells.push(['Class.Trib.',p.cClassTrib]);
+  if(p.IBS_vBC)ibsCells.push(['BC IBS',moeda(p.IBS_vBC)]);
+  if(p.pIBSUF)ibsCells.push(['Alíq. IBS UF',pct(p.pIBSUF)]);
+  if(p.vIBSUF)ibsCells.push(['V.IBS UF',moeda(p.vIBSUF)]);
+  if(p.pIBSMun)ibsCells.push(['Alíq. IBS Mun.',pct(p.pIBSMun)]);
+  if(p.vIBSMun)ibsCells.push(['V.IBS Mun.',moeda(p.vIBSMun)]);
+  if(p.IBS_vIBS)ibsCells.push(['V.IBS',moeda(p.IBS_vIBS)]);
+  if(p.pCBS)ibsCells.push(['Alíq. CBS',pct(p.pCBS)]);
+  if(p.CBS_vCBS)ibsCells.push(['V.CBS',moeda(p.CBS_vCBS)]);
+  const ibs=cellsTable(ibsCells);
   return `<tr>
     <td>${p.Item}</td><td>${p.cProd||'—'}</td><td>${p.cEAN||'—'}</td><td>${(p.xProd||'').slice(0,40)}</td>
     <td>${p.NCM||'—'}</td><td>${p.CEST||'—'}</td><td>${p.CFOP||'—'}</td>
@@ -608,22 +650,22 @@ function nfeItemDetalhe(p){
         ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${p.infAdProd}</div>`:''}
       </div>
     </div>
-    <div class="det-section">
+    ${icms?`<div class="det-section">
       <div class="det-title" style="cursor:pointer">📊 ICMS — Detalhamento completo</div>
       <div class="det-body">${icms}</div>
-    </div>
-    <div class="det-section">
+    </div>`:''}
+    ${ipi?`<div class="det-section">
       <div class="det-title" style="cursor:pointer">🏷 IPI — Detalhamento</div>
       <div class="det-body">${ipi}</div>
-    </div>
-    <div class="det-section">
+    </div>`:''}
+    ${pis?`<div class="det-section">
       <div class="det-title" style="cursor:pointer">📋 PIS — Detalhamento</div>
       <div class="det-body">${pis}</div>
-    </div>
-    <div class="det-section">
+    </div>`:''}
+    ${cofins?`<div class="det-section">
       <div class="det-title" style="cursor:pointer">📋 COFINS — Detalhamento</div>
       <div class="det-body">${cofins}</div>
-    </div>
+    </div>`:''}
     ${ibs?`<div class="det-section">
       <div class="det-title" style="cursor:pointer">🔄 IBS/CBS — Detalhamento (Reforma Tributária)</div>
       <div class="det-body">${ibs}</div>
