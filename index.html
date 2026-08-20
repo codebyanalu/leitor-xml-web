@@ -6,6 +6,9 @@
 <title>GCON/SIAN — NF-e / NFS-e</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -133,6 +136,25 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 #loading-box .spinner{width:42px;height:42px;border:4px solid var(--border-light);border-top-color:var(--primary);border-radius:50%;animation:spin .7s cubic-bezier(.4,0,.2,1) infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 #error-banner{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;display:none;box-shadow:0 2px 8px rgba(239,68,68,.2);font-weight:500}
+#tab-separar{max-width:760px}
+#sep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow)}
+#tab-separar .campo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px}
+#tab-separar .campo label{display:block;font-weight:600;margin:0 0 8px;color:var(--text)}
+#tab-separar .row{display:flex;gap:8px}
+#tab-separar input[type=text]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
+#tab-separar input[type=file]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--card)}
+#tab-separar .radio-group{display:flex;gap:18px;margin-top:6px;flex-wrap:wrap}
+#tab-separar .radio-group label{font-weight:500;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer}
+#tab-separar .btn-select{background:var(--primary);color:#fff;white-space:nowrap}
+#tab-separar #btn-processar{width:100%;margin-top:18px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:13px;font-size:15px;justify-content:center}
+#btn-processar:disabled{opacity:.5;cursor:not-allowed}
+#tab-separar #barra{height:8px;background:var(--border-light);border-radius:6px;margin-top:18px;overflow:hidden;display:none}
+#tab-separar #barra-inner{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:0%;transition:width .2s}
+#tab-separar #baixar{width:100%;margin-top:10px;background:linear-gradient(135deg,#059669,var(--success));color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}
+#tab-separar #status{color:var(--text2);margin-top:14px;font-size:12px;min-height:16px}
+#tab-separar #status.err{color:var(--err)}
+#tab-separar #status.ok{color:var(--success)}
+#tab-separar pre{background:var(--sidebar);color:#cbd5e1;border-radius:var(--radius);padding:12px;font-family:Consolas,monospace;font-size:12px;max-height:260px;overflow:auto;margin-top:18px;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -143,6 +165,8 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
   <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
   <div class="nav-section">IMPORTAR</div>
   <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
+  <div class="nav-section">FERRAMENTAS</div>
+  <button class="nav-btn" data-tab="separar"><span class="icon">📑</span><span>Separar PDF</span></button>
   <div class="nav-section">VISUALIZAR</div>
   <button class="nav-btn" data-tab="nfe"><span class="icon">📦</span><span>NF-e (Peças)</span></button>
   <button class="nav-btn" data-tab="nfse"><span class="icon">📋</span><span>NFS-e (Serviços)</span></button>
@@ -172,6 +196,44 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         <p class="sub">NF-e (modelo 55) · NFS-e (CompNFe / Nacional)</p>
       </div>
       <div id="import-log"></div>
+    </div>
+
+    <div class="tab-content" id="tab-separar">
+      <div id="sep-banner" style="display:none"></div>
+      <div id="sep-card">
+        <div class="campo">
+          <label>Arquivo PDF</label>
+          <div class="row">
+            <input type="file" id="pdfFile" accept=".pdf">
+          </div>
+        </div>
+        <div class="campo">
+          <label>Modo de detecção</label>
+          <div class="radio-group" id="modos">
+            <label><input type="radio" name="modo" value="auto" checked> Automático</label>
+            <label><input type="radio" name="modo" value="unica"> Uma página = uma nota</label>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Nomeação dos arquivos</label>
+          <div class="radio-group">
+            <label><input type="radio" name="lerNumero" value="sim" checked> Ler número da nota</label>
+            <label><input type="radio" name="lerNumero" value="nao"> Não ler (usar página)</label>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Pasta de destino</label>
+          <div class="row">
+            <input type="text" id="pastaNome" placeholder="Nenhuma pasta selecionada" readonly>
+            <button id="btnSelecionarPasta" class="btn btn-select" type="button">Escolher pasta</button>
+          </div>
+        </div>
+        <button id="btn-processar" class="btn">Separar Notas</button>
+        <div id="barra"><div id="barra-inner"></div></div>
+        <button id="baixar" class="btn">Salvar arquivos</button>
+        <div id="status"></div>
+        <pre id="log"></pre>
+      </div>
     </div>
 
     <div class="tab-content" id="tab-nfe">
@@ -267,8 +329,8 @@ function parseXML(texto){
   return doc;
 }
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
-function moeda(v){return `R$ ${f(v).toFixed(2).replace('.',',')}`}
-function pct(v){return `${f(v).toFixed(2).replace('.',',')}%`}
+function moeda(v){return `R$ ${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+function pct(v){return `${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%`}
 function vl(v){const s=String(v||'').trim();return(!s||s==='nan'||s==='None')?'':s}
 function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
 function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
@@ -307,7 +369,7 @@ function extrairNFE(nome,texto){
   else if(cStat==='110'){Status_NFe='Denegada';Motivo_Status_NFe=xMotivo}
   else if(cStat){Status_NFe=cStat;Motivo_Status_NFe=xMotivo}
   else Status_NFe='Desconhecido';
-  const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS61','ICMS70','ICMS90','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
+  const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS61','ICMS70','ICMS90','ICMSPart','ICMSST','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
   const tagsPIS=['PISAliq','PISQtde','PISNT','PISOutr','PISSN'];
   const tagsCOFINS=['COFINSAliq','COFINSQtde','COFINSNT','COFINSOutr','COFINSSN'];
   for(const det of dets){
@@ -343,8 +405,8 @@ function extrairNFE(nome,texto){
         if(tagsICMS.some(t=>f.tagName.includes(t))){
           base.ICMS_orig=t(f,'orig');base.ICMS_CST=t(f,'CST');base.ICMS_CSOSN=t(f,'CSOSN');base.ICMS_modBC=t(f,'modBC');
           base.ICMS_vBC=t(f,'vBC');base.ICMS_pICMS=t(f,'pICMS');base.ICMS_vICMS=t(f,'vICMS');
-          base.ICMS_vBCSTRet=t(f,'vBCSTRet');base.ICMS_pST=t(f,'pST');
-          base.ICMS_vICMSSubstituto=t(f,'vICMSSubstituto');base.ICMS_vICMSSTRet=t(f,'vICMSSTRet');
+          base.ICMS_vBCSTRet=t(f,'vBCSTRet')||t(f,'vBCST');base.ICMS_pST=t(f,'pST')||t(f,'pICMSST');
+          base.ICMS_vICMSSubstituto=t(f,'vICMSSubstituto');base.ICMS_vICMSSTRet=t(f,'vICMSSTRet')||t(f,'vICMSST');
           base.ICMS_qBCMonoRet=t(f,'qBCMonoRet');base.ICMS_adRemICMSRet=t(f,'adRemICMSRet');base.ICMS_vICMSMonoRet=t(f,'vICMSMonoRet');
           base.ICMS_pRedBCEfet=t(f,'pRedBCEfet');base.ICMS_vBCEfet=t(f,'vBCEfet');
           base.ICMS_pICMSEfet=t(f,'pICMSEfet');base.ICMS_vICMSEfet=t(f,'vICMSEfet');break;
@@ -356,6 +418,10 @@ function extrairNFE(nome,texto){
       if(pis)for(const f of pis.children){if(tagsPIS.some(t=>f.tagName.includes(t))){base.PIS_CST=t(f,'CST');base.PIS_vBC=t(f,'vBC');base.PIS_pPIS=t(f,'pPIS');base.PIS_vPIS=t(f,'vPIS');base.PIS_qBCProd=t(f,'qBCProd');base.PIS_vAliqProd=t(f,'vAliqProd');break;}}
       const cof=imp.querySelector('COFINS');
       if(cof)for(const f of cof.children){if(tagsCOFINS.some(t=>f.tagName.includes(t))){base.COFINS_CST=t(f,'CST');base.COFINS_vBC=t(f,'vBC');base.COFINS_pCOFINS=t(f,'pCOFINS');base.COFINS_vCOFINS=t(f,'vCOFINS');base.COFINS_qBCProd=t(f,'qBCProd');base.COFINS_vAliqProd=t(f,'vAliqProd');break;}}
+      const pisst=imp.querySelector('PISST');
+      if(pisst){if(!base.PIS_vBC)base.PIS_vBC=t(pisst,'vBC');if(!base.PIS_pPIS)base.PIS_pPIS=t(pisst,'pPIS');if(!base.PIS_qBCProd)base.PIS_qBCProd=t(pisst,'qBCProd');if(!base.PIS_vAliqProd)base.PIS_vAliqProd=t(pisst,'vAliqProd');if(!base.PIS_vPIS)base.PIS_vPIS=t(pisst,'vPIS');}
+      const cofinsst=imp.querySelector('COFINSST');
+      if(cofinsst){if(!base.COFINS_vBC)base.COFINS_vBC=t(cofinsst,'vBC');if(!base.COFINS_pCOFINS)base.COFINS_pCOFINS=t(cofinsst,'pCOFINS');if(!base.COFINS_qBCProd)base.COFINS_qBCProd=t(cofinsst,'qBCProd');if(!base.COFINS_vAliqProd)base.COFINS_vAliqProd=t(cofinsst,'vAliqProd');if(!base.COFINS_vCOFINS)base.COFINS_vCOFINS=t(cofinsst,'vCOFINS');}
       let ibscbs=imp.querySelector('IBSCBS')||imp.querySelector('IBS');
       if(ibscbs){
         base.IBS_CST=t(ibscbs,'CST');base.cClassTrib=t(ibscbs,'cClassTrib');
@@ -992,6 +1058,249 @@ document.getElementById('upload-area').addEventListener('drop',e=>{e.preventDefa
 function tick(){document.getElementById('hora').textContent=agora();setTimeout(tick,1000)}
 tick();updateStatus();
 console.log('GCON/SIAN pronto. DB:',DB.sessaoId);
+
+// ═══ SEPARADOR DE PDF ═══
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const PADROES_SEP = [
+  /(?:Nota\s*Fiscal|NF\s*e?[°º]?\s*[.:]?)\s*[Nn]?[o°º]?\.?\s*[:.]?\s*(\d{1,15})/gi,
+  /N[°º][s°]?\.?\s*[.:]?\s*(\d{1,15})/gi,
+  /N\.\s*(\d{1,15})/gi,
+  /(?:N[uú]mero|NUMERO)\s*(?:da\s*)?(?:nota|fiscal)?\s*[.:]?\s*(\d{1,15})/gi,
+];
+function sepStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.innerHTML = msg;
+  el.className = cls || '';
+}
+function sepLog(msg) {
+  const el = document.getElementById('log');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+function sepDetect(texto, padraoPers) {
+  if (padraoPers) {
+    const re = new RegExp(padraoPers, 'gi');
+    re.lastIndex = 0;
+    const m = re.exec(texto);
+    if (m && m[1] && m[1].trim()) return m[1].trim();
+    re.lastIndex = 0;
+    const m2 = re.exec(texto);
+    if (m2 && m2[0] && /^\d{1,15}$/.test(m2[0].trim())) return m2[0].trim();
+  }
+  for (const re of PADROES_SEP) {
+    re.lastIndex = 0;
+    const m = re.exec(texto);
+    if (m && m[1] && m[1].trim()) return m[1].trim();
+  }
+  const curto = texto.match(/\b\d{1,9}\b/g) || [];
+  for (const n of curto) {
+    if (n.replace(/^0+/, '').length) return n;
+  }
+  return null;
+}
+function sepSanitizar(nome) {
+  nome = nome.replace(/[<>:"/\\|?*]/g, '_').trim();
+  return nome || 'nota_sem_numero';
+}
+async function sepExtrairTopo(page) {
+  const viewport = page.getViewport({ scale: 1 });
+  const altura = viewport.height;
+  const content = await page.getTextContent();
+  const items = content.items.filter(it => it.str && it.transform[5] > altura * 0.30);
+  items.sort((a, b) => {
+    const dy = b.transform[5] - a.transform[5];
+    if (Math.abs(dy) > 5) return dy;
+    return a.transform[4] - b.transform[4];
+  });
+  return items.map(it => it.str).join(' ');
+}
+async function sepSeparar(arquivo, modo, lerNumero) {
+  const doc = await pdfjsLib.getDocument(await arquivo.arrayBuffer()).promise;
+  const total = doc.numPages;
+  sepLog(`PDF carregado — ${total} página(s)`);
+  const arrayBuffer = await arquivo.arrayBuffer();
+  const srcDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+  let grupos;
+  if (modo === 'unica' || !lerNumero) {
+    grupos = Array.from({ length: total }, (_, i) => [i]);
+    if (!lerNumero) sepLog('Nomeação sem leitura do número -> nome por página');
+  } else {
+    const numsPag = [];
+    for (let i = 1; i <= total; i++) {
+      const page = await doc.getPage(i);
+      const texto = await sepExtrairTopo(page);
+      numsPag.push(sepDetect(texto, null));
+      sepLog(`  Página ${i}: número detectado = ${numsPag[i - 1] || '(não encontrado)'}`);
+    }
+    if (modo === 'auto' && numsPag.every(n => !n)) {
+      sepLog('Nenhum padrão detectado -> modo página-por-página');
+      grupos = Array.from({ length: total }, (_, i) => [i]);
+    } else {
+      const inicios = [0];
+      let ultimoNum = numsPag[0];
+      for (let i = 1; i < total; i++) {
+        if (numsPag[i] && numsPag[i] !== ultimoNum) {
+          inicios.push(i);
+          ultimoNum = numsPag[i];
+        }
+      }
+      grupos = [];
+      for (let j = 0; j < inicios.length; j++) {
+        const ini = inicios[j];
+        const fim = j + 1 < inicios.length ? inicios[j + 1] : total;
+        const paginas = [];
+        for (let k = ini; k < fim; k++) paginas.push(k);
+        grupos.push(paginas);
+      }
+    }
+  }
+
+  const resultados = [];
+  const nomesUsados = new Set();
+  for (let idx = 0; idx < grupos.length; idx++) {
+    const paginas = grupos[idx];
+    let num;
+    if (lerNumero) {
+      const texto = await sepExtrairTopo(await doc.getPage(paginas[0] + 1));
+      num = sepDetect(texto, null) || 'nota_' + String(paginas[0] + 1).padStart(4, '0');
+      num = num.replace(/^0+/, '') || num;
+    } else {
+      num = 'pagina_' + String(paginas[0] + 1).padStart(4, '0');
+    }
+    let nomeArquivo = 'NF-' + sepSanitizar(num) + '.pdf';
+    let v = 2;
+    while (nomesUsados.has(nomeArquivo)) {
+      nomeArquivo = 'NF-' + sepSanitizar(num) + '_' + v + '.pdf';
+      v++;
+    }
+    nomesUsados.add(nomeArquivo);
+    const novo = await PDFLib.PDFDocument.create();
+    const pags = await novo.copyPages(srcDoc, paginas);
+    pags.forEach(p => novo.addPage(p));
+    const bytes = await novo.save();
+    resultados.push({ arquivo: nomeArquivo, numeroNota: num, paginas, bytes });
+    const ps = paginas.length === 1
+      ? `pág ${paginas[0] + 1}`
+      : `págs ${paginas[0] + 1}-${paginas[paginas.length - 1] + 1}`;
+    sepLog(`  [${idx + 1}/${grupos.length}] ${nomeArquivo}  (${ps})`);
+  }
+  await doc.destroy();
+  return resultados;
+}
+
+document.getElementById('btnSelecionarPasta').addEventListener('click', async () => {
+  if (!window.showDirectoryPicker) {
+    sepStatus('Seu navegador não permite escolher pasta. Os arquivos serão baixados em ZIP.', 'err');
+    return;
+  }
+  try {
+    window.__pastaHandle = await window.showDirectoryPicker();
+    document.getElementById('pastaNome').value = window.__pastaHandle.name;
+    sepStatus('Pasta selecionada: ' + window.__pastaHandle.name + '.', 'ok');
+  } catch (e) {
+    if (e.name !== 'AbortError') sepStatus('Erro ao escolher a pasta.', 'err');
+  }
+});
+
+document.getElementById('btn-processar').addEventListener('click', async () => {
+  const file = document.getElementById('pdfFile').files[0];
+  const modo = document.querySelector('input[name=modo]:checked').value;
+  const lerNumero = document.querySelector('input[name=lerNumero]:checked').value === 'sim';
+  if (!file) {
+    sepStatus('Selecione um arquivo PDF.', 'err');
+    return;
+  }
+  const btn = document.getElementById('btn-processar');
+  const barra = document.getElementById('barra');
+  const inner = document.getElementById('barra-inner');
+  const baixar = document.getElementById('baixar');
+  const logEl = document.getElementById('log');
+  btn.disabled = true;
+  baixar.style.display = 'none';
+  barra.style.display = 'block';
+  inner.style.width = '0%';
+  logEl.textContent = '';
+  sepStatus('Processando...', '');
+  try {
+    const resultados = await sepSeparar(file, modo, lerNumero);
+    inner.style.width = '100%';
+    setTimeout(() => { barra.style.display = 'none'; }, 400);
+    window.__resultados = resultados;
+    baixar.dataset.nomeBase = file.name.replace(/\.pdf$/i, '');
+    baixar.style.display = 'block';
+    sepStatus(`Concluído! ${resultados.length} nota(s) gerada(s).`);
+    sepLog('');
+    sepLog(`Concluído! ${resultados.length} nota(s) gerada(s).`);
+  } catch (e) {
+    sepStatus('Erro: ' + e.message, 'err');
+    sepLog('ERRO: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('baixar').addEventListener('click', async () => {
+  const resultados = window.__resultados;
+  if (!resultados || !resultados.length) return;
+  const nomeBase = document.getElementById('baixar').dataset.nomeBase || 'notas_separadas';
+  const pastaHandle = window.__pastaHandle;
+  const btnBaixar = document.getElementById('baixar');
+  if (pastaHandle) {
+    btnBaixar.disabled = true;
+    btnBaixar.dataset.orig = btnBaixar.textContent;
+    btnBaixar.textContent = 'Salvando...';
+    try {
+      let ok = 0;
+      const falhas = [];
+      for (let i = 0; i < resultados.length; i++) {
+        const r = resultados[i];
+        try {
+          const fh = await pastaHandle.getFileHandle(r.arquivo, { create: true });
+          const w = await fh.createWritable();
+          await w.write(r.bytes);
+          await w.close();
+          ok++;
+          sepLog(`  [${i + 1}/${resultados.length}] ✓ ${r.arquivo}`);
+        } catch (e2) {
+          falhas.push(`${r.arquivo} (${e2.message})`);
+          sepLog(`  [${i + 1}/${resultados.length}] ✗ ${r.arquivo} — ${e2.message}`);
+        }
+      }
+      if (falhas.length) {
+        sepStatus(`Salvos ${ok} de ${resultados.length} arquivo(s). Falhas: ${falhas.join('; ')}`, 'err');
+      } else {
+        sepStatus(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`, 'ok');
+        sepLog('');
+        sepLog(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`);
+      }
+    } catch (e) {
+      sepStatus('Erro ao salvar na pasta: ' + e.message, 'err');
+      sepLog('ERRO ao salvar: ' + e.message);
+    } finally {
+      btnBaixar.textContent = btnBaixar.dataset.orig;
+      btnBaixar.disabled = false;
+    }
+    return;
+  }
+  const zip = new JSZip();
+  const pasta = zip.folder('notas');
+  resultados.forEach(r => pasta.file(r.arquivo, r.bytes));
+  sepLog('');
+  sepLog('Gerando ZIP...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nomeBase + '_separado.zip';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }, 1000);
+  sepLog(`ZIP gerado: ${resultados.length} arquivo(s).`);
+});
 </script>
 </body>
 </html>
