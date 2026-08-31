@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCON/SIAN — NF-e / NFS-e</title>
+<title>Leitor de notas em PDF — NF-e / NFS-e</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -196,12 +196,13 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
 
 <nav id="sidebar">
-  <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
+  <div id="logo"><h1>Leitor<span> PDF</span></h1><p>Notas em PDF</p></div>
   <div class="nav-section">IMPORTAR</div>
   <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
   <div class="nav-section">FERRAMENTAS</div>
   <button class="nav-btn" data-tab="separar"><span class="icon">📑</span><span>Separar PDF</span></button>
   <button class="nav-btn" data-tab="pdfleitura"><span class="icon">🔍</span><span>Leitura PDF</span></button>
+  <button class="nav-btn" data-tab="cnpj"><span class="icon">🏢</span><span>Consultar CNPJ</span></button>
   <div class="nav-section">VISUALIZAR</div>
   <button class="nav-btn" data-tab="nfe"><span class="icon">📦</span><span>NF-e (Peças)</span></button>
   <button class="nav-btn" data-tab="nfse"><span class="icon">📋</span><span>NFS-e (Serviços)</span></button>
@@ -213,7 +214,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 </nav>
 
 <div id="main">
-  <div id="topbar"><h2>📋 <span>GCON·SIAN</span> — Extrator NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
+  <div id="topbar"><h2>📋 <span>Leitor de notas em PDF</span> — NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
   <div id="accent-bar"></div>
   <div id="content">
     <div id="status-bar">
@@ -340,6 +341,28 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
       </div>
     </div>
 
+    <div class="tab-content" id="tab-cnpj">
+      <div style="width:100%">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;box-shadow:var(--shadow);margin-bottom:18px">
+          <h3 style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏢 Consultar CNPJ <span style="font-size:10px;font-weight:500;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px;border:1px solid var(--border)">publica.cnpj.ws • grátis</span></h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+            <div style="flex:1;min-width:220px">
+              <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">CNPJ (14 dígitos)</label>
+              <input type="text" id="cnpj-input" placeholder="00.000.000/0000-00" maxlength="18" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:monospace;letter-spacing:.5px">
+            </div>
+            <button id="cnpj-btn" class="btn btn-prim" style="padding:10px 22px;white-space:nowrap">🔍 Consultar</button>
+            <button id="cnpj-limpar" class="btn btn-sec" style="padding:10px 14px">🗑</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--text3)">Enter para consultar • cache local automático</span>
+            <span id="cnpj-status" style="margin-left:auto;font-size:11px;color:var(--text3)"></span>
+          </div>
+        </div>
+        <div id="cnpj-result" style="display:none"></div>
+        <pre id="cnpj-raw" style="display:none;background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code',monospace;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);margin-top:12px"></pre>
+      </div>
+    </div>
+
     <div class="tab-content" id="tab-exportar">
       <div style="padding:10px 0;max-width:600px;margin:0 auto">
         <p style="margin-bottom:20px;color:var(--text2);text-align:center">Escolha o formato para cada tipo de documento:</p>
@@ -368,7 +391,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 
 <script>
 'use strict';
-console.log('GCON/SIAN iniciado');
+console.log('Leitor de notas em PDF iniciado');
 
 // ═══ DATA ═══
 const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
@@ -1138,7 +1161,7 @@ document.getElementById('upload-area').addEventListener('drop',e=>{e.preventDefa
 // ═══ START ═══
 function tick(){document.getElementById('hora').textContent=agora();setTimeout(tick,1000)}
 tick();updateStatus();
-console.log('GCON/SIAN pronto. DB:',DB.sessaoId);
+console.log('Leitor de notas em PDF pronto. DB:',DB.sessaoId);
 
 // ═══ SEPARADOR DE PDF ═══
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1420,9 +1443,9 @@ document.getElementById('baixar').addEventListener('click', async () => {
         <td style="font-size:11px;white-space:nowrap">${r.numero||'—'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
         <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'—'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
-        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${fmtCNPJ(r.cnpjPrestador)||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap"><a href="#" onclick="consultarCNPJ('${r.cnpjPrestador}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(r.cnpjPrestador)||'—'}</a></td>
         <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nomePrestador||''}">${r.nomePrestador||'—'}</td>
-        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${fmtCNPJ(r.cnpjTomador)||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap"><a href="#" onclick="consultarCNPJ('${r.cnpjTomador}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(r.cnpjTomador)||'—'}</a></td>
         <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
         <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
         <td style="font-size:11px;white-space:nowrap">${r.protocolo?r.protocolo.slice(-8):'—'}</td>
@@ -1473,6 +1496,77 @@ document.getElementById('baixar').addEventListener('click', async () => {
   area.addEventListener('drop',e=>{e.preventDefault();area.classList.remove('dragover'); if(e.dataTransfer.files.length) handlePDFs(e.dataTransfer.files);});
   document.getElementById('pdfiso-busca')?.addEventListener('input',isoRender);
   document.getElementById('pdfiso-filtro-conf')?.addEventListener('change',isoRender);
+})();
+(() => {
+  const API="https://publica.cnpj.ws/cnpj/";
+  const inp=document.getElementById('cnpj-input'), btn=document.getElementById('cnpj-btn'), clr=document.getElementById('cnpj-limpar'), res=document.getElementById('cnpj-result'), raw=document.getElementById('cnpj-raw'), st=document.getElementById('cnpj-status');
+  function d(s){return (s||'').replace(/\D/g,'');}
+  function fmtCnpj(c){c=d(c);return c.length===14?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):c;}
+  function fmtIE(arr){if(!arr||!arr.length) return '—';return arr.map(e=>`${e.estado?.sigla||''}: ${e.inscricao_estadual||''}`).join(', ');}
+  function fmtSocios(arr){if(!arr||!arr.length) return '';return arr.map(s=>`  ${s.nome||'—'} (${s.tipo||''})\n    CPF/CNPJ: ${s.cpf_cnpj_socio||'—'}\n    Entrada: ${s.data_entrada||'—'}  Faixa: ${s.faixa_etaria||'—'}\n    Qualificacao: ${s.qualificacao_socio?.descricao||''}`).join('\n');}
+  function renderTexto(dados,c){
+    const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
+    const cnpj=c||d(est.cnpj||'')||'';
+    const fC=cnpj?cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):''; 
+    return `CNPJ: ${fC}\nRazao Social: ${dados.razao_social||'—'}\nNome Fantasia: ${est.nome_fantasia||'—'}\nCapital Social: R$ ${(dados.capital_social||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}\nPorte: ${porte.descricao||'—'}\nNatureza Juridica: ${nat.descricao||'—'}\n\nTipo: ${est.tipo||'—'}\nSituacao Cadastral: ${sit.descricao||sit||'—'}\nData Situacao: ${est.data_situacao_cadastral||'—'}\nData Inicio Atividade: ${est.data_inicio_atividade||'—'}\n\nAtividade Principal:\n  ${atv.descricao||'—'} (${atv.subclasse||''})\n\nAtividades Secundarias:\n${(est.atividades_secundarias||[]).length?(est.atividades_secundarias||[]).map(a=>`  ${a.descricao||'—'} (${a.subclasse||''})`).join('\n'):'  —'}\n\nEndereco:\n  ${est.tipo_logradouro||''} ${est.logradouro||'—'}, ${est.numero||'—'}\n  Complemento: ${est.complemento||'—'}\n  Bairro: ${est.bairro||'—'}\n  CEP: ${est.cep||'—'}\n  Cidade: ${cidade.nome||'—'} / ${estado.sigla||'—'} (IBGE: ${cidade.ibge_id||'—'})\n\nContato:\n  Telefone: ${(est.ddd1||'')+' '+(est.telefone1||'')}${est.telefone2?' / '+(est.ddd2||'')+' '+(est.telefone2||''):''}\n  Email: ${est.email||'—'}\n\nInscricoes Estaduais: ${fmtIE(est.inscricoes_estaduais||[])}\n\nSimples Nacional:\n  Optante: ${simpl.simples||'Nao'}\n  Data Opcao: ${simpl.data_opcao_simples||'—'}\n  Data Exclusao: ${simpl.data_exclusao_simples||'—'}\nMEI:\n  Optante: ${simpl.mei||'Nao'}\n  Data Opcao: ${simpl.data_opcao_mei||'—'}\n  Data Exclusao: ${simpl.data_exclusao_mei||'—'}\n\nSocios:\n${fmtSocios(dados.socios||[])||'—'}`;
+  }
+  function fmtAtvSec(arr){if(!arr||!arr.length) return '—';return arr.map(a=>`${a.descricao||''} (${a.subclasse||''})`).join('<br>');}
+  inp?.addEventListener('input',e=>{let v=d(e.target.value);if(v.length>14) v=v.slice(0,14);let f=v;if(v.length>12) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');else if(v.length>8) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d+)/,'$1.$2.$3/$4');else if(v.length>5) f=v.replace(/(\d{2})(\d{3})(\d+)/,'$1.$2.$3');else if(v.length>2) f=v.replace(/(\d{2})(\d+)/,'$1.$2');e.target.value=f;});
+  async function consultar(){
+    const c=d(inp.value);
+    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);color:#991b1b;font-size:12px">⚠ CNPJ deve ter 14 dígitos</div>`;return;}
+    const cacheKey='cnpj_'+c;
+    const cached=localStorage.getItem(cacheKey);
+    if(cached){try{render(JSON.parse(cached),true);return;}catch(e){}}
+    btn.disabled=true; btn.textContent='⏳ Consultando...'; st.textContent='consultando publica.cnpj.ws...'; st.style.color='var(--text3)';
+    try{
+      const r=await fetch(API+c, {headers:{'Accept':'application/json'}});
+      if(!r.ok) throw new Error('HTTP '+r.status+' — CNPJ não encontrado');
+      const dados=await r.json();
+      localStorage.setItem(cacheKey, JSON.stringify(dados));
+      render(dados,false);
+      st.textContent='✓ OK'; st.style.color='var(--success)';
+    }catch(e){
+      res.style.display='block';
+      res.innerHTML=`<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);color:#991b1b;font-size:12px">✗ ${e.message}</div>`;
+      st.textContent='✗ erro'; st.style.color='var(--err)';
+    }finally{btn.disabled=false; btn.textContent='🔍 Consultar';}
+  }
+  function render(dados,cached){
+    const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
+    const c=d(inp.value)||d(dados.estabelecimento?.cnpj)||d(dados.cnpj)||'';
+    const texto=renderTexto(dados,c);
+    res.style.display='block';
+    res.innerHTML=`
+      <div class="nota-card"><div class="header"><span class="info"><strong>🏢 ${dados.razao_social||'—'}</strong> <span class="badge">${fmtCnpj(c)}</span> ${cached?'<span class="badge" style="background:rgba(255,255,255,.2)">cache</span>':''}</span><span style="font-size:10px;opacity:.8">${porte.descricao||''}</span></div>
+      <div class="body-detail open" style="display:block;padding:0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="padding:18px;border-right:1px solid var(--border-light)">
+            <div class="info-box" style="margin-bottom:10px"><h4>Empresa</h4><div class="row"><span class="lbl">Razão:</span><span>${dados.razao_social||'—'}</span></div><div class="row"><span class="lbl">Fantasia:</span><span>${est.nome_fantasia||'—'}</span></div><div class="row"><span class="lbl">Capital:</span><span>R$ ${(dados.capital_social||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div><div class="row"><span class="lbl">Porte:</span><span>${porte.descricao||'—'}</span></div><div class="row"><span class="lbl">Natureza:</span><span style="font-size:10px">${nat.descricao||'—'}</span></div></div>
+            <div class="info-box" style="margin-bottom:10px"><h4>Situação</h4><div class="row"><span class="lbl">Tipo:</span><span>${est.tipo||'—'}</span></div><div class="row"><span class="lbl">Situação:</span><span><strong style="color:${(sit.descricao||'').includes('ATIVA')?'var(--success)':'var(--err)'}">${sit.descricao||sit||'—'}</strong></span></div><div class="row"><span class="lbl">Data Sit.:</span><span>${est.data_situacao_cadastral||'—'}</span></div><div class="row"><span class="lbl">Início:</span><span>${est.data_inicio_atividade||'—'}</span></div></div>
+            <div class="info-box" style="margin-bottom:10px"><h4>Simples / MEI</h4><div class="row"><span class="lbl">Simples:</span><span><strong>${simpl.simples||'Não'}</strong></span></div><div class="row"><span class="lbl">Dt.Opção:</span><span>${simpl.data_opcao_simples||'—'}</span></div><div class="row"><span class="lbl">Dt.Exclusão:</span><span>${simpl.data_exclusao_simples||'—'}</span></div><div class="row"><span class="lbl">MEI:</span><span><strong>${simpl.mei||'Não'}</strong></span></div><div class="row"><span class="lbl">Dt.Opção MEI:</span><span>${simpl.data_opcao_mei||'—'}</span></div><div class="row"><span class="lbl">Dt.Exclusão MEI:</span><span>${simpl.data_exclusao_mei||'—'}</span></div></div>
+            <div class="info-box"><h4>IEs</h4><div style="font-size:11px">${fmtIE(est.inscricoes_estaduais||[])}</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${(est.inscricoes_estaduais||[]).length} inscrição(ões)</div></div>
+          </div>
+          <div style="padding:18px">
+            <div class="info-box" style="margin-bottom:10px"><h4>Endereço</h4><div class="row"><span class="lbl">Logradouro:</span><span>${est.tipo_logradouro||''} ${est.logradouro||'—'}, ${est.numero||'—'}</span></div><div class="row"><span class="lbl">Compl.:</span><span>${est.complemento||'—'}</span></div><div class="row"><span class="lbl">Bairro:</span><span>${est.bairro||'—'}</span></div><div class="row"><span class="lbl">CEP:</span><span>${est.cep||'—'}</span></div><div class="row"><span class="lbl">Cidade:</span><span>${cidade.nome||'—'} / ${estado.sigla||'—'} (IBGE ${cidade.ibge_id||'—'})</span></div></div>
+            <div class="info-box" style="margin-bottom:10px"><h4>Contato</h4><div class="row"><span class="lbl">Telefone:</span><span>${(est.ddd1||'')+' '+(est.telefone1||'')}${est.telefone2?' / '+(est.ddd2||'')+' '+(est.telefone2||''):''}</span></div><div class="row"><span class="lbl">Email:</span><span style="font-size:10px;word-break:break-all">${est.email||'—'}</span></div></div>
+            <div class="info-box" style="margin-bottom:10px"><h4>Atividade Principal</h4><div style="font-size:11px">${atv.descricao||'—'} <span style="color:var(--text3)">(${atv.subclasse||''})</span></div></div>
+            <div class="info-box"><h4>Secundárias</h4><div style="font-size:10px;max-height:100px;overflow:auto">${fmtAtvSec(est.atividades_secundarias||[])}</div></div>
+          </div>
+        </div>
+        <div style="padding:0 18px 18px">
+          <div class="det-section"><div class="det-title">👥 Sócios (${(dados.socios||[]).length}) — com faixa etária e qualificação</div><div class="det-body" style="display:block"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:220px;overflow:auto">${fmtSocios(dados.socios||[])||'—'}</pre></div></div>
+          <div class="det-section"><div class="det-title">📄 Texto completo (igual tkinter)</div><div class="det-body"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:320px;overflow:auto">${texto}</pre></div></div>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText('${fmtCnpj(c)}');this.textContent='✓ copiado';setTimeout(()=>this.textContent='⎘ CNPJ',1200)">⎘ CNPJ</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText(document.querySelector('#cnpj-result pre:last-of-type').textContent);this.textContent='✓ texto copiado';setTimeout(()=>this.textContent='⎘ copiar texto',1200)">⎘ copiar texto</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="document.getElementById('cnpj-raw').style.display=document.getElementById('cnpj-raw').style.display==='none'?'block':'none'">{} JSON</button></div>
+        </div>
+      </div></div>`;
+    raw.textContent=JSON.stringify(dados,null,2);
+    res.querySelectorAll('.det-title').forEach(el=>el.addEventListener('click',()=>{const b=el.nextElementSibling; if(b) b.style.display=b.style.display==='none'?'block':'none';}));
+  }
+  btn?.addEventListener('click',consultar);
+  inp?.addEventListener('keydown',e=>{if(e.key==='Enter') consultar();});
+  clr?.addEventListener('click',()=>{inp.value='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';});
+  window.consultarCNPJ=(cnpj)=>{inp.value=fmtCnpj(cnpj); document.querySelector('[data-tab=cnpj]')?.click(); setTimeout(consultar,200);};
 })();
 </script>
 </body>
