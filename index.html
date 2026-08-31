@@ -302,7 +302,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         #pdfiso-upload.dragover{border-color:var(--accent);background:#fffbeb}
         #pdfiso-upload .icon{font-size:48px;color:var(--text3);transition:transform .35s}
         #pdfiso-upload:hover .icon{transform:scale(1.08) translateY(-2px)}
-        #tab-pdfleitura .pdfiso-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+        #tab-pdfleitura .pdfiso-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
         #pdfiso-log{background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);line-height:1.6}
         .pdfiso-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
         .pdfiso-card:hover{box-shadow:var(--shadow-md)}
@@ -311,7 +311,13 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         .pdfiso-badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.3px}
         .pdfiso-badge.ok{background:rgba(16,185,129,.9);color:#fff} .pdfiso-badge.warn{background:rgba(245,158,11,.9);color:#fff} .pdfiso-badge.err{background:rgba(239,68,68,.9);color:#fff}
         .pdfiso-card .hd .pdfiso-badge{padding:2px 8px;font-size:9px}
-        .pdfiso-kpi .kpi-card .value{font-size:24px}
+        .pdfiso-kpi .kpi-card .value{font-size:22px;letter-spacing:-.5px}
+        #tab-pdfleitura .table-wrap{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+        #tab-pdfleitura .table-wrap table th{position:sticky;top:0;z-index:1}
+        #tab-pdfleitura .table-wrap tbody tr:hover td{background:#f1f5f9}
+        #tab-cnpj .info-box h4{border-bottom:1px solid var(--border-light)}
+        #cnpj-input:focus{border-color:var(--primary-light) !important;box-shadow:0 0 0 3px rgba(26,75,140,.1);outline:none}
+        #cnpj-result .nota-card .body-detail{border-top:none}
       </style>
       <div style="width:100%">
         <div id="pdfiso-upload">
@@ -360,6 +366,20 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         </div>
         <div id="cnpj-result" style="display:none"></div>
         <pre id="cnpj-raw" style="display:none;background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code',monospace;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);margin-top:12px"></pre>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-top:18px">
+          <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📊 Consulta em Lote (planilha)</h4>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:12px">Importe XLSX/CSV com coluna <strong>CNPJ</strong> — respeita <strong>3/min</strong> (20s entre requisições) • cache automático</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="file" id="cnpj-lote-file" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);font-size:12px">
+            <button id="cnpj-lote-start" class="btn btn-ok" disabled style="white-space:nowrap">▶ Iniciar lote</button>
+            <button id="cnpj-lote-stop" class="btn btn-sec" disabled style="white-space:nowrap">⏹ Parar</button>
+            <button id="cnpj-lote-export" class="btn btn-prim" disabled style="white-space:nowrap">⬇ Exportar lote</button>
+          </div>
+          <div id="cnpj-lote-bar" style="height:6px;background:var(--border-light);border-radius:6px;margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
+          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap"><span id="cnpj-lote-info">—</span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
+          <div id="cnpj-lote-log" style="margin-top:10px;background:#1e293b;color:#cbd5e1;border-radius:var(--radius-sm);padding:10px;font-family:'Cascadia Code',monospace;font-size:10px;max-height:160px;overflow:auto;white-space:pre-wrap;display:none"></div>
+          <div id="cnpj-lote-table" style="margin-top:12px"></div>
+        </div>
       </div>
     </div>
 
@@ -1568,6 +1588,80 @@ document.getElementById('baixar').addEventListener('click', async () => {
   inp?.addEventListener('keydown',e=>{if(e.key==='Enter') consultar();});
   clr?.addEventListener('click',()=>{inp.value='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';});
   window.consultarCNPJ=(cnpj)=>{inp.value=fmtCnpj(cnpj); document.querySelector('[data-tab=cnpj]')?.click(); setTimeout(consultar,200);};
+  (() => {
+    const fileIn=document.getElementById('cnpj-lote-file'), start=document.getElementById('cnpj-lote-start'), stop=document.getElementById('cnpj-lote-stop'), exp=document.getElementById('cnpj-lote-export'), bar=document.getElementById('cnpj-lote-bar'), barIn=document.getElementById('cnpj-lote-bar-inner'), info=document.getElementById('cnpj-lote-info'), eta=document.getElementById('cnpj-lote-eta'), logEl=document.getElementById('cnpj-lote-log'), tbl=document.getElementById('cnpj-lote-table');
+    let lista=[], resultados=[], timer=null, idx=0, abort=false;
+    function loteLog(m,c){logEl.style.display='block';const d=document.createElement('div');d.textContent=m;d.style.color=c||'#cbd5e1';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+    function renderLote(){
+      if(!resultados.length){tbl.innerHTML='';return;}
+      const rows=resultados.map(r=>`<tr><td style="font-family:monospace">${fmtCnpj(r.cnpj)}</td><td>${r.razao||'—'}</td><td>${r.fantasia||'—'}</td><td>${r.uf||'—'}</td><td>${r.situacao||'—'}</td><td>${r.ie||'—'}</td><td><span class="pdfiso-badge ${r.ok?'ok':'err'}">${r.ok?'OK':'ERRO'}</span></td><td style="font-size:10px">${r.msg||''}</td></tr>`).join('');
+      tbl.innerHTML=`<div class="table-wrap"><table><thead><tr><th>CNPJ</th><th>Razão</th><th>Fantasia</th><th>UF</th><th>Situação</th><th>IE</th><th>Status</th><th>Obs</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    fileIn?.addEventListener('change',async()=>{
+      const f=fileIn.files[0]; if(!f) return;
+      try{
+        const buf=await f.arrayBuffer();
+        let cnpjs=[];
+        if(f.name.endsWith('.csv')){
+          const txt=new TextDecoder().decode(buf);
+          cnpjs=[...txt.matchAll(/\d{14}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g)].map(m=>d(m[0])).filter(c=>c.length===14);
+        }else{
+          const wb=XLSX.read(buf,{type:'array'});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+          const flat=rows.flat().map(v=>d(String(v))).filter(c=>c.length===14);
+          cnpjs=[...new Set(flat)];
+          if(!cnpjs.length){
+            outer: for(const r of rows){ for(const v of r){ const m=String(v).match(/\d{14}/); if(m){cnpjs.push(m[0]); break outer;}}}
+          }
+        }
+        cnpjs=[...new Set(cnpjs)];
+        lista=cnpjs; resultados=[];
+        info.textContent=`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`;
+        eta.textContent=cnpjs.length?`ETA ~${Math.ceil(cnpjs.length/3)} min`:''; 
+        loteLog(`📄 ${cnpjs.length} CNPJ(s) — pronto para iniciar`,'#fbbf24');
+        start.disabled=cnpjs.length===0; exp.disabled=true; tbl.innerHTML=''; logEl.innerHTML='';
+      }catch(e){ loteLog('✗ Erro ao ler planilha: '+e.message,'#ef4444');}
+    });
+    async function step(){
+      if(abort||idx>=lista.length){
+        clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true;
+        barIn.style.width='100%'; info.textContent=`✅ Concluído — ${resultados.filter(r=>r.ok).length}/${lista.length} OK`;
+        eta.textContent=''; exp.disabled=resultados.length===0; loteLog(`✅ Lote concluído`,'#2ecc71'); return;
+      }
+      const c=lista[idx];
+      const cached=localStorage.getItem('cnpj_'+c);
+      if(cached){
+        try{ const j=JSON.parse(cached); const est=j.estabelecimento||{}; resultados.push({cnpj:c, razao:j.razao_social||'', fantasia:est.nome_fantasia||'', uf:est.estado?.sigla||'', situacao:est.situacao_cadastral||'', ie:(est.inscricoes_estaduais||[]).find(e=>e.ativo)?.inscricao_estadual||'', ok:true, msg:'cache'}); loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} — cache`,'#94a3b8'); idx++; barIn.style.width=Math.round(idx/lista.length*100)+'%'; info.textContent=`${idx}/${lista.length} — cache`; renderLote(); return; }catch(e){}
+      }
+      try{
+        const r=await fetch(API+c); 
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const j=await r.json(); localStorage.setItem('cnpj_'+c, JSON.stringify(j));
+        const est=j.estabelecimento||{};
+        resultados.push({cnpj:c, razao:j.razao_social||'', fantasia:est.nome_fantasia||'', uf:est.estado?.sigla||'', situacao:est.situacao_cadastral||'', ie:(est.inscricoes_estaduais||[]).find(e=>e.ativo)?.inscricao_estadual||'', ok:true, msg:''});
+        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,'#2ecc71');
+      }catch(e){
+        resultados.push({cnpj:c, razao:'', fantasia:'', uf:'', situacao:'', ie:'', ok:false, msg:e.message});
+        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,'#ef4444');
+      }
+      idx++; barIn.style.width=Math.round(idx/lista.length*100)+'%'; info.textContent=`${idx}/${lista.length}`; const rem=lista.length-idx; eta.textContent=rem?`faltam ~${Math.ceil(rem/3)} min`:''; renderLote();
+    }
+    start?.addEventListener('click',()=>{
+      if(!lista.length) return;
+      resultados=[]; idx=0; abort=false; logEl.innerHTML=''; bar.style.display='block'; barIn.style.width='0%';
+      start.disabled=true; stop.disabled=false; exp.disabled=true;
+      loteLog(`▶ Iniciando lote 3/min — ${lista.length} CNPJ(s)`,'#fbbf24');
+      step(); timer=setInterval(step,20000);
+    });
+    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('⏹ Parado pelo usuário','#f59e0b');});
+    exp?.addEventListener('click',()=>{
+      if(!resultados.length) return;
+      const header=['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs'];
+      const rows=resultados.map(r=>[fmtCnpj(r.cnpj),r.razao,r.fantasia,r.uf,r.situacao,r.ie,r.ok?'OK':'ERRO',r.msg]);
+      const ws=XLSX.utils.aoa_to_sheet([header,...rows]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lote'); XLSX.writeFile(wb,`cnpj_lote_${Date.now()}.xlsx`);
+    });
+  })();
 })();
 </script>
 </body>
