@@ -9,6 +9,38 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+window.ModPDFIsolado=(()=>{
+const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°]\.?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i];
+function d(s){return(s||'').replace(/\D/g,'');}
+function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
+function vH(ch){ch=d(ch);if(ch.length!==44)return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
+async function tC(file){const buf=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:buf}).promise;let full="";const items=[];for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p);const ct=await page.getTextContent();const pageItems=[];for(const it of ct.items){if(!it.str.trim())continue;pageItems.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});items.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});}pageItems.sort((a,b)=>{const dy=b.y-a.y;if(Math.abs(dy)>4)return dy;return a.x-b.x;});for(const it of pageItems)full+=it.str+" ";full+="\n";}await doc.destroy();return{full,items};}
+function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:99,valida:true};}}let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:vH(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(vH(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:vH(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};return{valor:"",conf:0,valida:false};}
+
+
+function eJ(full){const re=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}|\b\d{14}\b/g;const cand=[...full.matchAll(re)].map(m=>({raw:m[0],dig:d(m[0]),valida:vC(d(m[0])),idx:m.index})).filter(c=>c.dig.length===14);const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};}
+function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;return false;}
+function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{15,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
+function eData(full){const m=full.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);return m?m[0]:"";}
+function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=full.match(/Vencimento\s*(\d{2}\.\d{2}\.\d{4}|\d{2}\/\d{2}\/\d{4})/i);return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:(all[1]||""),vencimento:venc?venc[1]:"",todas:all};}
+function eValor(full){const m=full.match(/R\$\s*([\d\.\,]+)/);if(m) return m[1];const m2=full.match(/Valor\s*[:\-]?\s*([\d\.\,]+)/i);return m2?m2[1]:"";}
+function eValorApos(rotulo,full){return "";}
+function eSerie(full){const m=full.match(/S[ÉE]RIE\s*:?\s*(\d{1,3})/i);return m?m[1]:"";}
+function eProtocolo(full){const m=full.match(/PROTOCOLO[^\d]*(\d{15})/i);if(m) return m[1];return "";}
+function eNatOp(full){const idx=full.search(/NATUREZA\s*DA\s*OPERA/i);if(idx===-1) return "";let j=full.slice(idx,idx+400).replace(/NATUREZA\s*DA\s*OPERA[ÇCÃAÕ]*O\s*/i,'');j=j.split(/INSCRI/i)[0].trim();j=j.replace(/\s{2,}/g,' ').trim();return j.slice(0,60)||"";}
+function eIE(full){let all=[...full.matchAll(/INSCRI[ÇC][ÃA]O\s*ESTADUAL[^\d]*(\d{7,14})/gi)];if(all.length) return all[0][1];return "";}
+function eCEP(full){const m=full.match(/\b\d{5}-\d{3}\b/);return m?m[0]:"";}
+function eMunicipioUF(full){const m=full.match(/MUNIC[IÍ]PIO:\s*([A-ZÀ-Ú \-]+?)\s+UF:\s*([A-Z]{2})/i);return m?{mun:m[1].trim(),uf:m[2]}:{mun:"",uf:""};}
+function eEndereco(full){const m=full.match(/ENDERE[ÇC]O:\s*RUA\s*VOLKSWAGEN[^\n]*?100/i);if(m) return "RUA VOLKSWAGEN - 100";const m2=full.match(/ENDERE[ÇC]O:\s*([A-Z0-9 \-\,\.]{10,80}?)(?:\s{2,}BAIRRO|\s{2,}MUNIC)/i);return m2?m2[1].trim().slice(0,60):"";}
+function eBlocoValores(full){const a=full.indexOf("CÁLCULO DO IMPOSTO");const b=full.indexOf("TRANSPORTADOR");if(a===-1||b===-1) return {baseICMS:"",valorICMS:"",baseST:"",valorST:"",valorProdutos:"",frete:"",seguro:"",despesas:"",ipi:"",total:""};const bloco=full.slice(a,b);const vals=[...bloco.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map(m=>m[1]);let baseICMS=vals[0]||"",valorICMS=vals[1]||"",valorProdutos="",frete="",total="";if(vals.length>=5){valorProdutos=vals[2]||"";frete=vals[3]||"";total=vals[vals.length-1]||"";}else if(vals.length===3){valorProdutos=vals[2]||"";total=valorProdutos;}else if(vals.length===2){total=vals[1]||"";}return{baseICMS,valorICMS,baseST:"",valorST:"",valorProdutos,frete,seguro:"",despesas:"",ipi:"",total};}
+function eNome(full,items,cnpjDig){if(!cnpjDig) return "";let idx=full.indexOf(cnpjDig);if(idx!==-1){let janela=full.slice(Math.max(0,idx-400),idx);let m=janela.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);}return "";}
+function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig.slice(0,8));if(idx===-1) return "";const janela=full.slice(idx,idx+300);const m=janela.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
+async function extrair(file){const{full,items}=await tC(file);if(!full.trim()) throw new Error('PDF sem texto (imagem) — precisa OCR');const ch=eC(full),cj=eJ(full),nu=eN(full,items);const datas=eDatas(full),valor=eValor(full),nomeP=eNome(full,items,cj.prest),nomeT=eNome(full,items,cj.toma);const serie=eSerie(full),protocolo=eProtocolo(full),natOp=eNatOp(full),ie=eIE(full),cep=eCEP(full),munUf=eMunicipioUF(full),endereco=eEndereco(full);const bv=eBlocoValores(full);return{arquivo:file.name,chave:ch.valor,chaveValida:ch.valida,chaveConf:ch.conf,cnpjPrestador:cj.prest,cnpjTomador:cj.toma,cnpjConf:cj.conf,cnpjsLista:cj.lista,numero:nu.valor,numeroConf:nu.conf,numeroAncora:nu.ancora,numeroCands:nu.cands,data:datas.data,dataSaida:datas.dataSaida,vencimento:datas.vencimento,todasDatas:datas.todas,valor,nomePrestador:nomeP,nomeTomador:nomeT,serie,protocolo,natOp,ieEmitente:ie,cepEmitente:cep,munEmitente:munUf.mun,ufEmitente:munUf.uf,enderecoEmitente:endereco,baseICMS:bv.baseICMS,valorICMS:bv.valorICMS,baseST:bv.baseST,valorST:bv.valorST,valorProdutos:bv.valorProdutos,valorFrete:bv.frete,valorSeguro:bv.seguro,despesasAcessorias:bv.despesas,valorIPI:bv.ipi,valorTotalNota:bv.total,confMedio:Math.round((ch.conf+cj.conf+nu.conf)/3),fullPreview:full.slice(0,2200),fullLen:full.length};}
+
+return{extrair};
+})();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -167,6 +199,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
   <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
   <div class="nav-section">FERRAMENTAS</div>
   <button class="nav-btn" data-tab="separar"><span class="icon">📑</span><span>Separar PDF</span></button>
+  <button class="nav-btn" data-tab="pdfleitura"><span class="icon">🔍</span><span>Leitura PDF</span></button>
   <div class="nav-section">VISUALIZAR</div>
   <button class="nav-btn" data-tab="nfe"><span class="icon">📦</span><span>NF-e (Peças)</span></button>
   <button class="nav-btn" data-tab="nfse"><span class="icon">📋</span><span>NFS-e (Serviços)</span></button>
@@ -257,6 +290,52 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
     <div class="tab-content" id="tab-dashboard">
       <div class="kpi-row" id="dash-kpis"></div>
       <div class="dash-grid" id="dash-charts"></div>
+    </div>
+
+    <div class="tab-content" id="tab-pdfleitura">
+      <style>
+        #pdfiso-upload{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;background:var(--card);cursor:pointer;transition:all .25s;margin-bottom:18px;box-shadow:var(--shadow)}
+        #pdfiso-upload:hover,#pdfiso-upload.dragover{border-color:var(--primary-light);background:#f0f4fe;box-shadow:0 0 0 4px rgba(26,75,140,.08)}
+        #pdfiso-upload.dragover{border-color:var(--accent);background:#fffbeb}
+        #pdfiso-upload .icon{font-size:48px;color:var(--text3);transition:transform .35s}
+        #pdfiso-upload:hover .icon{transform:scale(1.08) translateY(-2px)}
+        #tab-pdfleitura .pdfiso-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+        #pdfiso-log{background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);line-height:1.6}
+        .pdfiso-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
+        .pdfiso-card:hover{box-shadow:var(--shadow-md)}
+        .pdfiso-card .hd{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
+        .pdfiso-card .hd .info{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .pdfiso-badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.3px}
+        .pdfiso-badge.ok{background:rgba(16,185,129,.9);color:#fff} .pdfiso-badge.warn{background:rgba(245,158,11,.9);color:#fff} .pdfiso-badge.err{background:rgba(239,68,68,.9);color:#fff}
+        .pdfiso-card .hd .pdfiso-badge{padding:2px 8px;font-size:9px}
+        .pdfiso-kpi .kpi-card .value{font-size:24px}
+      </style>
+      <div style="width:100%">
+        <div id="pdfiso-upload">
+          <div class="icon">🔍</div>
+          <p style="margin-top:8px;font-size:14px"><strong style="color:var(--primary)">Clique aqui</strong> ou arraste os PDFs</p>
+          <p class="sub" style="font-size:11px;color:var(--text3);margin-top:4px">Leitura isolada • número • CNPJs • chave 44 • data • valor — sem tocar nos XMLs</p>
+          <div style="margin-top:10px;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center">
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">📄 Múltiplos PDFs</span>
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">✓ Valida CNPJ/Chave</span>
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">⚡ 100% navegador</span>
+          </div>
+        </div>
+        <div class="pdfiso-kpi" id="pdfiso-kpis" style="display:none">
+          <div class="kpi-card"><div class="bar" style="background:var(--primary)"></div><div class="body"><div class="label">PDFs lidos</div><div class="value" id="pdfiso-k-total">0</div><div class="sub" id="pdfiso-sub-total" style="font-size:10px;color:var(--text3)">—</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--success)"></div><div class="body"><div class="label">Alta confiança</div><div class="value" id="pdfiso-k-ok" style="color:var(--success)">0</div><div class="sub" style="font-size:10px;color:var(--text3)">≥70%</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--info)"></div><div class="body"><div class="label">Com chave 44</div><div class="value" id="pdfiso-k-chave">0</div><div class="sub" style="font-size:10px;color:var(--text3)">validadas</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--accent)"></div><div class="body"><div class="label">Com CNPJ</div><div class="value" id="pdfiso-k-cnpj">0</div><div class="sub" style="font-size:10px;color:var(--text3)">prestador</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:#8b5cf6"></div><div class="body"><div class="label">Valor total</div><div class="value" id="pdfiso-k-valor" style="font-size:18px">R$ 0,00</div><div class="sub" style="font-size:10px;color:var(--text3)">soma PDFs</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:#06b6d4"></div><div class="body"><div class="label">Conf. média</div><div class="value" id="pdfiso-k-conf" style="font-size:18px">—</div><div class="sub" style="font-size:10px;color:var(--text3)">média geral</div></div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input type="text" id="pdfiso-busca" placeholder="🔍 Filtrar por arquivo, CNPJ, número ou chave..." style="flex:1;min-width:220px;padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit">
+          <select id="pdfiso-filtro-conf" style="padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card)"><option value="">Todas confianças</option><option value="70">Alta ≥70%</option><option value="45">Média 45-69%</option><option value="0">Baixa &lt;45%</option></select>
+        </div>
+        <div id="pdfiso-log"></div>
+        <div id="pdfiso-result" style="margin-top:14px"></div>
+      </div>
     </div>
 
     <div class="tab-content" id="tab-exportar">
@@ -1301,6 +1380,98 @@ document.getElementById('baixar').addEventListener('click', async () => {
   }, 1000);
   sepLog(`ZIP gerado: ${resultados.length} arquivo(s).`);
 });
+
+// ═══ MÓDULO ISOLADO: LEITURA PDF (número/CNPJ/chave) — zero impacto no XML ═══
+(() => {
+  const DBpdf=[]; const logEl=document.getElementById('pdfiso-log'); const resEl=document.getElementById('pdfiso-result');
+  function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'#cbd5e1';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+  function fmtCNPJ(c){return c?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):'';}
+  function fmtChave(ch){return ch?ch.replace(/(\d{4})/g,'$1 ').trim():'';}
+  function pfiltro(){return{txt:(document.getElementById('pdfiso-busca')?.value||'').toLowerCase(),conf:document.getElementById('pdfiso-filtro-conf')?.value||''};}
+  function isoRender(){
+    const kpis=document.getElementById('pdfiso-kpis');
+    if(!DBpdf.length){resEl.innerHTML='';kpis.style.display='none';return;}
+    kpis.style.display='grid';
+    const fTxt=pfiltro();
+    let lista=DBpdf;
+    if(fTxt.txt) lista=lista.filter(r=>[r.arquivo,r.numero,r.cnpjPrestador,r.cnpjTomador,r.chave].join(' ').toLowerCase().includes(fTxt.txt));
+    if(fTxt.conf!=='' ){
+      const v=+fTxt.conf;
+      if(v===70) lista=lista.filter(r=>r.confMedio>=70);
+      else if(v===45) lista=lista.filter(r=>r.confMedio>=45&&r.confMedio<70);
+      else if(v===0) lista=lista.filter(r=>r.confMedio<45);
+    }
+    document.getElementById('pdfiso-k-total').textContent=DBpdf.length;
+    const ok=DBpdf.filter(r=>r.confMedio>=70).length;
+    document.getElementById('pdfiso-k-ok').textContent=ok;
+    document.getElementById('pdfiso-sub-total').textContent=ok?Math.round(ok/DBpdf.length*100)+'% alta': '—';
+    document.getElementById('pdfiso-k-chave').textContent=DBpdf.filter(r=>r.chave).length;
+    document.getElementById('pdfiso-k-cnpj').textContent=DBpdf.filter(r=>r.cnpjPrestador).length;
+    const soma=DBpdf.reduce((s,r)=>{let v=r.valor||'';v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return s+(isNaN(n)?0:n);},0);
+    const elV=document.getElementById('pdfiso-k-valor'); if(elV) elV.textContent=soma?`R$ ${soma.toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'R$ 0,00';
+    const media=DBpdf.length?Math.round(DBpdf.reduce((s,r)=>s+r.confMedio,0)/DBpdf.length):0;
+    const elC=document.getElementById('pdfiso-k-conf'); if(elC) elC.textContent=media?media+'%':'—';
+    const rows=lista.map((r,idx)=>{
+      const i=DBpdf.indexOf(r);
+      const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
+      return `<tr>
+        <td style="font-size:11px;white-space:nowrap">${r.numero||'—'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
+        <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'—'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${fmtCNPJ(r.cnpjPrestador)||'—'}</td>
+        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nomePrestador||''}">${r.nomePrestador||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${fmtCNPJ(r.cnpjTomador)||'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
+        <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${r.protocolo?r.protocolo.slice(-8):'—'}</td>
+        <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px">🔍</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px">⎘</a></td>
+      </tr>`;
+    }).join('');
+    const table=lista.length?`<div class="table-wrap"><table><thead><tr><th>Nº</th><th>Série</th><th>Chave 44</th><th>CNPJ Emit.</th><th>Emitente</th><th>CNPJ Dest.</th><th>Data</th><th>Total</th><th>Protocolo</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
+    const empty=lista.length===0?`<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado para o filtro.</p></div>`:'';
+    resEl.innerHTML=`<div class="filter-bar"><span class="count">${lista.length}/${DBpdf.length} PDF(s) ${fTxt.txt||fTxt.conf!==''? '• filtrado':''}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ok" style="padding:6px 12px;font-size:11px" id="pdfiso-csv">⬇ Exportar Excel</button><button class="btn btn-sec" style="padding:6px 10px;font-size:11px" id="pdfiso-clear">🗑 Limpar</button></span></div>${table}${empty}<div id="pdfiso-debug" style="display:none;margin-top:10px;padding:14px;background:#1e293b;color:#cbd5e1;font-family:'Cascadia Code',monospace;font-size:11px;white-space:pre-wrap;max-height:280px;overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06)"></div>`;
+    document.getElementById('pdfiso-csv').onclick=()=>{
+      const header=['Arquivo','Numero','Serie','DataEmissao','DataSaida','Vencimento','CNPJ_Prestador','Nome_Prestador','IE_Emitente','Endereco','Municipio','UF','CEP','CNPJ_Tomador','Nome_Tomador','Chave','ChaveValida','NatOp','Protocolo','BaseICMS','ValorICMS','BaseST','ValorST','ValorProdutos','Frete','Seguro','Despesas','ValorIPI','ValorTotal','Valor','ConfMedio','NumeroConf','ChaveConf','CnpjConf'];
+      if(window.XLSX){
+        const ws=XLSX.utils.aoa_to_sheet([header,...DBpdf.map(r=>[r.arquivo,r.numero,r.serie,r.data,r.dataSaida,r.vencimento,r.cnpjPrestador,r.nomePrestador,r.ieEmitente,r.enderecoEmitente,r.munEmitente,r.ufEmitente,r.cepEmitente,r.cnpjTomador,r.nomeTomador,r.chave,r.chaveValida,r.natOp,r.protocolo,r.baseICMS,r.valorICMS,r.baseST,r.valorST,r.valorProdutos,r.valorFrete,r.valorSeguro,r.despesasAcessorias,r.valorIPI,r.valorTotalNota,r.valor,r.confMedio,r.numeroConf,r.chaveConf,r.cnpjConf])]);
+        const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'PDFs');XLSX.writeFile(wb,`pdf_leitura_${Date.now()}.xlsx`);
+      } else {
+        const rows=DBpdf.map(r=>header.map(h=>String({Arquivo:r.arquivo,Numero:r.numero,Serie:r.serie,DataEmissao:r.data,DataSaida:r.dataSaida,Vencimento:r.vencimento,CNPJ_Prestador:r.cnpjPrestador,Nome_Prestador:r.nomePrestador,IE_Emitente:r.ieEmitente,Endereco:r.enderecoEmitente,Municipio:r.munEmitente,UF:r.ufEmitente,CEP:r.cepEmitente,CNPJ_Tomador:r.cnpjTomador,Nome_Tomador:r.nomeTomador,Chave:r.chave,ChaveValida:r.chaveValida,NatOp:r.natOp,Protocolo:r.protocolo,BaseICMS:r.baseICMS,ValorICMS:r.valorICMS,BaseST:r.baseST,ValorST:r.valorST,ValorProdutos:r.valorProdutos,Frete:r.valorFrete,Seguro:r.valorSeguro,Despesas:r.despesasAcessorias,ValorIPI:r.valorIPI,ValorTotal:r.valorTotalNota,Valor:r.valor,ConfMedio:r.confMedio,NumeroConf:r.numeroConf,ChaveConf:r.chaveConf,CnpjConf:r.cnpjConf}[h]||'').replace(/"/g,'""')).join(';'));
+        let csv='\ufeff'+header.join(';')+'\n'+rows.join('\n');
+        const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`pdf_leitura_${Date.now()}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);
+      }
+    };
+    document.getElementById('pdfiso-clear').onclick=()=>{DBpdf.length=0;logEl.innerHTML='';isoRender();isoLog('Limpado','#94a3b8');};
+    resEl.querySelectorAll('.pdfiso-debug').forEach(a=>a.addEventListener('click',e=>{
+      e.preventDefault();const r=DBpdf[+e.target.dataset.idx];const dbg=document.getElementById('pdfiso-debug');
+      dbg.style.display='block';
+      dbg.textContent=`ARQUIVO: ${r.arquivo}\nCHAVE: ${r.chave||'-'} (valida:${r.chaveValida} conf:${r.chaveConf})\nSERIE: ${r.serie||'-'} PROTOCOLO: ${r.protocolo||'-'} NATOP: ${r.natOp||'-'}\nCNPJs: ${JSON.stringify(r.cnpjsLista||[],null,2)}\nNUMERO: ${r.numero} (ancora:${r.numeroAncora} conf:${r.numeroConf}%) CANDS:${JSON.stringify(r.numeroCands||[])}\nDATA: ${r.data} SAIDA:${r.dataSaida||'-'} VENC:${r.vencimento||'-'} VALOR: ${r.valor}\nEMITENTE: ${r.nomePrestador||'-'} IE:${r.ieEmitente||'-'} END:${r.enderecoEmitente||'-'} ${r.munEmitente||''}/${r.ufEmitente||''} CEP:${r.cepEmitente||'-'}\nVALORES: baseICMS=${r.baseICMS||'-'} vICMS=${r.valorICMS||'-'} baseST=${r.baseST||'-'} vST=${r.valorST||'-'} vProd=${r.valorProdutos||'-'} frete=${r.valorFrete||'-'} seg=${r.valorSeguro||'-'} desp=${r.despesasAcessorias||'-'} ipi=${r.valorIPI||'-'} total=${r.valorTotalNota||'-'}\n--- TEXTO (${r.fullLen} chars) ---\n${r.fullPreview}\n...`;
+      dbg.scrollTop=0;
+    }));
+    resEl.querySelectorAll('.pdfiso-copy').forEach(a=>a.addEventListener('click',e=>{
+      e.preventDefault();const r=DBpdf[+e.target.dataset.copy];navigator.clipboard.writeText(`${r.numero};${r.cnpjPrestador};${r.chave}`);e.target.textContent='✓ copiado';setTimeout(()=>e.target.textContent='⎘ copiar',1200);
+    }));
+  }
+  async function handlePDFs(files){
+    const arr=Array.from(files); isoLog(`📁 ${arr.length} PDF(s) — lendo...`,'#fbbf24');
+    const overlay=document.getElementById('loading-overlay'); const msg=document.getElementById('loading-msg');
+    overlay.classList.add('active');
+    for(let i=0;i<arr.length;i++){
+      const f=arr[i]; msg.textContent=`[${i+1}/${arr.length}] ${f.name}`; isoLog(`[${i+1}/${arr.length}] ${f.name}...`,'#94a3b8');
+      try{ const r=await window.ModPDFIsolado.extrair(f); DBpdf.push(r); isoLog(` → num:${r.numero||'-'} | cnpj:${r.cnpjPrestador||'-'} | ${r.data||'-'} | R$${r.valor||'-'} | conf:${r.confMedio}%`, r.confMedio>=60?'#2ecc71':'#e74c3c'); }catch(e){ isoLog(` ✗ ${f.name}: ${e.message}`,'#ef4444'); }
+    }
+    overlay.classList.remove('active'); isoRender(); isoLog(`✅ ${DBpdf.length} PDF(s) — use debug/copiar em cada card`,'#2ecc71');
+  }
+  const input=document.createElement('input'); input.type='file'; input.accept='.pdf'; input.multiple=true; input.style.display='none'; document.body.appendChild(input);
+  input.addEventListener('change',()=>{ if(input.files.length) handlePDFs(input.files); input.value=''; });
+  const area=document.getElementById('pdfiso-upload');
+  area.addEventListener('click',()=>input.click());
+  area.addEventListener('dragover',e=>{e.preventDefault();area.classList.add('dragover');});
+  area.addEventListener('dragleave',()=>area.classList.remove('dragover'));
+  area.addEventListener('drop',e=>{e.preventDefault();area.classList.remove('dragover'); if(e.dataTransfer.files.length) handlePDFs(e.dataTransfer.files);});
+  document.getElementById('pdfiso-busca')?.addEventListener('input',isoRender);
+  document.getElementById('pdfiso-filtro-conf')?.addEventListener('change',isoRender);
+})();
 </script>
 </body>
 </html>
