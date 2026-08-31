@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leitor de notas em PDF — NF-e / NFS-e</title>
+<title>GCON/SIAN — NF-e / NFS-e</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -196,7 +196,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
 
 <nav id="sidebar">
-  <div id="logo"><h1>Leitor<span> PDF</span></h1><p>Notas em PDF</p></div>
+  <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
   <div class="nav-section">IMPORTAR</div>
   <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
   <div class="nav-section">FERRAMENTAS</div>
@@ -214,7 +214,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 </nav>
 
 <div id="main">
-  <div id="topbar"><h2>📋 <span>Leitor de notas em PDF</span> — NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
+  <div id="topbar"><h2>📋 <span>GCON·SIAN</span> — Extrator NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
   <div id="accent-bar"></div>
   <div id="content">
     <div id="status-bar">
@@ -391,7 +391,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 
 <script>
 'use strict';
-console.log('Leitor de notas em PDF iniciado');
+console.log('GCON/SIAN iniciado');
 
 // ═══ DATA ═══
 const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
@@ -1161,7 +1161,7 @@ document.getElementById('upload-area').addEventListener('drop',e=>{e.preventDefa
 // ═══ START ═══
 function tick(){document.getElementById('hora').textContent=agora();setTimeout(tick,1000)}
 tick();updateStatus();
-console.log('Leitor de notas em PDF pronto. DB:',DB.sessaoId);
+console.log('GCON/SIAN pronto. DB:',DB.sessaoId);
 
 // ═══ SEPARADOR DE PDF ═══
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
