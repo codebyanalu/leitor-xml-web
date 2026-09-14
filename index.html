@@ -887,16 +887,8 @@ function renderNFE(){
     const tCBS=g.itens.reduce((s,p)=>s+f(p.CBS_vCBS),0);
     const tBCST=g.itens.reduce((s,p)=>s+f(p.ICMS_vBCSTRet),0);
     const tICMSST=g.itens.reduce((s,p)=>s+f(p.ICMS_vICMSSTRet),0);
-    const temST=tBCST||tICMSST;const temIBS=tIBS||tCBS;
-    const totLinhas=[];
-    if(tProd||tICMS||tIPI){
-      totLinhas.push(`<strong>${moeda(tProd)}</strong>`,moeda(tICMS),moeda(tIPI),moeda(tPIS),moeda(tCOFINS));
-      if(temIBS){totLinhas.push(moeda(tIBS),moeda(tCBS));}
-      if(temST){totLinhas.push(moeda(tBCST),moeda(tICMSST));}
-    }
-    const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS'];
-    if(temIBS){totHeaders.push('IBS','CBS');}
-    if(temST){totHeaders.push('BC ST','ICMS ST');}
+    const totLinhas=[`<strong>${moeda(tProd)}</strong>`,moeda(tICMS),moeda(tIPI),moeda(tPIS),moeda(tCOFINS),moeda(tIBS),moeda(tCBS),moeda(tBCST),moeda(tICMSST)];
+    const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS','IBS','CBS','BC ST','ICMS ST'];
     html+=`<div class="nota-card">
       <div class="header" style="cursor:pointer">
         <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✕ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
