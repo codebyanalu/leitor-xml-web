@@ -9,9 +9,35 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js" onerror="console.error('Tesseract.js CDN falhou ao carregar')"></script>
+<script>
+if(typeof Tesseract==='undefined'){console.warn('Tesseract.js não disponível - OCR desabilitado');}
+</script>
 <script>
 window.ModPDFIsolado=(()=>{
-const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°]\.?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i];
+  // --- SOBRESCREVER localStorage para suportar Tracking Prevention ---
+  // Se o browser bloquear localStorage, substituímos por armazenamento em memória
+  const _ls = (function() {
+    try {
+      localStorage.setItem('_gcon_ls_test_', '1');
+      localStorage.removeItem('_gcon_ls_test_');
+      return localStorage;
+    } catch (e) {
+      // localStorage bloqueado - retornar objeto de fallback
+      const _s = {};
+      return {
+        getItem: function(k) { return _s[k] || null; },
+        setItem: function(k, v) { _s[k] = String(v); },
+        removeItem: function(k) { delete _s[k]; },
+        clear: function() { _s = {}; }
+      };
+    }
+  })();
+  // Agora window.localStorage apontará para o armazenamento correto
+  window.localStorage = _ls;
+  // -----------------------------------------------------------
+  
+   const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°][,\.]?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i,/N[uúu]m(?:ero)?\.?\s*[:.]?\s*\d/i,/N[oº°]\.?\s*\d/i,/Nota\s*(?:de\s*(?:Servico|Servico))?\s*(?:n[oº°]|:)\s*\d/i,/NF[\s\-]*[eE]?\s*[Nº°]\.?\s*\d/i,/RPS\s*[Nº°]\.?\s*\d/i,/Num\.?\s*[:.]?\s*\d/i];
 function d(s){return(s||'').replace(/\D/g,'');}
 function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
 function vH(ch){ch=d(ch);if(ch.length!==44)return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
@@ -20,11 +46,24 @@ function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.m
 
 
 function eJ(full){const re=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}|\b\d{14}\b/g;const cand=[...full.matchAll(re)].map(m=>({raw:m[0],dig:d(m[0]),valida:vC(d(m[0])),idx:m.index})).filter(c=>c.dig.length===14);const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};}
-function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;return false;}
-function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{15,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
+function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;if(/^\d{2}\.\d{2}\.\d{4}$/.test(n))return true;if(dig.length>=10&&/^\d{2}[\.\-\/]\d{2}[\.\-\/]\d{4}$/.test(n))return true;if(/^\(\d{2}\)\s*\d{4,5}[\-]?\d{4}$/.test(n))return true;if(/^\d{2}\s*\d{4,5}\s*\d{4}$/.test(n))return true;if(/^\d{8,}$/.test(dig)&&dig.length>=10)return true;return false;}
+function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{15,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor){const standalone=[...full.matchAll(/\b(\d{6})\b/g)].map(m=>{const n=parseInt(m[1]);const before=full.slice(Math.max(0,m.index-30),m.index);const hasNoAfter=/N[º°]|Nota|NF|n[uú]mero/i.test(before);return{val:m[1],idx:m.index,nearNo:hasNoAfter,num:n};}).filter(x=>{if(isNoiseNum(x.val,full))return false;if(/^\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}$/.test(x.val))return false;if(x.num%1000===0&&x.num>=100000)return false;return true;});if(standalone.length){standalone.sort((a,b)=>{if(a.nearNo&&!b.nearNo)return -1;if(!a.nearNo&&b.nearNo)return 1;return b.num-a.num;});best={valor:standalone[0].val,conf:standalone[0].nearNo?55:40,ancora:standalone[0].nearNo?"fallback 6 dígitos (perto de Nº)":"fallback 6 dígitos",cands:standalone.slice(0,4).map(x=>x.val)};}}if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
 function eData(full){const m=full.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);return m?m[0]:"";}
 function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=full.match(/Vencimento\s*(\d{2}\.\d{2}\.\d{4}|\d{2}\/\d{2}\/\d{4})/i);return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:(all[1]||""),vencimento:venc?venc[1]:"",todas:all};}
-function eValor(full){const m=full.match(/R\$\s*([\d\.\,]+)/);if(m) return m[1];const m2=full.match(/Valor\s*[:\-]?\s*([\d\.\,]+)/i);return m2?m2[1]:"";}
+function eValor(full){
+  let compact=full.replace(/\s+/g,' ');
+  let m=compact.match(/R\.?\$\.?\s*([\d][\d\.]*,\d{2})/);
+  if(m) return m[1];
+  m=compact.match(/(?:VALOR\s*TOTAL|TOTAL\s*DA\s*NOTA|TOTAL\s*N[FE]|TOTAL\s*GERAL|VALOR\s*DO\s*SERVI[ÇC]O|VALOR\s*DA\s*NFS[\-]?E|VALOR\s*LIQUIDO)[^\d]*([\d][\d\.]*,\d{2})/i);
+  if(m) return m[1];
+  m=compact.match(/(?:Total|TOTAL)[^\d]*([\d][\d\.]*,\d{2})/);
+  if(m) return m[1];
+  m=compact.match(/(?:VALOR|Valor)[^\d]*([\d][\d\.]*,\d{2})/i);
+  if(m) return m[1];
+  const allVals=[...compact.matchAll(/([\d][\d\.]*,\d{2})/g)].map(x=>x[1]).filter(v=>{const clean=v.replace(/\./g,'').replace(',','.');const n=parseFloat(clean);return n>0&&n<10000000;});
+  if(allVals.length){allVals.sort((a,b)=>{const na=parseFloat(a.replace(/\./g,'').replace(',','.'));const nb=parseFloat(b.replace(/\./g,'').replace(',','.'));return nb-na;});return allVals[0];}
+  return "";
+}
 function eValorApos(rotulo,full){return "";}
 function eSerie(full){const m=full.match(/S[ÉE]RIE\s*:?\s*(\d{1,3})/i);return m?m[1]:"";}
 function eProtocolo(full){const m=full.match(/PROTOCOLO[^\d]*(\d{15})/i);if(m) return m[1];return "";}
@@ -33,11 +72,42 @@ function eIE(full){let all=[...full.matchAll(/INSCRI[ÇC][ÃA]O\s*ESTADUAL[^\d]*
 function eCEP(full){const m=full.match(/\b\d{5}-\d{3}\b/);return m?m[0]:"";}
 function eMunicipioUF(full){const m=full.match(/MUNIC[IÍ]PIO:\s*([A-ZÀ-Ú \-]+?)\s+UF:\s*([A-Z]{2})/i);return m?{mun:m[1].trim(),uf:m[2]}:{mun:"",uf:""};}
 function eEndereco(full){const m=full.match(/ENDERE[ÇC]O:\s*RUA\s*VOLKSWAGEN[^\n]*?100/i);if(m) return "RUA VOLKSWAGEN - 100";const m2=full.match(/ENDERE[ÇC]O:\s*([A-Z0-9 \-\,\.]{10,80}?)(?:\s{2,}BAIRRO|\s{2,}MUNIC)/i);return m2?m2[1].trim().slice(0,60):"";}
-function eBlocoValores(full){const a=full.indexOf("CÁLCULO DO IMPOSTO");const b=full.indexOf("TRANSPORTADOR");if(a===-1||b===-1) return {baseICMS:"",valorICMS:"",baseST:"",valorST:"",valorProdutos:"",frete:"",seguro:"",despesas:"",ipi:"",total:""};const bloco=full.slice(a,b);const vals=[...bloco.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map(m=>m[1]);let baseICMS=vals[0]||"",valorICMS=vals[1]||"",valorProdutos="",frete="",total="";if(vals.length>=5){valorProdutos=vals[2]||"";frete=vals[3]||"";total=vals[vals.length-1]||"";}else if(vals.length===3){valorProdutos=vals[2]||"";total=valorProdutos;}else if(vals.length===2){total=vals[1]||"";}return{baseICMS,valorICMS,baseST:"",valorST:"",valorProdutos,frete,seguro:"",despesas:"",ipi:"",total};}
-function eNome(full,items,cnpjDig){if(!cnpjDig) return "";let idx=full.indexOf(cnpjDig);if(idx!==-1){let janela=full.slice(Math.max(0,idx-400),idx);let m=janela.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);}return "";}
-function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig.slice(0,8));if(idx===-1) return "";const janela=full.slice(idx,idx+300);const m=janela.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
+function eBlocoValores(full){const reCalc=/C[ÁA\u00C1]LCULO\s*DO\s*IMPOSTO|CALCULO\s*DO\s*IMPOSTO|C[ÁA\u00C1]LCULO\s*DO\s*IMPOST|C[ÁA]LCULO\s*DO\s*IMPOST|CALC.*IMPOST|CÁLC.*IMPOST/i;const reTransp=/TRANSPORTADOR|TRANSPORT|TRANSP\b/i;const mCalc=full.match(reCalc);const mTransp=full.match(reTransp);const a=mCalc?mCalc.index:-1;const b=mTransp?mTransp.index:-1;if(a===-1||b===-1) return {baseICMS:"",valorICMS:"",baseST:"",valorST:"",valorProdutos:"",frete:"",seguro:"",despesas:"",ipi:"",total:""};const bloco=full.slice(a,b);const vals=[...bloco.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map(m=>m[1]);let baseICMS=vals[0]||"",valorICMS=vals[1]||"",valorProdutos="",frete="",total="";if(vals.length>=5){valorProdutos=vals[2]||"";frete=vals[3]||"";total=vals[vals.length-1]||"";}else if(vals.length===3){valorProdutos=vals[2]||"";total=valorProdutos;}else if(vals.length===2){total=vals[1]||"";}return{baseICMS,valorICMS,baseST:"",valorST:"",valorProdutos,frete,seguro:"",despesas:"",ipi:"",total};}
+function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig);if(idx===-1) return "";const janelaAntes=full.slice(Math.max(0,idx-400),idx);let m=janelaAntes.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);const janelaDepois=full.slice(idx,idx+300);m=janelaDepois.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
 function decodChave(ch){ch=d(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
-async function extrair(file){const{full,items}=await tC(file);if(!full.trim()) throw new Error('PDF sem texto (imagem) — precisa OCR');const ch=eC(full),cj=eJ(full),nu=eN(full,items);const datas=eDatas(full),valor=eValor(full),nomeP=eNome(full,items,cj.prest),nomeT=eNome(full,items,cj.toma);let serie=eSerie(full),protocolo=eProtocolo(full),natOp=eNatOp(full),ie=eIE(full),cep=eCEP(full),munUf=eMunicipioUF(full),endereco=eEndereco(full);const bv=eBlocoValores(full);let numero=nu.valor,numeroConf=nu.conf,numeroAncora=nu.ancora,numeroCands=nu.cands;if(ch.valida&&ch.valor){const dec=decodChave(ch.valor);if(dec){if(dec.nNFInt&&dec.nNFInt!=="0"){numero=dec.nNFInt;numeroConf=99;numeroAncora="chave 44 (pos 26-34)";numeroCands=[dec.nNF+" → "+dec.nNFInt+" (chave)"].concat(numeroCands||[]);}if(dec.serieInt&&dec.serieInt!=="0"&&(!serie||serie==="0")) serie=dec.serieInt;}}
+async function ocrPDF(file){
+  if(typeof Tesseract==='undefined')throw new Error('Tesseract.js não carregou.');
+  const buf=await file.arrayBuffer();
+  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  let full="";
+  try{
+    for(let p=1;p<=doc.numPages;p++){
+      const page=await doc.getPage(p);
+      const viewport=page.getViewport({scale:2});
+      const canvas=document.createElement('canvas');
+      canvas.width=viewport.width;
+      canvas.height=viewport.height;
+      const ctx=canvas.getContext('2d');
+      await page.render({canvasContext:ctx,viewport}).promise;
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+      const {data:{text}}=await Tesseract.recognize(blob,'por');
+      full+=text+"\n";
+    }
+  }finally{
+    await doc.destroy();
+  }
+  return full;
+}
+async function extrair(file){
+  let{full,items}=await tC(file);
+  if(!full.trim()){
+    try{full=await ocrPDF(file);items=[];}catch(eOCR){
+      const msg=eOCR instanceof Error?eOCR.message:String(eOCR);
+      console.error('OCR falhou:',eOCR);
+      throw new Error('PDF sem texto extraível. '+msg);
+    }
+  }
+  if(!full.trim())throw new Error('PDF não pôde ser lido - conteúdo ilegível');const ch=eC(full),cj=eJ(full),nu=eN(full,items);const datas=eDatas(full),valor=eValor(full),nomeP=eNome(full,items,cj.prest),nomeT=eNome(full,items,cj.toma);let serie=eSerie(full),protocolo=eProtocolo(full),natOp=eNatOp(full),ie=eIE(full),cep=eCEP(full),munUf=eMunicipioUF(full),endereco=eEndereco(full);const bv=eBlocoValores(full);let numero=nu.valor,numeroConf=nu.conf,numeroAncora=nu.ancora,numeroCands=nu.cands;if(ch.valida&&ch.valor){const dec=decodChave(ch.valor);if(dec){if(dec.nNFInt&&dec.nNFInt!=="0"){numero=dec.nNFInt;numeroConf=99;numeroAncora="chave 44 (pos 26-34)";numeroCands=[dec.nNF+" → "+dec.nNFInt+" (chave)"].concat(numeroCands||[]);}if(dec.serieInt&&dec.serieInt!=="0"&&(!serie||serie==="0")) serie=dec.serieInt;}}window._lastOCRDebug={full:full.slice(0,5000),valor,numero,numeroAncora};
 return{arquivo:file.name,chave:ch.valor,chaveValida:ch.valida,chaveConf:ch.conf,cnpjPrestador:cj.prest,cnpjTomador:cj.toma,cnpjConf:cj.conf,cnpjsLista:cj.lista,numero,numeroConf,numeroAncora,numeroCands,data:datas.data,dataSaida:datas.dataSaida,vencimento:datas.vencimento,todasDatas:datas.todas,valor,nomePrestador:nomeP,nomeTomador:nomeT,serie,protocolo,natOp,ieEmitente:ie,cepEmitente:cep,munEmitente:munUf.mun,ufEmitente:munUf.uf,enderecoEmitente:endereco,baseICMS:bv.baseICMS,valorICMS:bv.valorICMS,baseST:bv.baseST,valorST:bv.valorST,valorProdutos:bv.valorProdutos,valorFrete:bv.frete,valorSeguro:bv.seguro,despesasAcessorias:bv.despesas,valorIPI:bv.ipi,valorTotalNota:bv.total,confMedio:Math.round((ch.conf+cj.conf+(numeroConf||0))/3),fullPreview:full.slice(0,2200),fullLen:full.length};}
 
 return{extrair};
