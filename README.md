@@ -18,6 +18,7 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 - **Dashboard**: KPIs + 6 gráficos Chart.js
 - **Exportação**: CSV e XLSX completos (40 colunas PDF, 71 NF-e, 56 NFS-e)
 - **Busca**: filtro por texto/CNPJ/confiança
+- **Interface**: tema claro/escuro persistente, breadcrumb de navegação, ícones SVG vetoriais (zero emoji) e layout responsivo (desktop/tablet/mobile)
 
 ## Funcionalidade Nova: Leitura de PDFs Imagens (OCR)
 

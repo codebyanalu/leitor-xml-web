@@ -352,46 +352,114 @@ function finalizar(r,full,fonte,ocrTentado,ocrErro){
 
 return{extrair,parseFull,mergeExtracao,finalizar,tC};
 })();
+</script><script>
+(function(){try{if(localStorage.getItem('gcon-theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();
 </script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ═══════════════════════════════════════════════════════════
+   1 · TOKENS (tema claro + escuro)
+   ═══════════════════════════════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
+  color-scheme:light;
   --primary:#1a4b8c;--primary-light:#2563af;--primary-dark:#0e2d5a;
   --accent:#f59e0b;--accent-light:#fbbf24;
   --surface:#f8fafc;--card:#fff;--sidebar:#0f172a;--sidebar-hover:#1e293b;
-  --text:#0f172a;--text2:#64748b;--text3:#94a3b8;
+  --text:#0f172a;--text2:#64748b;--text3:#6b7280;
   --border:#e2e8f0;--border-light:#f1f5f9;
-  --success:#10b981;--warn:#f59e0b;--err:#ef4444;--info:#3b82f6;
+  --success:#1a7f5a;--warn:#f59e0b;--err:#b91c1c;--info:#3b82f6;
   --err-bg:#fef2f2;--err-ink:#991b1b;--warn-bg:#fffbeb;--warn-ink:#92400e;--kpi-garantia:#ec4899;
   --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
   --shadow-md:0 4px 12px rgba(0,0,0,.08);
   --shadow-lg:0 8px 24px rgba(0,0,0,.12);
   --radius:10px;--radius-sm:6px;--radius-lg:14px;
+  --primary-cta:#1a4b8c;--primary-cta-h:#17427b;--primary-ink:#1a4b8c;
+  --primary-ring:rgba(26,75,140,.35);--focus:#2563af;
+  --accent-cta:#b45309;--sec-cta:#475569;
+  --success-solid:#15803d;--err-solid:#b91c1c;
+  --badge-err:#c0392b;--badge-ok:#1a7f5a;--badge-warn:#b45309;
+  --err-line:#fecaca;--err-soft-line:#fca5a5;--warn-line:#fde68a;
+  --tint:#f0f4fe;--card-2:#f1f4f9;--zebra:#f8fafc;--row-hover:#e8edf5;
+  --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
 }
-body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
-#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;z-index:10}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --primary:#5b9bf5;--primary-light:#4d8ff0;--primary-ink:#7db1f8;
+  --primary-cta:#2f6fd0;--primary-cta-h:#3f7fe0;
+  --primary-ring:rgba(91,155,245,.4);--focus:#5b9bf5;
+  --accent:#f59e0b;--accent-light:#fbbf24;
+  --surface:#0e1420;--card:#161d2c;--sidebar:#0b1017;--sidebar-hover:#161f2e;
+  --text:#e5eaf2;--text2:#9aa7ba;--text3:#94a3b8;
+  --border:#27324a;--border-light:#1e2739;
+  --success:#34d399;--warn:#f59e0b;--err:#f87171;--info:#60a5fa;
+  --err-bg:#2a1517;--err-ink:#fca5a5;--warn-bg:#2b2113;--warn-ink:#fcd34d;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 4px 12px rgba(0,0,0,.45);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.5);
+  --err-line:#7f2e2e;--warn-line:#92700f;
+  --tint:#17233a;--card-2:#1c2537;--zebra:#131b2b;--row-hover:#22304a;
+  --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2 · BASE + ÍCONES (sprite SVG)
+   ═══════════════════════════════════════════════════════════ */
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surface);color:var(--text);display:flex;height:100vh;height:100dvh;overflow:hidden;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#sprite{display:none}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-.125em}
+.nav-btn .icon svg.i{width:17px;height:17px}
+#status-bar .stat svg.i{width:15px;height:15px}
+#crumb svg.i{width:16px;height:16px}
+.icon-btn svg.i{width:15px;height:15px}
+.btn svg.i{width:12px;height:12px}
+#upload-area .icon svg.i,#pdfiso-upload .icon svg.i{width:44px;height:44px}
+
+/* ═══════════════════════════════════════════════════════════
+   3 · LATERAL (navegação)
+   ═══════════════════════════════════════════════════════════ */
+#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;height:100dvh;z-index:10}
 #logo{padding:22px 18px 18px;text-align:center}
 #logo h1{color:#fff;font-size:20px;font-weight:800;letter-spacing:-.3px}
 #logo h1 span{color:var(--accent)}
-#logo p{color:rgba(255,255,255,.4);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
-.nav-section{padding:16px 18px 4px;color:rgba(255,255,255,.25);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+#logo p{color:rgba(255,255,255,.6);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
+.nav-section{padding:16px 18px 4px;color:rgba(255,255,255,.55);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
 .nav-btn{display:flex;align-items:center;gap:10px;padding:10px 18px;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;border-right:3px solid transparent}
 .nav-btn:hover{background:var(--sidebar-hover);color:#fff}
-.nav-btn.active{background:rgba(26,75,140,.3);color:#fff;font-weight:600;border-right-color:var(--accent)}
-.nav-btn .icon{font-size:16px;width:22px;text-align:center;opacity:.7}
-.nav-btn.active .icon{opacity:1}
+.nav-btn.active{background:var(--sidebar-active);color:#fff;font-weight:600;border-right-color:var(--accent)}
+.nav-btn .icon{width:22px;display:flex;align-items:center;justify-content:center;opacity:.7}
+.nav-btn.active .icon{opacity:1;color:var(--sidebar-accent)}
+.nav-btn:focus-visible,#btn-fechar:focus-visible{outline-color:var(--sidebar-accent)}
 #sidebar .spacer{flex:1}
-#btn-fechar{background:rgba(239,68,68,.15);color:#fca5a5;padding:12px 18px;cursor:pointer;font-weight:600;font-size:12px;border:none;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;margin:8px;width:auto;border-radius:6px}
-#btn-fechar:hover{background:rgba(239,68,68,.25);color:#fff}
-#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#topbar{background:var(--card);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-#topbar h2{color:var(--text);font-size:13px;font-weight:700}
-#topbar h2 span{color:var(--primary)}
+#btn-fechar{background:rgba(248,113,113,.15);color:var(--err-soft-line);padding:12px 18px;cursor:pointer;font-weight:600;font-size:12px;border:none;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:10px;transition:.15s;margin:8px;width:auto;border-radius:6px}
+#btn-fechar:hover{background:rgba(248,113,113,.25);color:#fff}
+
+/* ═══════════════════════════════════════════════════════════
+   4 · ÁREA PRINCIPAL (topbar, breadcrumb, conteúdo)
+   ═══════════════════════════════════════════════════════════ */
+#main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+#topbar{background:var(--card);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border)}
+#crumb{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px}
+#crumb .c-brand{font-weight:700;color:var(--primary-ink);white-space:nowrap}
+#crumb .c-sep{color:var(--text3);font-weight:500}
+#crumb .c-cur{color:var(--text2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#topbar .tools{display:flex;align-items:center;gap:12px;flex:none}
 #topbar .hora{color:var(--text3);font-size:11px;font-weight:500}
-#accent-bar{height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-light),var(--accent))}
+.icon-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text2);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.icon-btn:hover{background:var(--tint);border-color:var(--primary-light);color:var(--primary-ink)}
+.icon-btn .sun{display:none}
+:root[data-theme="dark"] .icon-btn .sun{display:inline}
+:root[data-theme="dark"] .icon-btn .moon{display:none}
+#accent-bar{height:3px;background:var(--accent)}
 #content{flex:1;overflow-y:auto;padding:20px 24px}
 #content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}#content::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+/* ═══════════════════════════════════════════════════════════
+   5 · CARDS KPI
+   ═══════════════════════════════════════════════════════════ */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
 .kpi-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
 .kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
@@ -400,24 +468,35 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 .kpi-card .label{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
 .kpi-card .value{font-size:24px;font-weight:800;color:var(--text);margin-top:3px;letter-spacing:-.5px}
 .kpi-card .sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════════
+   6 · ÁREA DE UPLOAD
+   ═══════════════════════════════════════════════════════════ */
 #upload-area{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;background:var(--card);cursor:pointer;transition:all .25s;margin-bottom:18px;box-shadow:var(--shadow)}
-#upload-area:hover,#upload-area.dragover{border-color:var(--primary-light);background:#f0f4fe;box-shadow:0 0 0 4px rgba(26,75,140,.08)}
-#upload-area .icon{font-size:48px;color:var(--text3);transition:transform .35s}
+#upload-area:hover,#upload-area.dragover{border-color:var(--primary-light);background:var(--tint);box-shadow:0 0 0 4px var(--primary-ring)}
+#upload-area .icon{color:var(--text3);transition:transform .35s}
 #upload-area:hover .icon{transform:scale(1.12) translateY(-2px)}
-#upload-area strong{color:var(--primary)}
+#upload-area strong{color:var(--primary-ink)}
 #upload-area p{color:var(--text2);margin-top:8px;font-size:14px}
 #upload-area .sub{font-size:11px;color:var(--text3);margin-top:4px}
 #file-input{display:none}
+
+/* ═══════════════════════════════════════════════════════════
+   7 · ABAS, CARDS DE NOTA E TABELAS
+   ═══════════════════════════════════════════════════════════ */
 .tab-content{display:none;animation:fadeUp .3s ease}.tab-content.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.sec-title{font-size:13px;font-weight:700;color:var(--primary-ink);display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.sec-title.tight{margin-bottom:4px}
+.sec-title .tag{font-size:10px;font-weight:500;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px;border:1px solid var(--border)}
 .nota-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
 .nota-card:hover{box-shadow:var(--shadow-md)}
-.nota-card .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:12px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;user-select:none;transition:opacity .2s}
+.nota-card .header{background:var(--primary-cta);color:#fff;padding:12px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;user-select:none;transition:opacity .2s}
 .nota-card .header:hover{opacity:.95}
 .nota-card .header .info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .nota-card .header .badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;background:rgba(255,255,255,.2);letter-spacing:.3px}
-.nota-card .header .badge.err{background:rgba(239,68,68,.85)}
-.nota-card .header .badge.ok{background:rgba(16,185,129,.85)}
+.nota-card .header .badge.err{background:var(--badge-err)}
+.nota-card .header .badge.ok{background:var(--badge-ok)}
 .nota-card .header .toggle{font-size:10px;opacity:.6;transition:transform .35s;margin-left:8px}
 .nota-card .header .toggle.open{transform:rotate(180deg)}
 .nota-card .body-detail{padding:18px;border-top:1px solid var(--border);display:none}
@@ -425,16 +504,16 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 .nota-card .body-detail.closed{display:none}
 .nota-card table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;margin-bottom:8px}
 .nota-card table th,.nota-card table td{padding:6px 10px;border:1px solid var(--border-light);text-align:left}
-.nota-card table th{background:var(--primary);color:#fff;font-weight:600;font-size:10px;letter-spacing:.3px}
+.nota-card table th{background:var(--primary-cta);color:#fff;font-weight:600;font-size:10px;letter-spacing:.3px}
 .nota-card table th:first-child{border-radius:var(--radius-sm) 0 0 0}
 .nota-card table th:last-child{border-radius:0 var(--radius-sm) 0 0}
 .nota-card table td{background:var(--card)}
-.nota-card table tr:nth-child(even) td{background:#f8fafc}
-.nota-card table tbody tr:hover td{background:#eef2f7}
+.nota-card table tr:nth-child(even) td{background:var(--zebra)}
+.nota-card table tbody tr:hover td{background:var(--row-hover)}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .info-box{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;background:var(--card);transition:box-shadow .2s}
 .info-box:hover{box-shadow:var(--shadow)}
-.info-box h4{font-size:10px;color:var(--primary);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border-light);padding-bottom:5px;display:flex;align-items:center;gap:5px}
+.info-box h4{font-size:10px;color:var(--primary-ink);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border-light);padding-bottom:5px;display:flex;align-items:center;gap:5px}
 .info-box .row{font-size:11px;padding:3px 0;display:flex}
 .info-box .row .lbl{color:var(--text2);min-width:88px;flex-shrink:0}
 .info-box .row .val{color:var(--text);font-weight:500}
@@ -442,46 +521,65 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 .table-wrap table{margin-bottom:0}
 .det-section{margin:10px 0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:box-shadow .2s}
 .det-section:hover{box-shadow:var(--shadow)}
-.det-section .det-title{padding:8px 12px;background:#f1f4f9;font-size:10px;font-weight:600;color:var(--primary);cursor:pointer;user-select:none;transition:background .2s;display:flex;align-items:center;gap:6px}
-.det-section .det-title:hover{background:#e8edf5}
+.det-section .det-title{padding:8px 12px;background:var(--card-2);font-size:10px;font-weight:600;color:var(--primary-ink);cursor:pointer;user-select:none;transition:background .2s;display:flex;align-items:center;gap:6px}
+.det-section .det-title:hover{background:var(--row-hover)}
 .det-section .det-body{padding:10px;display:none;overflow-x:auto}
 .det-section .det-body.open{display:block;animation:fadeUp .2s ease}
 .det-section .det-body table{font-size:10px;margin-bottom:0}
 .det-section .det-body table th{font-size:9px;background:var(--primary-dark);color:#fff;padding:4px 7px}
 .det-section .det-body table td{padding:4px 7px}
+
+/* ═══════════════════════════════════════════════════════════
+   8 · DASHBOARD E FILTROS
+   ═══════════════════════════════════════════════════════════ */
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px}
 .dash-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-height:250px;box-shadow:var(--shadow);transition:all .2s}
 .dash-card:hover{box-shadow:var(--shadow-md)}
-.dash-card h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.dash-card h4{font-size:13px;font-weight:700;color:var(--primary-ink);margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .dash-card .chart-wrap{position:relative;height:210px}
 .filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:var(--card);padding:12px 16px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)}
 .filter-bar input,.filter-bar select{padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;background:var(--card);transition:all .2s;color:var(--text)}
-.filter-bar input:focus,.filter-bar select:focus{border-color:var(--primary-light);outline:none;box-shadow:0 0 0 3px rgba(26,75,140,.1)}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px var(--primary-ring)}
 .filter-bar input{flex:1;min-width:160px}
 .filter-bar .count{font-size:12px;color:var(--text2);margin-left:auto;font-weight:600;background:var(--surface);padding:4px 12px;border-radius:20px;white-space:nowrap}
+
+/* ═══════════════════════════════════════════════════════════
+   9 · BOTÕES
+   ═══════════════════════════════════════════════════════════ */
 .btn{padding:8px 18px;font-size:11px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
 .btn:active{transform:translateY(0)}
-.btn-prim{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff}
-.btn-sec{background:linear-gradient(135deg,#475569,#64748b);color:#fff}
-.btn-acent{background:linear-gradient(135deg,#d97706,var(--accent));color:#fff}
-.btn-ok{background:linear-gradient(135deg,#15803d,#047857);color:#fff}
+.btn-prim{background:var(--primary-cta);color:#fff}
+.btn-sec{background:var(--sec-cta);color:#fff}
+.btn-acent{background:var(--accent-cta);color:#fff}
+.btn-ok{background:var(--success-solid);color:#fff}
+.btn-prim:hover{background:var(--primary-cta-h)}
+.btn-sec:hover,.btn-acent:hover,.btn-ok:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;filter:none}
+
+/* ═══════════════════════════════════════════════════════════
+   10 · STATUS, ESTADOS VAZIOS, LOGS E OVERLAY
+   ═══════════════════════════════════════════════════════════ */
 #status-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:18px;font-size:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
 #status-bar .stat{display:flex;align-items:center;gap:6px}
-#status-bar .stat .num{font-weight:700;color:var(--primary);font-size:14px}
+#status-bar .stat .num{font-weight:700;color:var(--primary-ink);font-size:14px}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
-.empty-state .icon{font-size:56px;margin-bottom:14px;opacity:.4}
 .empty-state p{font-size:14px;color:var(--text2)}
 #import-log{background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);line-height:1.6}
 #import-log::-webkit-scrollbar{width:5px}#import-log::-webkit-scrollbar-track{background:transparent}#import-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
-#loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
+#import-log:empty,#pdfiso-log:empty,#tab-separar #log:empty{display:none}
+#loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:999}
 #loading-overlay.active{display:flex}
 #loading-box{background:var(--card);padding:36px 48px;border-radius:var(--radius-lg);text-align:center;box-shadow:var(--shadow-lg);border:1px solid var(--border)}
 #loading-box p{color:var(--text2);font-size:13px;font-weight:500;margin-top:10px}
 #loading-box .spinner{width:42px;height:42px;border:4px solid var(--border-light);border-top-color:var(--primary);border-radius:50%;animation:spin .7s cubic-bezier(.4,0,.2,1) infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
-#error-banner{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;display:none;box-shadow:0 2px 8px rgba(239,68,68,.2);font-weight:500}
-#tab-separar{max-width:760px}
+#error-banner{background:var(--err-solid);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;display:none;box-shadow:0 2px 8px rgba(185,28,28,.25);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   11 · ABA SEPARAR PDF
+   ═══════════════════════════════════════════════════════════ */
+#tab-separar{max-width:760px;margin-inline:auto}
 #sep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow)}
 #tab-separar .campo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px}
 #tab-separar .campo label{display:block;font-weight:600;margin:0 0 8px;color:var(--text)}
@@ -490,55 +588,109 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 #tab-separar input[type=file]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--card)}
 #tab-separar .radio-group{display:flex;gap:18px;margin-top:6px;flex-wrap:wrap}
 #tab-separar .radio-group label{font-weight:500;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer}
-#tab-separar .btn-select{background:var(--primary);color:#fff;white-space:nowrap}
-#tab-separar #btn-processar{width:100%;margin-top:18px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:13px;font-size:15px;justify-content:center}
+#tab-separar .btn-select{background:var(--primary-cta);color:#fff;white-space:nowrap}
+#tab-separar .btn-select:hover{background:var(--primary-cta-h)}
+#tab-separar #btn-processar{width:100%;margin-top:18px;background:var(--primary-cta);color:#fff;padding:13px;font-size:15px;justify-content:center}
+#tab-separar #btn-processar:hover{background:var(--primary-cta-h)}
 #btn-processar:disabled{opacity:.5;cursor:not-allowed}
 #tab-separar #barra{height:8px;background:var(--border-light);border-radius:6px;margin-top:18px;overflow:hidden;display:none}
 #tab-separar #barra-inner{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:0%;transition:width .2s}
-#tab-separar #baixar{width:100%;margin-top:10px;background:linear-gradient(135deg,#059669,var(--success));color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}
+#tab-separar #baixar{width:100%;margin-top:10px;background:var(--success-solid);color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}
 #tab-separar #status{color:var(--text2);margin-top:14px;font-size:12px;min-height:16px}
 #tab-separar #status.err{color:var(--err)}
 #tab-separar #status.ok{color:var(--success)}
 #tab-separar pre{background:var(--sidebar);color:#cbd5e1;border-radius:var(--radius);padding:12px;font-family:Consolas,monospace;font-size:12px;max-height:260px;overflow:auto;margin-top:18px;white-space:pre-wrap}
+
+/* ═══════════════════════════════════════════════════════════
+   12 · ABA CONSULTAR CNPJ
+   ═══════════════════════════════════════════════════════════ */
+#tab-cnpj .info-box h4{border-bottom:1px solid var(--border-light)}
+#cnpj-input:focus{border-color:var(--primary-light) !important;box-shadow:0 0 0 3px var(--primary-ring)}
+#cnpj-result .nota-card .body-detail{border-top:none}
+
+/* ═══════════════════════════════════════════════════════════
+   13 · RESPONSIVO + MOVIMENTO REDUZIDO
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width:1440px){
+  #content{padding:24px 32px}
+  .dash-grid{gap:16px}
+}
+@media (max-width:768px){
+  #sidebar{width:64px;min-width:64px}
+  #logo{padding:16px 4px 12px}
+  #logo h1{font-size:11px;line-height:1.25;overflow-wrap:anywhere}
+  #logo p,.nav-section{display:none}
+  .nav-btn{justify-content:center;padding:11px 0;gap:0}
+  .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .nav-btn .icon{width:auto}
+  .nav-btn .icon svg.i{width:20px;height:20px}
+  #btn-fechar{justify-content:center;padding:12px 0;gap:0;font-size:0}
+  #btn-fechar span{font-size:16px}
+  #topbar{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  #content{padding:14px}
+  .kpi-row{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .info-grid{grid-template-columns:1fr}
+  [style*="1fr 1fr"]{grid-template-columns:1fr!important}
+  #upload-area{padding:26px 16px}
+}
+@media (max-width:375px){
+  #topbar{padding:10px 12px}
+  #content{padding:12px 10px}
+  .kpi-row{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi-card .value{font-size:19px}
+  #upload-area{padding:22px 12px}
+  #upload-area p{font-size:13px}
+  .filter-bar{padding:10px 12px}
+  .filter-bar .count{margin-left:0}
+  #tab-separar .row{flex-wrap:wrap}
+  .empty-state{padding:40px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  #loading-box .spinner{animation:spin .7s cubic-bezier(.4,0,.2,1) infinite!important}
+  #tab-separar #barra-inner,#cnpj-lote-bar-inner{transition:width .2s!important}
+}
 </style>
 </head>
 <body>
+<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
+
 
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
 
 <nav id="sidebar">
   <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
   <div class="nav-section">IMPORTAR</div>
-  <button class="nav-btn active" data-tab="importar"><span class="icon">📁</span><span>Importar XMLs</span></button>
+  <button class="nav-btn active" data-tab="importar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg></span><span>Importar XMLs</span></button>
   <div class="nav-section">FERRAMENTAS</div>
-  <button class="nav-btn" data-tab="separar"><span class="icon">📑</span><span>Separar PDF</span></button>
-  <button class="nav-btn" data-tab="pdfleitura"><span class="icon">🔍</span><span>Leitura PDF</span></button>
-  <button class="nav-btn" data-tab="cnpj"><span class="icon">🏢</span><span>Consultar CNPJ</span></button>
+  <button class="nav-btn" data-tab="separar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-split"></use></svg></span><span>Separar PDF</span></button>
+  <button class="nav-btn" data-tab="pdfleitura"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"></use></svg></span><span>Leitura PDF</span></button>
+  <button class="nav-btn" data-tab="cnpj"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-building"></use></svg></span><span>Consultar CNPJ</span></button>
   <div class="nav-section">VISUALIZAR</div>
-  <button class="nav-btn" data-tab="nfe"><span class="icon">📦</span><span>NF-e (Peças)</span></button>
-  <button class="nav-btn" data-tab="nfse"><span class="icon">📋</span><span>NFS-e (Serviços)</span></button>
-  <button class="nav-btn" data-tab="dashboard"><span class="icon">📊</span><span>Dashboard</span></button>
+  <button class="nav-btn" data-tab="nfe"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg></span><span>NF-e (Peças)</span></button>
+  <button class="nav-btn" data-tab="nfse"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg></span><span>NFS-e (Serviços)</span></button>
+  <button class="nav-btn" data-tab="dashboard"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg></span><span>Dashboard</span></button>
   <div class="nav-section">EXPORTAR</div>
-  <button class="nav-btn" data-tab="exportar"><span class="icon">⬇</span><span>Exportar Dados</span></button>
+  <button class="nav-btn" data-tab="exportar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg></span><span>Exportar Dados</span></button>
   <div class="spacer"></div>
-  <button id="btn-fechar"><span>✕</span> FECHAR SISTEMA</button>
+  <button id="btn-fechar"><span>×</span> FECHAR SISTEMA</button>
 </nav>
 
 <div id="main">
-  <div id="topbar"><h2>📋 <span>GCON·SIAN</span> — Extrator NF-e / NFS-e</h2><span class="hora" id="hora"></span></div>
+  <div id="topbar"><div id="crumb"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg><span class="c-brand">GCON·SIAN</span><span class="c-sep">/</span><span class="c-cur" id="crumb-cur">Importar XMLs</span></div><div class="tools"><span class="hora" id="hora"></span><button id="theme-btn" class="icon-btn" type="button" aria-label="Alternar entre tema claro e escuro" title="Alternar tema"><svg class="i sun" aria-hidden="true"><use href="#i-sun"></use></svg><svg class="i moon" aria-hidden="true"><use href="#i-moon"></use></svg></button></div></div>
   <div id="accent-bar"></div>
   <div id="content">
     <div id="status-bar">
-      <div class="stat">📦 <span class="num" id="s-nfe">0</span> produtos NF-e</div>
-      <div class="stat">📋 <span class="num" id="s-nfse">0</span> serviços NFS-e</div>
-      <div class="stat">📁 <span class="num" id="s-arqs">0</span> XMLs</div>
+      <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg> <span class="num" id="s-nfe">0</span> produtos NF-e</div>
+      <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg> <span class="num" id="s-nfse">0</span> serviços NFS-e</div>
+      <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg> <span class="num" id="s-arqs">0</span> XMLs</div>
       <div style="margin-left:auto;font-size:10px;color:var(--text3)" id="s-sessao"></div>
     </div>
 
     <div class="tab-content active" id="tab-importar">
       <div id="error-banner"></div>
       <div id="upload-area">
-        <div class="icon">📂</div>
+        <div class="icon"><svg class="i" aria-hidden="true"><use href="#i-upload"></use></svg></div>
         <p><strong>Clique aqui</strong> ou arraste os XMLs</p>
         <p class="sub">NF-e (modelo 55) · NFS-e (CompNFe / Nacional)</p>
       </div>
@@ -548,6 +700,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
     <div class="tab-content" id="tab-separar">
       <div id="sep-banner" style="display:none"></div>
       <div id="sep-card">
+        <h3 class="sec-title"><svg class="i" aria-hidden="true"><use href="#i-split"></use></svg> Separar PDF em notas</h3>
         <div class="campo">
           <label>Arquivo PDF</label>
           <div class="row">
@@ -609,36 +762,33 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
     <div class="tab-content" id="tab-pdfleitura">
       <style>
         #pdfiso-upload{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;background:var(--card);cursor:pointer;transition:all .25s;margin-bottom:18px;box-shadow:var(--shadow)}
-        #pdfiso-upload:hover,#pdfiso-upload.dragover{border-color:var(--primary-light);background:#f0f4fe;box-shadow:0 0 0 4px rgba(26,75,140,.08)}
-        #pdfiso-upload.dragover{border-color:var(--accent);background:#fffbeb}
-        #pdfiso-upload .icon{font-size:48px;color:var(--text3);transition:transform .35s}
+        #pdfiso-upload:hover,#pdfiso-upload.dragover{border-color:var(--primary-light);background:var(--tint);box-shadow:0 0 0 4px var(--primary-ring)}
+        #pdfiso-upload.dragover{border-color:var(--accent);background:var(--warn-bg);box-shadow:0 0 0 4px var(--warn-line)}
+        #pdfiso-upload .icon{color:var(--text3);transition:transform .35s}
         #pdfiso-upload:hover .icon{transform:scale(1.08) translateY(-2px)}
         #tab-pdfleitura .pdfiso-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
         #pdfiso-log{background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);line-height:1.6}
         .pdfiso-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow);transition:all .2s}
         .pdfiso-card:hover{box-shadow:var(--shadow-md)}
-        .pdfiso-card .hd{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
+        .pdfiso-card .hd{background:var(--primary-cta);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
         .pdfiso-card .hd .info{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .pdfiso-badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.3px}
-        .pdfiso-badge.ok{background:#15803d;color:#fff} .pdfiso-badge.warn{background:#b45309;color:#fff} .pdfiso-badge.err{background:#b91c1c;color:#fff}
+        .pdfiso-badge.ok{background:var(--badge-ok);color:#fff} .pdfiso-badge.warn{background:var(--badge-warn);color:#fff} .pdfiso-badge.err{background:var(--badge-err);color:#fff}
         .pdfiso-card .hd .pdfiso-badge{padding:2px 8px;font-size:9px}
         .pdfiso-kpi .kpi-card .value{font-size:22px;letter-spacing:-.5px}
         #tab-pdfleitura .table-wrap{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
         #tab-pdfleitura .table-wrap table th{position:sticky;top:0;z-index:1}
-        #tab-pdfleitura .table-wrap tbody tr:hover td{background:#f1f5f9}
-        #tab-cnpj .info-box h4{border-bottom:1px solid var(--border-light)}
-        #cnpj-input:focus{border-color:var(--primary-light) !important;box-shadow:0 0 0 3px rgba(26,75,140,.1);outline:none}
-        #cnpj-result .nota-card .body-detail{border-top:none}
+        #tab-pdfleitura .table-wrap tbody tr:hover td{background:var(--row-hover)}
       </style>
       <div style="width:100%">
         <div id="pdfiso-upload">
-          <div class="icon">🔍</div>
+          <div class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"></use></svg></div>
           <p style="margin-top:8px;font-size:14px"><strong style="color:var(--primary)">Clique aqui</strong> ou arraste os PDFs</p>
           <p class="sub" style="font-size:11px;color:var(--text3);margin-top:4px">Leitura isolada • número • CNPJs • chave 44 • data • valor — <strong style="color:var(--success)">garantia de CNPJ + número</strong> (chave 44 + OCR de reforço) — sem tocar nos XMLs</p>
           <div style="margin-top:10px;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center">
-            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">📄 Múltiplos PDFs</span>
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px"><svg class="i" aria-hidden="true"><use href="#i-file"></use></svg> Múltiplos PDFs</span>
             <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">✓ Garante CNPJ + Nº</span>
-            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">⚡ 100% navegador</span>
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px"><svg class="i" aria-hidden="true"><use href="#i-bolt"></use></svg> 100% navegador</span>
           </div>
         </div>
         <div class="pdfiso-kpi" id="pdfiso-kpis" style="display:none">
@@ -647,11 +797,11 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
           <div class="kpi-card"><div class="bar" style="background:var(--info)"></div><div class="body"><div class="label">Com chave 44</div><div class="value" id="pdfiso-k-chave">0</div><div class="sub" style="font-size:10px;color:var(--text3)">validadas</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:var(--accent)"></div><div class="body"><div class="label">Com CNPJ</div><div class="value" id="pdfiso-k-cnpj">0</div><div class="sub" style="font-size:10px;color:var(--text3)">prestador</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:var(--kpi-garantia)"></div><div class="body"><div class="label">CNPJ + Nº garantidos</div><div class="value" id="pdfiso-k-garantia" style="color:var(--kpi-garantia)">0</div><div class="sub" id="pdfiso-sub-garantia" style="font-size:10px;color:var(--text3)">—</div></div></div>
-          <div class="kpi-card"><div class="bar" style="background:#8b5cf6"></div><div class="body"><div class="label">Valor total</div><div class="value" id="pdfiso-k-valor" style="font-size:18px">R$ 0,00</div><div class="sub" style="font-size:10px;color:var(--text3)">soma PDFs</div></div></div>
-          <div class="kpi-card"><div class="bar" style="background:#06b6d4"></div><div class="body"><div class="label">Conf. média</div><div class="value" id="pdfiso-k-conf" style="font-size:18px">—</div><div class="sub" style="font-size:10px;color:var(--text3)">média geral</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--primary)"></div><div class="body"><div class="label">Valor total</div><div class="value" id="pdfiso-k-valor" style="font-size:18px">R$ 0,00</div><div class="sub" style="font-size:10px;color:var(--text3)">soma PDFs</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--accent)"></div><div class="body"><div class="label">Conf. média</div><div class="value" id="pdfiso-k-conf" style="font-size:18px">—</div><div class="sub" style="font-size:10px;color:var(--text3)">média geral</div></div></div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-          <input type="text" id="pdfiso-busca" placeholder="🔍 Filtrar por arquivo, CNPJ, número ou chave..." style="flex:1;min-width:220px;padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit">
+          <input type="text" id="pdfiso-busca" placeholder="Filtrar por arquivo, CNPJ, número ou chave..." style="flex:1;min-width:220px;padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit">
           <select id="pdfiso-filtro-conf" style="padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card)"><option value="">Todas confianças</option><option value="70">Alta ≥70%</option><option value="45">Média 45-69%</option><option value="0">Baixa &lt;45%</option></select>
         </div>
         <div id="pdfiso-log"></div>
@@ -662,14 +812,14 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
     <div class="tab-content" id="tab-cnpj">
       <div style="width:100%">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;box-shadow:var(--shadow);margin-bottom:18px">
-          <h3 style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏢 Consultar CNPJ <span style="font-size:10px;font-weight:500;color:var(--text3);background:var(--surface);padding:2px 8px;border-radius:20px;border:1px solid var(--border)">publica.cnpj.ws • grátis</span></h3>
+          <h3 class="sec-title"><svg class="i" aria-hidden="true"><use href="#i-building"></use></svg> Consultar CNPJ <span class="tag">publica.cnpj.ws • grátis</span></h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
             <div style="flex:1;min-width:220px">
               <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">CNPJ (14 dígitos)</label>
               <input type="text" id="cnpj-input" placeholder="00.000.000/0000-00" maxlength="18" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:monospace;letter-spacing:.5px">
             </div>
-            <button id="cnpj-btn" class="btn btn-prim" style="padding:10px 22px;white-space:nowrap">🔍 Consultar</button>
-            <button id="cnpj-limpar" class="btn btn-sec" style="padding:10px 14px">🗑</button>
+            <button id="cnpj-btn" class="btn btn-prim" style="padding:10px 22px;white-space:nowrap">Consultar</button>
+            <button id="cnpj-limpar" class="btn btn-sec" style="padding:10px 14px" aria-label="Limpar" title="Limpar"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
           </div>
           <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
             <span style="font-size:10px;color:var(--text3)">Enter para consultar • cache local automático</span>
@@ -679,13 +829,13 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         <div id="cnpj-result" style="display:none"></div>
         <pre id="cnpj-raw" style="display:none;background:#1e293b;color:#cbd5e1;border-radius:var(--radius);padding:14px;font-family:'Cascadia Code',monospace;font-size:11px;max-height:300px;overflow:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,.06);margin-top:12px"></pre>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-top:18px">
-          <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📊 Consulta em Lote (planilha)</h4>
+          <h4 class="sec-title tight"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg> Consulta em Lote (planilha)</h4>
           <p style="font-size:11px;color:var(--text2);margin-bottom:12px">Importe XLSX/CSV com coluna <strong>CNPJ</strong> — respeita <strong>3/min</strong> (20s entre requisições) • cache automático</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <input type="file" id="cnpj-lote-file" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);font-size:12px">
-            <button id="cnpj-lote-start" class="btn btn-ok" disabled style="white-space:nowrap">▶ Iniciar lote</button>
-            <button id="cnpj-lote-stop" class="btn btn-sec" disabled style="white-space:nowrap">⏹ Parar</button>
-            <button id="cnpj-lote-export" class="btn btn-prim" disabled style="white-space:nowrap">⬇ Exportar lote</button>
+            <button id="cnpj-lote-start" class="btn btn-ok" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg> Iniciar lote</button>
+            <button id="cnpj-lote-stop" class="btn btn-sec" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-stop"></use></svg> Parar</button>
+            <button id="cnpj-lote-export" class="btn btn-prim" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Exportar lote</button>
           </div>
           <div id="cnpj-lote-bar" style="height:6px;background:var(--border-light);border-radius:6px;margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
           <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap"><span id="cnpj-lote-info">—</span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
@@ -700,19 +850,19 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         <p style="margin-bottom:20px;color:var(--text2);text-align:center">Escolha o formato para cada tipo de documento:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
-            <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📦 NF-e (Produtos)</h4>
+            <h4 class="sec-title tight"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg> NF-e (Produtos)</h4>
             <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de produtos — itens e tributos</p>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-prim" onclick="exportCSV('nfe')" style="flex:1">⬇ CSV</button>
-              <button class="btn btn-ok" onclick="exportXLSX('nfe')" style="flex:1">⬇ Excel</button>
+              <button class="btn btn-prim" onclick="exportCSV('nfe')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> CSV</button>
+              <button class="btn btn-ok" onclick="exportXLSX('nfe')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
             </div>
           </div>
           <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
-            <h4 style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px">📋 NFS-e (Serviços)</h4>
+            <h4 class="sec-title tight"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg> NFS-e (Serviços)</h4>
             <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de serviços — valores e retenções</p>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-prim" onclick="exportCSV('nfse')" style="flex:1">⬇ CSV</button>
-              <button class="btn btn-ok" onclick="exportXLSX('nfse')" style="flex:1">⬇ Excel</button>
+              <button class="btn btn-prim" onclick="exportCSV('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> CSV</button>
+              <button class="btn btn-ok" onclick="exportXLSX('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
             </div>
           </div>
         </div>
@@ -991,7 +1141,7 @@ function detectType(texto){return(/CompNFe|<NFSe|infNFSe|nNFSe/i).test(texto.sli
 function logHTML(texto,tipo){
   const el=document.getElementById('import-log');
   const d=document.createElement('div');d.textContent=texto;
-  const cores={err:'#e74c3c',ok:'#2ecc71',nfe:'#5dade2',nfse:'#f5b942',brd:'#2c3e50',info:'#95a5a6'};
+  const cores={err:'#f87171',ok:'#2ecc71',nfe:'#5dade2',nfse:'#f5b942',brd:'#2c3e50',info:'#95a5a6'};
   d.style.color=cores[tipo]||'#d5d8dc';
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
@@ -1007,7 +1157,7 @@ async function handleFiles(files){
 
   const arr=Array.from(files);
   msg.textContent=`Processando ${arr.length} arquivo(s)...`;
-  logHTML(`📁 ${arr.length} arquivo(s) selecionados`,'info');
+  logHTML(`${arr.length} arquivo(s) selecionados`,'info');
   logHTML('','brd');
 
   let nfeTotal=0,nfseTotal=0,errCount=0;
@@ -1025,17 +1175,17 @@ async function handleFiles(files){
         if(r.ok&&r.notas&&r.notas.length){
           novosNFSE.push(...r.notas);nfseTotal+=r.notas.length;
           logHTML(`  [${i+1}/${arr.length}] [NFS-e] ${(file.name||'').slice(0,48).padEnd(48)} ${r.notas.length} nota(s)  [${(r.msg||'').slice(0,30)}]`,'nfse');
-        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NFS-e] ⚠ ${(file.name||'').slice(0,48)}  →  ${(r.msg||'erro').slice(0,50)}`,'err');}
+        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NFS-e] ${(file.name||'').slice(0,48)} - ${(r.msg||'erro').slice(0,50)}`,'err');}
       }else{
         const r=extrairNFE(file.name,texto);
         if(r.ok&&r.produtos&&r.produtos.length){
           novosNFE.push(...r.produtos);nfeTotal+=r.produtos.length;
           logHTML(`  [${i+1}/${arr.length}] [NF-e]  ${(file.name||'').slice(0,48).padEnd(48)} ${r.produtos.length} produto(s)  [${(r.msg||'').slice(0,30)}]`,'nfe');
-        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NF-e]  ⚠ ${(file.name||'').slice(0,48)}  →  ${(r.msg||'erro').slice(0,50)}`,'err');}
+        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [NF-e]  ${(file.name||'').slice(0,48)} - ${(r.msg||'erro').slice(0,50)}`,'err');}
       }
     }catch(e){
       errCount++;const emsg=e.message||String(e);
-      logHTML(`  [${i+1}/${arr.length}] ⚠ ${(file.name||'').slice(0,48)}  →  ${emsg.slice(0,80)}`,'err');
+      logHTML(`  [${i+1}/${arr.length}] ${(file.name||'').slice(0,48)} - ${emsg.slice(0,80)}`,'err');
       console.error(`ERRO ${file.name}:`,e);
     }
   }
@@ -1046,9 +1196,9 @@ async function handleFiles(files){
   const ck2=new Set();DB.nfse=DB.nfse.filter(n=>{const k=n.Chave_NFSe||n.Numero_NFSe||JSON.stringify(n);if(ck2.has(k))return false;ck2.add(k);return true;});
 
   logHTML('','brd');
-  logHTML(`✅ Processados ${arr.length} arquivo(s) — ${novosNFE.length} produtos NF-e, ${novosNFSE.length} notas NFS-e${errCount?` (${errCount} erro(s))`:''}`,'ok');
+  logHTML(`Processados ${arr.length} arquivo(s) — ${novosNFE.length} produtos NF-e, ${novosNFSE.length} notas NFS-e${errCount?` (${errCount} erro(s))`:''}`,'ok');
   if(errCount&&!novosNFE.length&&!novosNFSE.length){
-    errb.textContent='⚠ Nenhum XML foi processado. Verifique o console (F12 > Console) para detalhes do erro.';
+    errb.textContent='Erro: Nenhum XML foi processado. Verifique o console (F12 > Console) para detalhes do erro.';
     errb.style.display='block';
   }
   updateStatus();populateFilters();
@@ -1137,9 +1287,9 @@ function nfeItemDetalhe(p){
     <td>${p.qCom||'—'}</td><td>${p.uCom||'—'}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
     <td>${p.indEscala||'—'}</td><td>${p.nFCI||'—'}</td>
   </tr>
-  <tr style="background:#f0f4f8!important"><td colspan="13" style="padding:4px 6px">
+  <tr style="background:var(--card-2)!important"><td colspan="13" style="padding:4px 6px">
     <div class="det-section">
-      <div class="det-title" style="cursor:pointer">💰 Financeiro do Item</div>
+      <div class="det-title" style="cursor:pointer">Financeiro do Item</div>
       <div class="det-body">
         <table><thead><tr><th>V.Produto</th><th>Desconto</th><th>Frete</th><th>Seguro</th><th>Outras Desp.</th><th>V.Líquido Item</th></tr></thead><tbody><tr>
           <td><strong>${moeda(p.vProd)}</strong></td>
@@ -1153,23 +1303,23 @@ function nfeItemDetalhe(p){
       </div>
     </div>
     ${icms?`<div class="det-section">
-      <div class="det-title" style="cursor:pointer">📊 ICMS — Detalhamento completo</div>
+      <div class="det-title" style="cursor:pointer">ICMS — Detalhamento completo</div>
       <div class="det-body">${icms}</div>
     </div>`:''}
     ${ipi?`<div class="det-section">
-      <div class="det-title" style="cursor:pointer">🏷 IPI — Detalhamento</div>
+      <div class="det-title" style="cursor:pointer">IPI — Detalhamento</div>
       <div class="det-body">${ipi}</div>
     </div>`:''}
     ${pis?`<div class="det-section">
-      <div class="det-title" style="cursor:pointer">📋 PIS — Detalhamento</div>
+      <div class="det-title" style="cursor:pointer">PIS — Detalhamento</div>
       <div class="det-body">${pis}</div>
     </div>`:''}
     ${cofins?`<div class="det-section">
-      <div class="det-title" style="cursor:pointer">📋 COFINS — Detalhamento</div>
+      <div class="det-title" style="cursor:pointer">COFINS — Detalhamento</div>
       <div class="det-body">${cofins}</div>
     </div>`:''}
     ${ibs?`<div class="det-section">
-      <div class="det-title" style="cursor:pointer">🔄 IBS/CBS — Detalhamento (Reforma Tributária)</div>
+      <div class="det-title" style="cursor:pointer">IBS/CBS — Detalhamento (Reforma Tributária)</div>
       <div class="det-body">${ibs}</div>
     </div>`:''}
   </td></tr>`;
@@ -1184,7 +1334,7 @@ function renderNFE(){
   if(filtro)d=d.filter(p=>Object.values(p).some(v=>String(v).toLowerCase().includes(filtro)));
   if(fc)d=d.filter(p=>p.CNPJ_Emitente===fc);
   document.getElementById('nfe-count').textContent=`${d.length} registro(s)`;
-  if(!d.length){c.innerHTML='<div class="empty-state"><div class="icon">📦</div><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
+  if(!d.length){c.innerHTML='<div class="empty-state"><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
   const grp={};for(const p of d){const k=p.Chave_NFe||'?';if(!grp[k])grp[k]={info:p,itens:[]};grp[k].itens.push(p);}
   let html='';
   for(const [chave,g] of Object.entries(grp)){
@@ -1203,7 +1353,7 @@ function renderNFE(){
     const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS','IBS','CBS','BC ST','ICMS ST'];
     html+=`<div class="nota-card">
       <div class="header" style="cursor:pointer">
-        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✕ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
+        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✗ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
         <span style="font-size:10px;opacity:.7">${dataBr(n.Data_Emissao)} <span class="toggle">▼</span></span>
       </div>
       <div class="body-detail">
@@ -1232,9 +1382,9 @@ function renderNFE(){
           <span><strong>Mod:</strong> ${n.Mod_NFe||'-'}</span>
           <span><strong>TpNF:</strong> ${n.Tp_NF||'-'}</span>
         </div>
-        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
+        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
         ${totLinhas.length?`<div class="det-section">
-          <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--text)">💰 RESUMO FINANCEIRO DA NOTA</div>
+          <div class="det-title" style="cursor:pointer;font-weight:700;color:var(--text)">RESUMO FINANCEIRO DA NOTA</div>
           <div class="det-body open">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:6px;font-size:11px">
               <div><span style="color:var(--text2)">Produtos</span><br><strong>${moeda(tProd)}</strong></div>
@@ -1274,7 +1424,7 @@ function renderNFSe(){
   if(filtro)d=d.filter(n=>Object.values(n).some(v=>String(v).toLowerCase().includes(filtro)));
   if(fc)d=d.filter(n=>n.CNPJ_Prestador===fc);
   document.getElementById('nfse-count').textContent=`${d.length} registro(s)`;
-  if(!d.length){c.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
+  if(!d.length){c.innerHTML='<div class="empty-state"><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
   c.innerHTML=d.map(n=>`<div class="nota-card">
     <div class="header" style="cursor:pointer">
       <span class="info"><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="badge">${n.Formato||'?'}</span></span>
@@ -1329,7 +1479,7 @@ function renderNFSe(){
         </div>
       </div>
       <div class="det-section">
-        <div class="det-title" style="cursor:pointer">📋 CSRF — Pis/COFINS/CSLL/IRRF/INSS</div>
+        <div class="det-title" style="cursor:pointer">CSRF — Pis/COFINS/CSLL/IRRF/INSS</div>
         <div class="det-body">
           <table><thead><tr><th>BC CSRF</th><th>V.PIS Ret.</th><th>V.COFINS Ret.</th><th>V.CSLL Ret.</th><th>BC IRRF</th><th>V.IRRF Ret.</th><th>BC INSS</th><th>V.INSS Ret.</th></tr></thead><tbody><tr>
             <td>${moeda(n.BC_CSRF)}</td><td>${moeda(n.Valor_PIS)}</td><td>${moeda(n.Valor_COFINS)}</td><td>${moeda(n.Valor_CSLL)}</td>
@@ -1338,7 +1488,7 @@ function renderNFSe(){
         </div>
       </div>
       <div class="det-section">
-        <div class="det-title" style="cursor:pointer">🔄 IBS/CBS (Reforma Tributária)</div>
+        <div class="det-title" style="cursor:pointer">IBS/CBS (Reforma Tributária)</div>
         <div class="det-body">
           <table><thead><tr><th>BC IBS/CBS</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>Alíq.CBS</th><th>V.CBS</th><th>Class.Trib.</th></tr></thead><tbody><tr>
             <td>${moeda(n.IBS_vBC)}</td><td>${pct(n.IBS_pIBSUF)}</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${pct(n.IBS_pIBSMun)}</td><td>${moeda(n.IBS_vIBSMun)}</td>
@@ -1361,7 +1511,7 @@ function renderNFSe(){
           <div class="row"><span class="lbl">INSS:</span><span>${moeda(n.Valor_INSS)}</span></div>
         </div>
       </div>
-      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:#f7f9fc;border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
+      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
       <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${n.Arquivo_Origem||'-'}</div>
     </div>
   </div>`).join('');
@@ -1410,8 +1560,8 @@ function renderDashboard(){
     <div class="dash-card"><h4>ISS por Prestador</h4><div class="chart-wrap"><canvas id="c6"></canvas></div></div>
   `;
   const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9}}}}};
-  function pie(id,labels,data){if(data.some(v=>v>0))dashCharts[id]=new Chart(document.getElementById(id),{type:'pie',data:{labels,datasets:[{data,backgroundColor:['#2980b9','#e67e22','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:opts});}
-  function bar(id,labels,data,label,formatter){if(data.length)dashCharts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{label,data,backgroundColor:['#2980b9','#e67e22','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{font:{size:9},callback:formatter||(v=>v)}},x:{ticks:{font:{size:8}}}},plugins:{legend:{display:false}}}});}
+  function pie(id,labels,data){if(data.some(v=>v>0))dashCharts[id]=new Chart(document.getElementById(id),{type:'pie',data:{labels,datasets:[{data,backgroundColor:['#2980b9','#e67e22','#27ae60','#be185d','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:opts});}
+  function bar(id,labels,data,label,formatter){if(data.length)dashCharts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{label,data,backgroundColor:['#2980b9','#e67e22','#27ae60','#be185d','#c0392b','#16a085','#d35400','#1a5276','#7d6608','#117a65']}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{font:{size:9},callback:formatter||(v=>v)}},x:{ticks:{font:{size:8}}}},plugins:{legend:{display:false}}}});}
   const d1=[];if(qN)d1.push('NFS-e',qN);if(qF)d1.push('NF-e',qF);
   pie('c1',d1.filter((_,i)=>i%2===0),d1.filter((_,i)=>i%2===1));
   const mISS={'1':'Próprio','2':'Retido','':'N/I'};const cISS={};
@@ -1780,18 +1930,18 @@ document.getElementById('baixar').addEventListener('click', async () => {
         <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
         <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
         <td style="font-size:11px;white-space:nowrap">${r.protocolo?r.protocolo.slice(-8):'—'}</td>
-        <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px" aria-label="Ver texto extraído da nota" title="Ver texto extraído">🔍</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px" aria-label="Copiar dados da nota" title="Copiar dados">⎘</a></td>
+        <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px" aria-label="Ver texto extraído da nota" title="Ver texto extraído">detalhar</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px" aria-label="Copiar dados da nota" title="Copiar dados">copiar</a></td>
       </tr>`;
     }).join('');
     const table=lista.length?`<div class="table-wrap"><table><thead><tr><th>Nº</th><th>Garantia</th><th>Série</th><th>Chave 44</th><th>CNPJ Emit.</th><th>Emitente</th><th>CNPJ Dest.</th><th>Data</th><th>Total</th><th>Protocolo</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
-    const empty=lista.length===0?`<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado para o filtro.</p></div>`:'';
+    const empty=lista.length===0?`<div class="empty-state"><p>Nenhum resultado para o filtro.</p></div>`:'';
     const pend=DBpdf.filter(r=>!r.completo);
     const dvErr=DBpdf.filter(r=>r.completo&&r.cnpjValido===false);
     const avisos=[];
-    if(pend.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--err-bg);border:1px solid var(--err);border-radius:var(--radius);color:var(--err-ink);font-size:11px;font-weight:600">⚠ ${pend.length} de ${DBpdf.length} PDF(s) <strong>sem CNPJ e/ou número garantido</strong>: ${pend.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${pend.length>6?' e mais '+(pend.length-6):''} — clique em 🔍 para ver o texto extraído.</div>`);
-    if(dvErr.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:11px;font-weight:600">⚠ ${dvErr.length} PDF(s) com CNPJ de <strong>dígito verificador inválido</strong> (possível leitura errada): ${dvErr.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${dvErr.length>6?' e mais '+(dvErr.length-6):''}</div>`);
+    if(pend.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--err-bg);border:1px solid var(--err);border-radius:var(--radius);color:var(--err-ink);font-size:11px;font-weight:600">Atenção: ${pend.length} de ${DBpdf.length} PDF(s) <strong>sem CNPJ e/ou número garantido</strong>: ${pend.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${pend.length>6?' e mais '+(pend.length-6):''} — clique em "detalhar" para ver o texto extraído.</div>`);
+    if(dvErr.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:11px;font-weight:600">Atenção: ${dvErr.length} PDF(s) com CNPJ de <strong>dígito verificador inválido</strong> (possível leitura errada): ${dvErr.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${dvErr.length>6?' e mais '+(dvErr.length-6):''}</div>`);
     const aviso=avisos.join('');
-    resEl.innerHTML=`${aviso}<div class="filter-bar"><span class="count">${lista.length}/${DBpdf.length} PDF(s) ${fTxt.txt||fTxt.conf!==''? '• filtrado':''}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ok" style="padding:6px 12px;font-size:11px" id="pdfiso-csv">⬇ Exportar Excel</button><button class="btn btn-sec" style="padding:6px 10px;font-size:11px" id="pdfiso-clear">🗑 Limpar</button></span></div>${table}${empty}<div id="pdfiso-debug" style="display:none;margin-top:10px;padding:14px;background:#1e293b;color:#cbd5e1;font-family:'Cascadia Code',monospace;font-size:11px;white-space:pre-wrap;max-height:280px;overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06)"></div>`;
+    resEl.innerHTML=`${aviso}<div class="filter-bar"><span class="count">${lista.length}/${DBpdf.length} PDF(s) ${fTxt.txt||fTxt.conf!==''? '• filtrado':''}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ok" style="padding:6px 12px;font-size:11px" id="pdfiso-csv">Exportar Excel</button><button class="btn btn-sec" style="padding:6px 10px;font-size:11px" id="pdfiso-clear">Limpar</button></span></div>${table}${empty}<div id="pdfiso-debug" style="display:none;margin-top:10px;padding:14px;background:#1e293b;color:#cbd5e1;font-family:'Cascadia Code',monospace;font-size:11px;white-space:pre-wrap;max-height:280px;overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06)"></div>`;
     document.getElementById('pdfiso-csv').onclick=()=>{
       const header=['Arquivo','Numero','Serie','DataEmissao','DataSaida','Vencimento','CNPJ_Prestador','Nome_Prestador','IE_Emitente','Endereco','Municipio','UF','CEP','CNPJ_Tomador','Nome_Tomador','Chave','ChaveValida','NatOp','Protocolo','BaseICMS','ValorICMS','BaseST','ValorST','ValorProdutos','Frete','Seguro','Despesas','ValorIPI','ValorTotal','Valor','ConfMedio','NumeroConf','ChaveConf','CnpjConf','Garantia','NumeroOk','CNPJ_Ok','CNPJ_Fonte','Numero_Ancora','OCR_Reforco'];
       if(window.XLSX){
@@ -1811,21 +1961,21 @@ document.getElementById('baixar').addEventListener('click', async () => {
       dbg.scrollTop=0;
     }));
     resEl.querySelectorAll('.pdfiso-copy').forEach(a=>a.addEventListener('click',e=>{
-      e.preventDefault();const r=DBpdf[+e.target.dataset.copy];navigator.clipboard.writeText(`${r.numero};${r.cnpjPrestador};${r.chave}`);e.target.textContent='✓ copiado';setTimeout(()=>e.target.textContent='⎘ copiar',1200);
+      e.preventDefault();const r=DBpdf[+e.target.dataset.copy];navigator.clipboard.writeText(`${r.numero};${r.cnpjPrestador};${r.chave}`);e.target.textContent='✓ copiado';setTimeout(()=>e.target.textContent='copiar',1200);
     }));
   }
   async function handlePDFs(files){
-    const arr=Array.from(files); isoLog(`📁 ${arr.length} PDF(s) — lendo...`,'#fbbf24');
+    const arr=Array.from(files); isoLog(`${arr.length} PDF(s) — lendo...`,'#fbbf24');
     const overlay=document.getElementById('loading-overlay'); const msg=document.getElementById('loading-msg');
     overlay.classList.add('active');
     for(let i=0;i<arr.length;i++){
       const f=arr[i]; msg.textContent=`[${i+1}/${arr.length}] ${f.name}`; isoLog(`[${i+1}/${arr.length}] ${f.name}...`,'#94a3b8');
-      try{ const r=await window.ModPDFIsolado.extrair(f); DBpdf.push(r); isoLog(` → ${r.numeroGarantido?'✓':'✗'} nº:${r.numero||'—'} | ${r.cnpjGarantido?'✓':'✗'} cnpj:${r.cnpjPrestador||'—'}${r.cnpjFonte?' ('+r.cnpjFonte+')':''} | ${r.data||'-'} | R$${r.valor||'-'} | conf:${r.confMedio}%${r.completo?'':' ⚠ '+r.garantia}${r.ocrReforco?' | 🔤 OCR reforço':''}`, r.completo?'#2ecc71':'#e74c3c'); }catch(e){ isoLog(` ✗ ${f.name}: ${e.message}`,'#ef4444'); }
+      try{ const r=await window.ModPDFIsolado.extrair(f); DBpdf.push(r); isoLog(` - ${r.numeroGarantido?'✓':'✗'} nº:${r.numero||'—'} | ${r.cnpjGarantido?'✓':'✗'} cnpj:${r.cnpjPrestador||'—'}${r.cnpjFonte?' ('+r.cnpjFonte+')':''} | ${r.data||'-'} | R$${r.valor||'-'} | conf:${r.confMedio}%${r.completo?'':' atenção: '+r.garantia}${r.ocrReforco?' | OCR reforço':''}`, r.completo?'#2ecc71':'#f87171'); }catch(e){ isoLog(` ✗ ${f.name}: ${e.message}`,'#f87171'); }
     }
     overlay.classList.remove('active'); isoRender();
     const pend=DBpdf.filter(r=>!r.completo).length;
     const dvErr=DBpdf.filter(r=>r.completo&&r.cnpjValido===false).length;
-    isoLog(pend? `⚠ ${DBpdf.length} PDF(s) lidos — ${pend} SEM CNPJ e/ou número (ver aviso acima)` : dvErr? `✅ ${DBpdf.length} PDF(s) — CNPJ e número presentes, mas ${dvErr} com DV inválido (verifique)` : `✅ ${DBpdf.length} PDF(s) — CNPJ e número garantidos em todos`, (pend||dvErr)?'#f59e0b':'#2ecc71');
+    isoLog(pend? `Atenção: ${DBpdf.length} PDF(s) lidos — ${pend} SEM CNPJ e/ou número (ver aviso acima)` : dvErr? `${DBpdf.length} PDF(s) — CNPJ e número presentes, mas ${dvErr} com DV inválido (verifique)` : `${DBpdf.length} PDF(s) — CNPJ e número garantidos em todos`, (pend||dvErr)?'#f59e0b':'#2ecc71');
   }
   const input=document.createElement('input'); input.type='file'; input.accept='.pdf'; input.multiple=true; input.style.display='none'; document.body.appendChild(input);
   input.addEventListener('change',()=>{ if(input.files.length) handlePDFs(input.files); input.value=''; });
@@ -1855,11 +2005,11 @@ document.getElementById('baixar').addEventListener('click', async () => {
   inp?.addEventListener('input',e=>{let v=d(e.target.value);if(v.length>14) v=v.slice(0,14);let f=v;if(v.length>12) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');else if(v.length>8) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d+)/,'$1.$2.$3/$4');else if(v.length>5) f=v.replace(/(\d{2})(\d{3})(\d+)/,'$1.$2.$3');else if(v.length>2) f=v.replace(/(\d{2})(\d+)/,'$1.$2');e.target.value=f;});
   async function consultar(){
     const c=d(inp.value);
-    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);color:#991b1b;font-size:12px">⚠ CNPJ deve ter 14 dígitos</div>`;return;}
+    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
     const cacheKey='cnpj_'+c;
     const cached=localStorage.getItem(cacheKey);
     if(cached){try{render(JSON.parse(cached),true);return;}catch(e){}}
-    btn.disabled=true; btn.textContent='⏳ Consultando...'; st.textContent='consultando publica.cnpj.ws...'; st.style.color='var(--text3)';
+    btn.disabled=true; btn.textContent='Consultando...'; st.textContent='consultando publica.cnpj.ws...'; st.style.color='var(--text3)';
     try{
       const r=await fetch(API+c, {headers:{'Accept':'application/json'}});
       if(!r.ok) throw new Error('HTTP '+r.status+' — CNPJ não encontrado');
@@ -1869,9 +2019,9 @@ document.getElementById('baixar').addEventListener('click', async () => {
       st.textContent='✓ OK'; st.style.color='var(--success)';
     }catch(e){
       res.style.display='block';
-      res.innerHTML=`<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);color:#991b1b;font-size:12px">✗ ${e.message}</div>`;
+      res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ ${e.message}</div>`;
       st.textContent='✗ erro'; st.style.color='var(--err)';
-    }finally{btn.disabled=false; btn.textContent='🔍 Consultar';}
+    }finally{btn.disabled=false; btn.textContent='Consultar';}
   }
   function render(dados,cached){
     const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
@@ -1879,7 +2029,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const texto=renderTexto(dados,c);
     res.style.display='block';
     res.innerHTML=`
-      <div class="nota-card"><div class="header"><span class="info"><strong>🏢 ${dados.razao_social||'—'}</strong> <span class="badge">${fmtCnpj(c)}</span> ${cached?'<span class="badge" style="background:rgba(255,255,255,.2)">cache</span>':''}</span><span style="font-size:10px;opacity:.8">${porte.descricao||''}</span></div>
+      <div class="nota-card"><div class="header"><span class="info"><strong>${dados.razao_social||'—'}</strong> <span class="badge">${fmtCnpj(c)}</span> ${cached?'<span class="badge" style="background:rgba(255,255,255,.2)">cache</span>':''}</span><span style="font-size:10px;opacity:.8">${porte.descricao||''}</span></div>
       <div class="body-detail open" style="display:block;padding:0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
           <div style="padding:18px;border-right:1px solid var(--border-light)">
@@ -1896,9 +2046,9 @@ document.getElementById('baixar').addEventListener('click', async () => {
           </div>
         </div>
         <div style="padding:0 18px 18px">
-          <div class="det-section"><div class="det-title">👥 Sócios (${(dados.socios||[]).length}) — com faixa etária e qualificação</div><div class="det-body" style="display:block"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:220px;overflow:auto">${fmtSocios(dados.socios||[])||'—'}</pre></div></div>
-          <div class="det-section"><div class="det-title">📄 Texto completo (igual tkinter)</div><div class="det-body"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:320px;overflow:auto">${texto}</pre></div></div>
-          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText('${fmtCnpj(c)}');this.textContent='✓ copiado';setTimeout(()=>this.textContent='⎘ CNPJ',1200)">⎘ CNPJ</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText(document.querySelector('#cnpj-result pre:last-of-type').textContent);this.textContent='✓ texto copiado';setTimeout(()=>this.textContent='⎘ copiar texto',1200)">⎘ copiar texto</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="document.getElementById('cnpj-raw').style.display=document.getElementById('cnpj-raw').style.display==='none'?'block':'none'">{} JSON</button></div>
+          <div class="det-section"><div class="det-title">Sócios (${(dados.socios||[]).length}) — com faixa etária e qualificação</div><div class="det-body" style="display:block"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:220px;overflow:auto">${fmtSocios(dados.socios||[])||'—'}</pre></div></div>
+          <div class="det-section"><div class="det-title">Texto completo (igual tkinter)</div><div class="det-body"><pre style="font-family:'Cascadia Code',monospace;font-size:10px;white-space:pre-wrap;background:var(--surface);padding:10px;border-radius:6px;border:1px solid var(--border-light);max-height:320px;overflow:auto">${texto}</pre></div></div>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText('${fmtCnpj(c)}');this.textContent='✓ copiado';setTimeout(()=>this.textContent='CNPJ',1200)">CNPJ</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="navigator.clipboard.writeText(document.querySelector('#cnpj-result pre:last-of-type').textContent);this.textContent='✓ texto copiado';setTimeout(()=>this.textContent='copiar texto',1200)">copiar texto</button><button class="btn btn-sec" style="font-size:10px;padding:4px 8px" onclick="document.getElementById('cnpj-raw').style.display=document.getElementById('cnpj-raw').style.display==='none'?'block':'none'">{} JSON</button></div>
         </div>
       </div></div>`;
     raw.textContent=JSON.stringify(dados,null,2);
@@ -1939,15 +2089,15 @@ document.getElementById('baixar').addEventListener('click', async () => {
         lista=cnpjs; resultados=[];
         info.textContent=`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`;
         eta.textContent=cnpjs.length?`ETA ~${Math.ceil(cnpjs.length/3)} min`:''; 
-        loteLog(`📄 ${cnpjs.length} CNPJ(s) — pronto para iniciar`,'#fbbf24');
+        loteLog(`${cnpjs.length} CNPJ(s) — pronto para iniciar`,'#fbbf24');
         start.disabled=cnpjs.length===0; exp.disabled=true; tbl.innerHTML=''; logEl.innerHTML='';
-      }catch(e){ loteLog('✗ Erro ao ler planilha: '+e.message,'#ef4444');}
+      }catch(e){ loteLog('✗ Erro ao ler planilha: '+e.message,'#f87171');}
     });
     async function step(){
       if(abort||idx>=lista.length){
         clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true;
-        barIn.style.width='100%'; info.textContent=`✅ Concluído — ${resultados.filter(r=>r.ok).length}/${lista.length} OK`;
-        eta.textContent=''; exp.disabled=resultados.length===0; loteLog(`✅ Lote concluído`,'#2ecc71'); return;
+        barIn.style.width='100%'; info.textContent=`Concluído — ${resultados.filter(r=>r.ok).length}/${lista.length} OK`;
+        eta.textContent=''; exp.disabled=resultados.length===0; loteLog(`Lote concluído`,'#2ecc71'); return;
       }
       const c=lista[idx];
       const cached=localStorage.getItem('cnpj_'+c);
@@ -1963,7 +2113,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
         loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,'#2ecc71');
       }catch(e){
         resultados.push({cnpj:c, razao:'', fantasia:'', uf:'', situacao:'', ie:'', ok:false, msg:e.message});
-        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,'#ef4444');
+        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,'#f87171');
       }
       idx++; barIn.style.width=Math.round(idx/lista.length*100)+'%'; info.textContent=`${idx}/${lista.length}`; const rem=lista.length-idx; eta.textContent=rem?`faltam ~${Math.ceil(rem/3)} min`:''; renderLote();
     }
@@ -1971,10 +2121,10 @@ document.getElementById('baixar').addEventListener('click', async () => {
       if(!lista.length) return;
       resultados=[]; idx=0; abort=false; logEl.innerHTML=''; bar.style.display='block'; barIn.style.width='0%';
       start.disabled=true; stop.disabled=false; exp.disabled=true;
-      loteLog(`▶ Iniciando lote 3/min — ${lista.length} CNPJ(s)`,'#fbbf24');
+      loteLog(`Iniciando lote 3/min — ${lista.length} CNPJ(s)`,'#fbbf24');
       step(); timer=setInterval(step,20000);
     });
-    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('⏹ Parado pelo usuário','#f59e0b');});
+    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('Parado pelo usuário','#f59e0b');});
     exp?.addEventListener('click',()=>{
       if(!resultados.length) return;
       const header=['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs'];
@@ -1982,6 +2132,42 @@ document.getElementById('baixar').addEventListener('click', async () => {
       const ws=XLSX.utils.aoa_to_sheet([header,...rows]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lote'); XLSX.writeFile(wb,`cnpj_lote_${Date.now()}.xlsx`);
     });
   })();
+})();
+</script>
+<script>
+(function(){
+  var root=document.documentElement;
+  var btn=document.getElementById('theme-btn');
+  function isDark(){return root.getAttribute('data-theme')==='dark';}
+  function recolorCharts(dark){
+    if(typeof Chart==='undefined')return;
+    Chart.defaults.color=dark?'#94a3b8':'#64748b';
+    Chart.defaults.borderColor=dark?'rgba(255,255,255,.08)':'rgba(15,23,42,.08)';
+    var tip=Chart.defaults.plugins&&Chart.defaults.plugins.tooltip;
+    if(tip){tip.backgroundColor=dark?'#161d2c':'#ffffff';tip.titleColor=dark?'#e5eaf2':'#0f172a';tip.bodyColor=dark?'#9aa7ba':'#64748b';tip.borderColor=dark?'#27324a':'#e2e8f0';tip.borderWidth=1;}
+    var dash=document.getElementById('tab-dashboard');
+    if(!dash||!dash.classList.contains('active'))return;
+    if(typeof dashCharts==='undefined'||!dashCharts)return;
+    Object.keys(dashCharts).forEach(function(k){
+      var c=dashCharts[k];if(!c||!c.options)return;
+      try{
+        var o=c.options;
+        if(o.plugins&&o.plugins.legend&&o.plugins.legend.labels)o.plugins.legend.labels.color=dark?'#e5eaf2':'#0f172a';
+        if(o.plugins&&o.plugins.tooltip){var t=o.plugins.tooltip;t.backgroundColor=dark?'#161d2c':'#ffffff';t.titleColor=dark?'#e5eaf2':'#0f172a';t.bodyColor=dark?'#9aa7ba':'#64748b';t.borderColor=dark?'#27324a':'#e2e8f0';t.borderWidth=1;}
+        if(o.scales){Object.keys(o.scales).forEach(function(sk){var s=o.scales[sk];if(!s)return;s.ticks=s.ticks||{};s.ticks.color=dark?'#94a3b8':'#64748b';s.grid=s.grid||{};s.grid.color=dark?'rgba(255,255,255,.08)':'rgba(15,23,42,.08)';});}
+        c.update('none');
+      }catch(e){}
+    });
+  }
+  function applyTheme(dark){
+    if(dark)root.setAttribute('data-theme','dark');else root.removeAttribute('data-theme');
+    try{localStorage.setItem('gcon-theme',dark?'dark':'light');}catch(e){}
+    if(btn){btn.setAttribute('aria-pressed',dark?'true':'false');btn.setAttribute('title',dark?'Modo claro':'Modo escuro');}
+    recolorCharts(dark);
+  }
+  if(btn){btn.setAttribute('aria-pressed',isDark()?'true':'false');btn.addEventListener('click',function(){applyTheme(!isDark());});}
+  var cur=document.getElementById('crumb-cur');
+  if(cur){document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){var s=b.lastElementChild;if(s&&s.textContent)cur.textContent=s.textContent.trim();});});}
 })();
 </script>
 </body>
