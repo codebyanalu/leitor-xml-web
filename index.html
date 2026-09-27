@@ -42,75 +42,315 @@ function d(s){return(s||'').replace(/\D/g,'');}
 function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
 function vH(ch){ch=d(ch);if(ch.length!==44)return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
 async function tC(file){const buf=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:buf}).promise;let full="";const items=[];for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p);const ct=await page.getTextContent();const pageItems=[];for(const it of ct.items){if(!it.str.trim())continue;pageItems.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});items.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});}pageItems.sort((a,b)=>{const dy=b.y-a.y;if(Math.abs(dy)>4)return dy;return a.x-b.x;});for(const it of pageItems)full+=it.str+" ";full+="\n";}await doc.destroy();return{full,items};}
-function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:99,valida:true};}}let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:vH(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(vH(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:vH(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};return{valor:"",conf:0,valida:false};}
+function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:99,valida:true};}}const runsRep=[...full.matchAll(/\d(?:[\s\.\-]*\d){28,}/g)].map(x=>d(x[0])).filter(x=>x.length>=40&&x.length<=46);for(const dig of runsRep){const c=reparaChave(dig);if(c)return{valor:c,conf:88,valida:true};}let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:vH(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(vH(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:vH(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};
+return{valor:"",conf:0,valida:false};}
+function reparaChave(dig){
+  const ok=(c)=>vH(c)&&vC(c.slice(6,20));
+  if(ok(dig))return dig;
+  const porFim=(base,k)=>{let r=null;const rec=(cur)=>{if(r)return;if(cur.length===44){if(ok(cur))r=cur;return;}for(let x=0;x<10;x++){rec(cur+x);}};rec(base);return r;};
+  const porIni=(base,k)=>{let r=null;const rec=(cur)=>{if(r)return;if(cur.length===44){if(ok(cur))r=cur;return;}for(let x=0;x<10;x++){rec(x+cur);}};rec(base);return r;};
+  if(dig.length>=40&&dig.length<44){
+    const k=44-dig.length;
+    const a=porFim(dig,k);if(a)return a;
+    const b=porIni(dig,k);if(b)return b;
+    if(k===1){for(let pos=1;pos<dig.length;pos++){for(let x=0;x<10;x++){const t=dig.slice(0,pos)+x+dig.slice(pos);if(ok(t))return t;}}}
+    if(k===2){for(let p1=1;p1<dig.length;p1++){for(let x=0;x<10;x++){const A=dig.slice(0,p1)+x+dig.slice(p1);for(let p2=p1+1;p2<A.length;p2++){for(let y=0;y<10;y++){const t=A.slice(0,p2)+y+A.slice(p2);if(ok(t))return t;}}}}}
+  }
+  if(dig.length>44&&dig.length<=46){
+    const k=dig.length-44;
+    const cimFim=(base)=>{let r=null;const rec=(cur)=>{if(r)return;if(cur.length===44){if(ok(cur))r=cur;return;}for(let i=0;i<cur.length;i++){rec(cur.slice(0,i)+cur.slice(i+1));}};rec(base);return r;};
+    if(k===1){
+      for(const pos of [dig.length-1,0]){const c=dig.slice(0,pos)+dig.slice(pos+1);if(ok(c))return c;}
+    }
+    const z=cimFim(dig);if(z)return z;
+  }
+  return null;
+}
 
 
 function eJ(full){const re=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}|\b\d{14}\b/g;const cand=[...full.matchAll(re)].map(m=>({raw:m[0],dig:d(m[0]),valida:vC(d(m[0])),idx:m.index})).filter(c=>c.dig.length===14);const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};}
 function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;if(/^\d{2}\.\d{2}\.\d{4}$/.test(n))return true;if(dig.length>=10&&/^\d{2}[\.\-\/]\d{2}[\.\-\/]\d{4}$/.test(n))return true;if(/^\(\d{2}\)\s*\d{4,5}[\-]?\d{4}$/.test(n))return true;if(/^\d{2}\s*\d{4,5}\s*\d{4}$/.test(n))return true;if(/^\d{8,}$/.test(dig)&&dig.length>=10)return true;return false;}
 function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{15,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor){const standalone=[...full.matchAll(/\b(\d{6})\b/g)].map(m=>{const n=parseInt(m[1]);const before=full.slice(Math.max(0,m.index-30),m.index);const hasNoAfter=/N[º°]|Nota|NF|n[uú]mero/i.test(before);return{val:m[1],idx:m.index,nearNo:hasNoAfter,num:n};}).filter(x=>{if(isNoiseNum(x.val,full))return false;if(/^\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}$/.test(x.val))return false;if(x.num%1000===0&&x.num>=100000)return false;return true;});if(standalone.length){standalone.sort((a,b)=>{if(a.nearNo&&!b.nearNo)return -1;if(!a.nearNo&&b.nearNo)return 1;return b.num-a.num;});best={valor:standalone[0].val,conf:standalone[0].nearNo?55:40,ancora:standalone[0].nearNo?"fallback 6 dígitos (perto de Nº)":"fallback 6 dígitos",cands:standalone.slice(0,4).map(x=>x.val)};}}if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
 function eData(full){const m=full.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);return m?m[0]:"";}
-function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=full.match(/Vencimento\s*(\d{2}\.\d{2}\.\d{4}|\d{2}\/\d{2}\/\d{4})/i);return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:(all[1]||""),vencimento:venc?venc[1]:"",todas:all};}
+function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=eVenc(full);return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:(all[1]||""),vencimento:venc,todas:all};}
 function eValor(full){
-  let compact=full.replace(/\s+/g,' ');
+  const aposRotulo=(re,modo)=>{
+    const m=re.exec(full);
+    if(!m) return "";
+    const ini=m.index+m[0].length;
+    const nl=full.indexOf("\n",ini);
+    const linhaFim=nl===-1?full.length:nl;
+    const mesma=full.slice(ini,linhaFim).match(/([\d][\d\.]*,\d{2})/);
+    if(mesma)return mesma[1];
+    let fim=ini,n=0;
+    while(fim<full.length&&n<3){if(full[fim]==="\n")n++;fim++;}
+    const seg=full.slice(ini,fim).split(/TRANSPORTADOR|VOLUMES\s+TRANSPORTADOS|DADOS\s+DO\s+PRODUTO|DESTINAT[ÁA]RIO/i)[0];
+    const vals=[...seg.matchAll(/([\d][\d\.]*,\d{2})/g)].map(x=>x[1]);
+    if(!vals.length)return "";
+    return modo==="ultimo"?vals[vals.length-1]:vals[0];
+  };
+  let v=aposRotulo(/VALOR\s*TOTAL\s*DA\s*NOTA/i,"ultimo");
+  if(v) return v;
+  v=aposRotulo(/(?:TOTAL\s*DA\s*NOTA|VALOR\s*TOTAL\s*N[FE]|TOTAL\s*GERAL|VALOR\s*DO\s*SERVI[ÇC]O|VALOR\s*DA\s*NFS[\-]?E|VALOR\s*LIQUIDO)/i,"primeiro");
+  if(v) return v;
+  const mTot=/(?:Total|TOTAL)(?!\s*DA\s*NOTA)[^\d]{0,60}([\d][\d\.]*,\d{2})/i.exec(full);
+  if(mTot) return mTot[1];
+  const compact=full.replace(/\s+/g,' ');
   let m=compact.match(/R\.?\$\.?\s*([\d][\d\.]*,\d{2})/);
   if(m) return m[1];
-  m=compact.match(/(?:VALOR\s*TOTAL|TOTAL\s*DA\s*NOTA|TOTAL\s*N[FE]|TOTAL\s*GERAL|VALOR\s*DO\s*SERVI[ÇC]O|VALOR\s*DA\s*NFS[\-]?E|VALOR\s*LIQUIDO)[^\d]*([\d][\d\.]*,\d{2})/i);
-  if(m) return m[1];
-  m=compact.match(/(?:Total|TOTAL)[^\d]*([\d][\d\.]*,\d{2})/);
-  if(m) return m[1];
-  m=compact.match(/(?:VALOR|Valor)[^\d]*([\d][\d\.]*,\d{2})/i);
+  m=compact.match(/(?:VALOR|Valor)[^\d]{0,60}([\d][\d\.]*,\d{2})/i);
   if(m) return m[1];
   const allVals=[...compact.matchAll(/([\d][\d\.]*,\d{2})/g)].map(x=>x[1]).filter(v=>{const clean=v.replace(/\./g,'').replace(',','.');const n=parseFloat(clean);return n>0&&n<10000000;});
   if(allVals.length){allVals.sort((a,b)=>{const na=parseFloat(a.replace(/\./g,'').replace(',','.'));const nb=parseFloat(b.replace(/\./g,'').replace(',','.'));return nb-na;});return allVals[0];}
   return "";
 }
 function eValorApos(rotulo,full){return "";}
+function eVenc(full){
+  const re=/VENCIMENTO/gi;let m;
+  while((m=re.exec(full))){
+    const win=full.slice(m.index,m.index+90);
+    const dm=win.match(/\d{2}[\.\/]\d{2}[\.\/]\d{4}/);
+    if(dm)return dm[0];
+  }
+  const alt=full.match(/Vencimento[^\d]{0,30}(\d{2}[\.\/]\d{2}[\.\/]\d{4})/i);
+  return alt?alt[1]:"";
+}
 function eSerie(full){const m=full.match(/S[ÉE]RIE\s*:?\s*(\d{1,3})/i);return m?m[1]:"";}
-function eProtocolo(full){const m=full.match(/PROTOCOLO[^\d]*(\d{15})/i);if(m) return m[1];return "";}
-function eNatOp(full){const idx=full.search(/NATUREZA\s*DA\s*OPERA/i);if(idx===-1) return "";let j=full.slice(idx,idx+400).replace(/NATUREZA\s*DA\s*OPERA[ÇCÃAÕ]*O\s*/i,'');j=j.split(/INSCRI/i)[0].trim();j=j.replace(/\s{2,}/g,' ').trim();return j.slice(0,60)||"";}
+function eProtocolo(full){
+  const idxs=[];const re=/PROTOCOLO/gi;let mm;
+  while((mm=re.exec(full)))idxs.push(mm.index);
+  for(const idx of idxs){
+    const win=full.slice(idx,idx+320);
+    const direto=[...win.matchAll(/\d{12,16}/g)].map(x=>x[0]);
+    const p15=direto.find(c=>c.length===15);
+    if(p15)return p15;
+    const comSep=[...win.matchAll(/(?:\d[\s\.\-]*){12,16}/g)].map(x=>d(x[0])).filter(x=>x.length>=12&&x.length<=16);
+    const g15=comSep.find(x=>x.length===15);
+    if(g15)return g15;
+    if(direto.length)return direto[0];
+    if(comSep.length)return comSep[0];
+  }
+  return "";
+}
+function eNatOp(full){const m=/NATUREZA\s*DA\s*OPERA/i.exec(full);if(!m) return "";const resto=full.slice(m.index+m[0].length);const linhas=resto.split("\n").map(s=>s.trim()).filter(Boolean);let cand="";for(const ln of linhas.slice(0,5)){if(/INSCRI|CNPJ|\bI\.E\./i.test(ln)&&!/OPERAC/i.test(ln))continue;cand=ln;break;}if(!cand)cand=linhas[0]||"";cand=cand.split(/\s{2,}/)[0];cand=cand.replace(/^["'\s:]+/,"");cand=cand.split(/ INSCRI/i)[0];cand=cand.replace(/\s+\d{7,14}$/,"");return cand.trim().slice(0,80);}
 function eIE(full){let all=[...full.matchAll(/INSCRI[ÇC][ÃA]O\s*ESTADUAL[^\d]*(\d{7,14})/gi)];if(all.length) return all[0][1];return "";}
 function eCEP(full){const m=full.match(/\b\d{5}-\d{3}\b/);return m?m[0]:"";}
 function eMunicipioUF(full){const m=full.match(/MUNIC[IÍ]PIO:\s*([A-ZÀ-Ú \-]+?)\s+UF:\s*([A-Z]{2})/i);return m?{mun:m[1].trim(),uf:m[2]}:{mun:"",uf:""};}
 function eEndereco(full){const m=full.match(/ENDERE[ÇC]O:\s*RUA\s*VOLKSWAGEN[^\n]*?100/i);if(m) return "RUA VOLKSWAGEN - 100";const m2=full.match(/ENDERE[ÇC]O:\s*([A-Z0-9 \-\,\.]{10,80}?)(?:\s{2,}BAIRRO|\s{2,}MUNIC)/i);return m2?m2[1].trim().slice(0,60):"";}
-function eBlocoValores(full){const reCalc=/C[ÁA\u00C1]LCULO\s*DO\s*IMPOSTO|CALCULO\s*DO\s*IMPOSTO|C[ÁA\u00C1]LCULO\s*DO\s*IMPOST|C[ÁA]LCULO\s*DO\s*IMPOST|CALC.*IMPOST|CÁLC.*IMPOST/i;const reTransp=/TRANSPORTADOR|TRANSPORT|TRANSP\b/i;const mCalc=full.match(reCalc);const mTransp=full.match(reTransp);const a=mCalc?mCalc.index:-1;const b=mTransp?mTransp.index:-1;if(a===-1||b===-1) return {baseICMS:"",valorICMS:"",baseST:"",valorST:"",valorProdutos:"",frete:"",seguro:"",despesas:"",ipi:"",total:""};const bloco=full.slice(a,b);const vals=[...bloco.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map(m=>m[1]);let baseICMS=vals[0]||"",valorICMS=vals[1]||"",valorProdutos="",frete="",total="";if(vals.length>=5){valorProdutos=vals[2]||"";frete=vals[3]||"";total=vals[vals.length-1]||"";}else if(vals.length===3){valorProdutos=vals[2]||"";total=valorProdutos;}else if(vals.length===2){total=vals[1]||"";}return{baseICMS,valorICMS,baseST:"",valorST:"",valorProdutos,frete,seguro:"",despesas:"",ipi:"",total};}
+function mapaItens(items){if(!items||!items.length)return null;let text="";const map=[];let prev=null;for(const it of items){if(prev!==null&&it.page!==prev)text+="\n";prev=it.page;const s=String(it.str==null?"":it.str);const ini=text.length;text+=s;map.push({it,ini,fim:ini+s.length});text+=" ";}return{text,map};}
+function numEm(s){const mm=String(s||"").match(/R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}/);return mm?mm[0].replace(/^R?\$?\s*/,""):null;}
+function acharRotulo(mapa,re){const m=re.exec(mapa.text);if(!m)return null;const ini=m.index,fim=m.index+m[0].length;const its=mapa.map.filter(e=>e.ini<fim&&e.fim>ini).map(e=>e.it);if(!its.length)return null;const page=its[0].page;let x0=Infinity,x1=-Infinity,sy=0;for(const i of its){const w=i.w||0;x0=Math.min(x0,i.x);x1=Math.max(x1,i.x+w);sy+=i.y;}return{page,x0,x1,y:sy/its.length};}
+function valorColuna(mapa,rot){
+  if(!mapa||!rot)return null;
+  const its=mapa.map.map(e=>e.it).filter(i=>i.page===rot.page);
+  const mesma=its.filter(i=>Math.abs(i.y-rot.y)<=5);
+  let bound=rot.x1+45;
+  const prox=mesma.filter(i=>i.x>=rot.x1-2&&!numEm(i.str)).sort((a,b)=>a.x-b.x)[0];
+  if(prox)bound=Math.min(bound,prox.x-2);
+  const naLinha=mesma.filter(i=>i.x+(i.w||0)>=rot.x0-6&&i.x<=bound).sort((a,b)=>a.x-b.x);
+  for(const i of naLinha){const n=numEm(i.str);if(n&&i.x>=rot.x0-6)return n;}
+  let best=null,bx=-Infinity;
+  for(const i of its){if(i.y>=rot.y-2||i.y<=rot.y-32)continue;if(i.x<rot.x0-8||i.x>bound)continue;const n=numEm(i.str);if(n&&i.x>bx){bx=i.x;best=n;}}
+  return best;
+}
+function eBlocoValores(full,items){
+  const vazio={baseICMS:"",valorICMS:"",baseST:"",valorST:"",valorProdutos:"",frete:"",seguro:"",despesas:"",ipi:"",total:""};
+  const out=Object.assign({},vazio);
+  const mapa=(items&&items.length)?mapaItens(items):null;
+  if(mapa){
+    const col=(re)=>valorColuna(mapa,acharRotulo(mapa,re));
+    const set=(k,v)=>{if(v)out[k]=v;};
+    set("baseICMS",col(/BASE\s*(?:DE\s*CALCULO\s*(?:DO\s*)?)?ICMS(?!\s*SUBST)/i));
+    set("valorICMS",col(/VALOR\s*DO\s*ICMS(?!\s*SUBST)/i));
+    set("valorProdutos",col(/VALOR\s*TOTAL\s*DOS\s*PRODUTOS/i));
+    set("frete",col(/VALOR\s*DO\s*FRETE/i));
+    set("seguro",col(/VALOR\s*DO\s*SEGURO/i));
+    set("despesas",col(/OUTRAS\s*DESPESAS?\s*ACESS/i));
+    set("ipi",col(/VALOR\s*TOTAL\s*DO\s*IPI/i));
+    set("total",col(/VALOR\s*TOTAL\s*DA\s*NOTA/i));
+  }
+  if(mapa&&(!out.despesas||!out.total)){
+    const iniM=/C[ÁA]LCULO\s*DO\s*IMPOSTO/i.exec(mapa.text);
+    const fimM=/TRANSPORTADOR/i.exec(mapa.text);
+    if(iniM&&fimM&&fimM.index>iniM.index){
+      const its=mapa.map.filter(e=>e.fim>iniM.index&&e.ini<fimM.index).map(e=>e.it).filter(i=>numEm(i.str));
+      const linhas=[];
+      for(const i of its.slice().sort((a,b)=>b.y-a.y)){
+        let L=null;
+        for(const l of linhas){if(Math.abs(l.y-i.y)<=6){L=l;break;}}
+        if(!L){L={y:i.y,its:[]};linhas.push(L);}
+        L.its.push(i);
+      }
+      for(const l of linhas)l.its.sort((a,b)=>a.x-b.x);
+      const l1=linhas[0],l2=linhas[1];
+      if(l1&&l2&&l1.its.length>=3&&l2.its.length>=1){
+        const e1=l1.its.map(i=>i.x+(i.w||0));
+        let colR=null;
+        if(l1.its.length===3)colR=[e1[0],e1[1],null,null,e1[2]];
+        else if(l1.its.length>=5)colR=e1.slice(0,5);
+        if(colR&&colR[2]==null&&colR[1]!=null&&colR[4]!=null){
+          const passo=(colR[4]-colR[1])/3;
+          colR[2]=colR[1]+passo;colR[3]=colR[1]+2*passo;
+        }
+        if(colR){
+          const chaves=["frete","seguro","despesas","ipi","total"];
+          for(const i of l2.its){
+            const r=i.x+(i.w||0);
+            let bj=-1,bd=Infinity;
+            for(let j=0;j<5;j++){if(colR[j]==null)continue;const dd=Math.abs(r-colR[j]);if(dd<bd){bd=dd;bj=j;}}
+            if(bj>=0&&bd<80){const k=chaves[bj];const v=numEm(i.str);if(v&&!out[k])out[k]=v;}
+          }
+        }
+      }
+    }
+  }
+  const reCalc=/C[ÁA\u00C1]LCULO\s*DO\s*IMPOSTO|CALCULO\s*DO\s*IMPOSTO|C[ÁA\u00C1]LCULO\s*DO\s*IMPOST|C[ÁA]LCULO\s*DO\s*IMPOST|CALC.*IMPOST|CÁLC.*IMPOST/i;
+  const reTransp=/TRANSPORTADOR|TRANSPORT|TRANSP\b/i;
+  const mCalc=full.match(reCalc);const mTransp=full.match(reTransp);
+  const a=mCalc?mCalc.index:-1;const b=mTransp?mTransp.index:-1;
+  if(a!==-1&&b!==-1){
+    const bloco=full.slice(a,b);
+    const vals=[...bloco.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map(m=>m[1]);
+    if(vals.length>=3){if(!out.baseICMS)out.baseICMS=vals[0]||"";if(!out.valorICMS)out.valorICMS=vals[1]||"";if(!out.valorProdutos)out.valorProdutos=vals[2]||"";}
+    else if(vals.length===2){if(!out.baseICMS)out.baseICMS=vals[0]||"";if(!out.valorICMS)out.valorICMS=vals[1]||"";}
+    if(!out.total&&vals.length>=2)out.total=vals[vals.length-1];
+  }
+  if(!out.total){
+    const m=/VALOR\s*TOTAL\s*DA\s*NOTA/i.exec(full);
+    if(m){const seg=full.slice(m.index+m[0].length,m.index+m[0].length+220).split(/TRANSPORTADOR|VOLUMES/i)[0];const vv=[...seg.matchAll(/([\d][\d\.]*,\d{2})/g)].map(x=>x[1]);out.total=vv.length?vv[vv.length-1]:"";}
+  }
+  if(!out.despesas){
+    const m=/OUTRAS\s*DESPESAS?\s*ACESS/i.exec(full);
+    if(m){const seg=full.slice(m.index,m.index+220);const vv=[...seg.matchAll(/([\d][\d\.]*,\d{2})/g)].map(x=>x[1]);out.despesas=vv.length?vv[0]:"";}
+  }
+  return out;
+}
 function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig);if(idx===-1) return "";const janelaAntes=full.slice(Math.max(0,idx-400),idx);let m=janelaAntes.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);const janelaDepois=full.slice(idx,idx+300);m=janelaDepois.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
 function decodChave(ch){ch=d(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
-async function ocrPDF(file){
+async function ocrPDF(file,maxPaginas){
   if(typeof Tesseract==='undefined')throw new Error('Tesseract.js não carregou.');
   const buf=await file.arrayBuffer();
   const doc=await pdfjsLib.getDocument({data:buf}).promise;
-  let full="";
+  let full="";const items=[];const ESC=3;
+  const nPag=maxPaginas?Math.min(doc.numPages,maxPaginas):doc.numPages;
   try{
-    for(let p=1;p<=doc.numPages;p++){
+    for(let p=1;p<=nPag;p++){
       const page=await doc.getPage(p);
-      const viewport=page.getViewport({scale:2});
+      const viewport=page.getViewport({scale:ESC});
       const canvas=document.createElement('canvas');
       canvas.width=viewport.width;
       canvas.height=viewport.height;
       const ctx=canvas.getContext('2d');
       await page.render({canvasContext:ctx,viewport}).promise;
       const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-      const {data:{text}}=await Tesseract.recognize(blob,'por');
-      full+=text+"\n";
+      let data=null;
+      let tmOcr=null;
+      try{
+        data=await Promise.race([
+          Tesseract.recognize(blob,'por',{},{tsv:true}),
+          new Promise((_,rej)=>{tmOcr=setTimeout(()=>rej(new Error('OCR excedeu o tempo limite de 90s')),90000);})
+        ]).then(r=>r.data);
+      }finally{clearTimeout(tmOcr);}
+      if(!data)continue;
+      full+=(data.text||"")+"\n";
+      if(data.tsv){
+        for(const ln of String(data.tsv).split("\n")){
+          const c=ln.split("\t");
+          if(c.length<12||c[0]!=="5")continue;
+          const t=c[11];
+          if(!t||!t.trim())continue;
+          const x=parseFloat(c[6]),y=parseFloat(c[7]),w=parseFloat(c[8]);
+          if(!isFinite(x)||!isFinite(y))continue;
+          items.push({str:t,x:x/ESC,y:-y/ESC,w:(isFinite(w)?w:0)/ESC,page:p});
+        }
+      }
     }
   }finally{
     await doc.destroy();
   }
-  return full;
+  return{full,items};
+}
+function parseFull(full,items,fonte){
+  const ch=eC(full),cj=eJ(full),nu=eN(full,items);
+  const datas=eDatas(full);
+  let serie=eSerie(full),protocolo=eProtocolo(full),natOp=eNatOp(full),ie=eIE(full),cep=eCEP(full),munUf=eMunicipioUF(full),endereco=eEndereco(full);
+  const bv=eBlocoValores(full,items);
+  const valor=bv.total||eValor(full);
+  let numero=nu.valor||"",numeroConf=nu.conf||0,numeroAncora=nu.ancora||"",numeroCands=(nu.cands||[]).slice();
+  let chave=ch.valor||"",chaveValida=!!ch.valida,chaveConf=ch.conf||0;
+  const dec=(chave&&chave.length===44)?decodChave(chave):null;
+  if(dec){
+    if(dec.nNFInt&&dec.nNFInt!=="0"&&(chaveValida||!numero)){
+      numero=dec.nNFInt;numeroConf=chaveValida?99:80;
+      numeroAncora="chave 44 (pos 26-34)"+(chaveValida?"":" • DV inválido");
+      numeroCands=[dec.nNF+" → "+dec.nNFInt+" (chave)"].concat(numeroCands);
+    }
+    if(dec.serieInt&&dec.serieInt!=="0"&&(!serie||serie==="0")) serie=dec.serieInt;
+  }
+  const lista=(cj.lista||[]).filter(c=>c.dig&&!/^(.)\1+$/.test(c.dig)&&!(chave.includes(c.dig)&&(!dec||c.dig!==dec.cnpj)));
+  let cnpjPrest="",cnpjConf=0,cnpjFonte="";
+  if(dec&&dec.cnpj&&vC(dec.cnpj)){cnpjPrest=dec.cnpj;cnpjConf=chaveValida?98:75;cnpjFonte="chave 44";}
+  if(!cnpjPrest){
+    const val=lista.find(c=>c.valida);
+    if(val){cnpjPrest=val.dig;cnpjConf=fonte==="ocr"?85:95;cnpjFonte=fonte==="ocr"?"OCR":"texto";}
+    else if(lista.length){cnpjPrest=lista[0].dig;cnpjConf=fonte==="ocr"?40:55;cnpjFonte=(fonte==="ocr"?"OCR":"texto")+" • DV inválido";}
+  }
+  let cnpjTom=cj.toma||"";
+  if(cnpjTom===cnpjPrest||(cnpjTom&&chave.includes(cnpjTom))) cnpjTom="";
+  if(!cnpjTom){const other=lista.find(c=>c.dig&&c.dig!==cnpjPrest);if(other)cnpjTom=other.dig;}
+  const nomeP=eNome(full,items,cnpjPrest),nomeT=eNome(full,items,cnpjTom);
+  return{arquivo:"",chave,chaveValida,chaveConf,cnpjPrestador:cnpjPrest,cnpjTomador:cnpjTom,cnpjConf,cnpjFonte,cnpjValido:cnpjPrest?vC(cnpjPrest):false,cnpjsLista:lista,numero,numeroConf,numeroAncora,numeroCands,data:datas.data,dataSaida:datas.dataSaida,vencimento:datas.vencimento,todasDatas:datas.todas,valor,nomePrestador:nomeP,nomeTomador:nomeT,serie,protocolo,natOp,ieEmitente:ie,cepEmitente:cep,munEmitente:munUf.mun,ufEmitente:munUf.uf,enderecoEmitente:endereco,baseICMS:bv.baseICMS,valorICMS:bv.valorICMS,baseST:bv.baseST,valorST:bv.valorST,valorProdutos:bv.valorProdutos,valorFrete:bv.frete,valorSeguro:bv.seguro,despesasAcessorias:bv.despesas,valorIPI:bv.ipi,valorTotalNota:bv.total,fonteTexto:fonte};
+}
+function mergeExtracao(base,extra){
+  const r=Object.assign({},base);
+  const fill=(k)=>{if(!r[k]&&extra[k]) r[k]=extra[k];};
+  if(!r.chave&&extra.chave){r.chave=extra.chave;r.chaveValida=extra.chaveValida;r.chaveConf=extra.chaveConf;}
+  if(extra.numero&&(!r.numero||(r.numeroConf<60&&extra.numeroConf>r.numeroConf))){r.numero=extra.numero;r.numeroConf=extra.numeroConf;r.numeroAncora=(extra.numeroAncora||"")+" [OCR]";r.numeroCands=extra.numeroCands||r.numeroCands;}
+  if(extra.cnpjPrestador&&(!r.cnpjPrestador||(r.cnpjValido!==true&&extra.cnpjValido===true)||(r.cnpjConf<70&&extra.cnpjConf>r.cnpjConf))){r.cnpjPrestador=extra.cnpjPrestador;r.cnpjConf=extra.cnpjConf;r.cnpjFonte=(extra.cnpjFonte||"")+" [OCR]";r.cnpjValido=extra.cnpjValido;}
+  ["cnpjTomador","nomePrestador","nomeTomador","data","dataSaida","vencimento","valor","serie","protocolo","natOp","ieEmitente","cepEmitente","munEmitente","ufEmitente","enderecoEmitente","baseICMS","valorICMS","baseST","valorST","valorProdutos","valorFrete","valorSeguro","despesasAcessorias","valorIPI","valorTotalNota","todasDatas"].forEach(fill);
+  const seen=new Set((r.cnpjsLista||[]).map(c=>c.dig));
+  r.cnpjsLista=(r.cnpjsLista||[]).concat((extra.cnpjsLista||[]).filter(c=>!seen.has(c.dig)));
+  r.fonteTexto=(base.fonteTexto||"texto")+"+ocr";
+  return r;
 }
 async function extrair(file){
   let{full,items}=await tC(file);
+  let fonte="texto",ocrTentado=false,ocrErro="";
   if(!full.trim()){
-    try{full=await ocrPDF(file);items=[];}catch(eOCR){
+    try{const o=await ocrPDF(file);full=o.full;items=o.items||[];fonte="ocr";ocrTentado=true;}catch(eOCR){
       const msg=eOCR instanceof Error?eOCR.message:String(eOCR);
       console.error('OCR falhou:',eOCR);
       throw new Error('PDF sem texto extraível. '+msg);
     }
   }
-  if(!full.trim())throw new Error('PDF não pôde ser lido - conteúdo ilegível');const ch=eC(full),cj=eJ(full),nu=eN(full,items);const datas=eDatas(full),valor=eValor(full),nomeP=eNome(full,items,cj.prest),nomeT=eNome(full,items,cj.toma);let serie=eSerie(full),protocolo=eProtocolo(full),natOp=eNatOp(full),ie=eIE(full),cep=eCEP(full),munUf=eMunicipioUF(full),endereco=eEndereco(full);const bv=eBlocoValores(full);let numero=nu.valor,numeroConf=nu.conf,numeroAncora=nu.ancora,numeroCands=nu.cands;if(ch.valida&&ch.valor){const dec=decodChave(ch.valor);if(dec){if(dec.nNFInt&&dec.nNFInt!=="0"){numero=dec.nNFInt;numeroConf=99;numeroAncora="chave 44 (pos 26-34)";numeroCands=[dec.nNF+" → "+dec.nNFInt+" (chave)"].concat(numeroCands||[]);}if(dec.serieInt&&dec.serieInt!=="0"&&(!serie||serie==="0")) serie=dec.serieInt;}}window._lastOCRDebug={full:full.slice(0,5000),valor,numero,numeroAncora};
-return{arquivo:file.name,chave:ch.valor,chaveValida:ch.valida,chaveConf:ch.conf,cnpjPrestador:cj.prest,cnpjTomador:cj.toma,cnpjConf:cj.conf,cnpjsLista:cj.lista,numero,numeroConf,numeroAncora,numeroCands,data:datas.data,dataSaida:datas.dataSaida,vencimento:datas.vencimento,todasDatas:datas.todas,valor,nomePrestador:nomeP,nomeTomador:nomeT,serie,protocolo,natOp,ieEmitente:ie,cepEmitente:cep,munEmitente:munUf.mun,ufEmitente:munUf.uf,enderecoEmitente:endereco,baseICMS:bv.baseICMS,valorICMS:bv.valorICMS,baseST:bv.baseST,valorST:bv.valorST,valorProdutos:bv.valorProdutos,valorFrete:bv.frete,valorSeguro:bv.seguro,despesasAcessorias:bv.despesas,valorIPI:bv.ipi,valorTotalNota:bv.total,confMedio:Math.round((ch.conf+cj.conf+(numeroConf||0))/3),fullPreview:full.slice(0,2200),fullLen:full.length};}
+  if(!full.trim())throw new Error('PDF não pôde ser lido - conteúdo ilegível');
+  let r=parseFull(full,items,fonte);
+  r.arquivo=file.name;
+  if((!r.cnpjPrestador||r.cnpjValido!==true||!r.numero)&&!ocrTentado){
+    try{
+      const tOcr=await ocrPDF(file,3);ocrTentado=true;
+      if(tOcr&&tOcr.full&&tOcr.full.trim()) r=mergeExtracao(r,parseFull(tOcr.full,tOcr.items||[],"ocr"));
+    }catch(e){ocrErro=(e&&e.message)||String(e);}
+  }
+  return finalizar(r,full,fonte,ocrTentado,ocrErro);
+}
+function finalizar(r,full,fonte,ocrTentado,ocrErro){
+  r.ocrReforco=!!ocrTentado&&fonte!=="ocr";
+  r.ocrErro=ocrErro||"";
+  r.cnpjGarantido=!!r.cnpjPrestador;
+  r.numeroGarantido=!!r.numero;
+  r.chaveGarantida=!!r.chave;
+  r.completo=!!(r.cnpjGarantido&&r.numeroGarantido);
+  const falta=[];if(!r.numeroGarantido)falta.push("número");if(!r.cnpjGarantido)falta.push("CNPJ");
+  r.ausentes=falta;
+  r.garantia=falta.length?"falta "+falta.join(" e "):"CNPJ+número OK";
+  r.confMedio=Math.round(((r.chaveConf||0)+(r.cnpjConf||0)+(r.numeroConf||0))/3);
+  r.fullPreview=full.slice(0,2200);r.fullLen=full.length;
+  window._lastOCRDebug={full:full.slice(0,5000),valor:r.valor,numero:r.numero,numeroAncora:r.numeroAncora};
+  return r;
+}
 
-return{extrair};
+return{extrair,parseFull,mergeExtracao,finalizar,tC};
 })();
 </script>
 <style>
@@ -123,6 +363,7 @@ return{extrair};
   --text:#0f172a;--text2:#64748b;--text3:#94a3b8;
   --border:#e2e8f0;--border-light:#f1f5f9;
   --success:#10b981;--warn:#f59e0b;--err:#ef4444;--info:#3b82f6;
+  --err-bg:#fef2f2;--err-ink:#991b1b;--warn-bg:#fffbeb;--warn-ink:#92400e;--kpi-garantia:#ec4899;
   --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
   --shadow-md:0 4px 12px rgba(0,0,0,.08);
   --shadow-lg:0 8px 24px rgba(0,0,0,.12);
@@ -224,7 +465,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
 .btn-prim{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff}
 .btn-sec{background:linear-gradient(135deg,#475569,#64748b);color:#fff}
 .btn-acent{background:linear-gradient(135deg,#d97706,var(--accent));color:#fff}
-.btn-ok{background:linear-gradient(135deg,#059669,var(--success));color:#fff}
+.btn-ok{background:linear-gradient(135deg,#15803d,#047857);color:#fff}
 #status-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:18px;font-size:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
 #status-bar .stat{display:flex;align-items:center;gap:6px}
 #status-bar .stat .num{font-weight:700;color:var(--primary);font-size:14px}
@@ -379,7 +620,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         .pdfiso-card .hd{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
         .pdfiso-card .hd .info{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .pdfiso-badge{padding:2px 10px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.3px}
-        .pdfiso-badge.ok{background:rgba(16,185,129,.9);color:#fff} .pdfiso-badge.warn{background:rgba(245,158,11,.9);color:#fff} .pdfiso-badge.err{background:rgba(239,68,68,.9);color:#fff}
+        .pdfiso-badge.ok{background:#15803d;color:#fff} .pdfiso-badge.warn{background:#b45309;color:#fff} .pdfiso-badge.err{background:#b91c1c;color:#fff}
         .pdfiso-card .hd .pdfiso-badge{padding:2px 8px;font-size:9px}
         .pdfiso-kpi .kpi-card .value{font-size:22px;letter-spacing:-.5px}
         #tab-pdfleitura .table-wrap{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
@@ -393,10 +634,10 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
         <div id="pdfiso-upload">
           <div class="icon">🔍</div>
           <p style="margin-top:8px;font-size:14px"><strong style="color:var(--primary)">Clique aqui</strong> ou arraste os PDFs</p>
-          <p class="sub" style="font-size:11px;color:var(--text3);margin-top:4px">Leitura isolada • número • CNPJs • chave 44 • data • valor — sem tocar nos XMLs</p>
+          <p class="sub" style="font-size:11px;color:var(--text3);margin-top:4px">Leitura isolada • número • CNPJs • chave 44 • data • valor — <strong style="color:var(--success)">garantia de CNPJ + número</strong> (chave 44 + OCR de reforço) — sem tocar nos XMLs</p>
           <div style="margin-top:10px;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center">
             <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">📄 Múltiplos PDFs</span>
-            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">✓ Valida CNPJ/Chave</span>
+            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">✓ Garante CNPJ + Nº</span>
             <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">⚡ 100% navegador</span>
           </div>
         </div>
@@ -405,6 +646,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--surfac
           <div class="kpi-card"><div class="bar" style="background:var(--success)"></div><div class="body"><div class="label">Alta confiança</div><div class="value" id="pdfiso-k-ok" style="color:var(--success)">0</div><div class="sub" style="font-size:10px;color:var(--text3)">≥70%</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:var(--info)"></div><div class="body"><div class="label">Com chave 44</div><div class="value" id="pdfiso-k-chave">0</div><div class="sub" style="font-size:10px;color:var(--text3)">validadas</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:var(--accent)"></div><div class="body"><div class="label">Com CNPJ</div><div class="value" id="pdfiso-k-cnpj">0</div><div class="sub" style="font-size:10px;color:var(--text3)">prestador</div></div></div>
+          <div class="kpi-card"><div class="bar" style="background:var(--kpi-garantia)"></div><div class="body"><div class="label">CNPJ + Nº garantidos</div><div class="value" id="pdfiso-k-garantia" style="color:var(--kpi-garantia)">0</div><div class="sub" id="pdfiso-sub-garantia" style="font-size:10px;color:var(--text3)">—</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:#8b5cf6"></div><div class="body"><div class="label">Valor total</div><div class="value" id="pdfiso-k-valor" style="font-size:18px">R$ 0,00</div><div class="sub" style="font-size:10px;color:var(--text3)">soma PDFs</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:#06b6d4"></div><div class="body"><div class="label">Conf. média</div><div class="value" id="pdfiso-k-conf" style="font-size:18px">—</div><div class="sub" style="font-size:10px;color:var(--text3)">média geral</div></div></div>
         </div>
@@ -1017,7 +1259,7 @@ function renderNFE(){
     </div>`;
   }
   c.innerHTML=html;
-  }catch(e){console.error('renderNFE error:',e);document.getElementById('nfe-list').innerHTML='<div style="color:red;padding:20px">Erro ao renderizar: '+e.message+'</div>';}
+  }catch(e){console.error('renderNFE error:',e);document.getElementById('nfe-list').innerHTML='<div style="color:red;padding:20px">Erro ao renderizar: '+String(e.message||e).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';}
 }
 function toggleDet(el){
   const b=el.nextElementSibling;if(b)b.classList.toggle('open');
@@ -1495,6 +1737,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
   function fmtCNPJ(c){return c?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):'';}
   function fmtChave(ch){return ch?ch.replace(/(\d{4})/g,'$1 ').trim():'';}
   function pfiltro(){return{txt:(document.getElementById('pdfiso-busca')?.value||'').toLowerCase(),conf:document.getElementById('pdfiso-filtro-conf')?.value||''};}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   function isoRender(){
     const kpis=document.getElementById('pdfiso-kpis');
     if(!DBpdf.length){resEl.innerHTML='';kpis.style.display='none';return;}
@@ -1514,36 +1757,48 @@ document.getElementById('baixar').addEventListener('click', async () => {
     document.getElementById('pdfiso-sub-total').textContent=ok?Math.round(ok/DBpdf.length*100)+'% alta': '—';
     document.getElementById('pdfiso-k-chave').textContent=DBpdf.filter(r=>r.chave).length;
     document.getElementById('pdfiso-k-cnpj').textContent=DBpdf.filter(r=>r.cnpjPrestador).length;
+    const comGar=DBpdf.filter(r=>r.completo).length;
+    const elG=document.getElementById('pdfiso-k-garantia'); if(elG) elG.textContent=comGar;
+    const elSG=document.getElementById('pdfiso-sub-garantia'); if(elSG) elSG.textContent=DBpdf.length?`${comGar}/${DBpdf.length} completos`:'—';
     const soma=DBpdf.reduce((s,r)=>{let v=r.valor||'';v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return s+(isNaN(n)?0:n);},0);
     const elV=document.getElementById('pdfiso-k-valor'); if(elV) elV.textContent=soma?`R$ ${soma.toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'R$ 0,00';
     const media=DBpdf.length?Math.round(DBpdf.reduce((s,r)=>s+r.confMedio,0)/DBpdf.length):0;
     const elC=document.getElementById('pdfiso-k-conf'); if(elC) elC.textContent=media?media+'%':'—';
+    const cnpjCell=(c)=>c?`<a href="#" onclick="consultarCNPJ('${c}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(c)}</a>`:`<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="CNPJ não localizado na leitura do PDF" title="CNPJ não localizado na leitura do PDF">✗ ausente</span>`;
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
+      const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}">✗ ${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido — confira no debug">✓ CNPJ+Nº • DV ✗</span>`:`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' • CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' • nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`);
       return `<tr>
-        <td style="font-size:11px;white-space:nowrap">${r.numero||'—'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
+        <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
+        <td style="font-size:10px;white-space:nowrap">${gar}</td>
         <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
-        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'—'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
-        <td style="font-family:monospace;font-size:11px;white-space:nowrap"><a href="#" onclick="consultarCNPJ('${r.cnpjPrestador}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(r.cnpjPrestador)||'—'}</a></td>
-        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nomePrestador||''}">${r.nomePrestador||'—'}</td>
-        <td style="font-family:monospace;font-size:11px;white-space:nowrap"><a href="#" onclick="consultarCNPJ('${r.cnpjTomador}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(r.cnpjTomador)||'—'}</a></td>
+        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjPrestador)}</td>
+        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nomePrestador)}">${r.nomePrestador||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
         <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
         <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
         <td style="font-size:11px;white-space:nowrap">${r.protocolo?r.protocolo.slice(-8):'—'}</td>
-        <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px">🔍</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px">⎘</a></td>
+        <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px" aria-label="Ver texto extraído da nota" title="Ver texto extraído">🔍</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px" aria-label="Copiar dados da nota" title="Copiar dados">⎘</a></td>
       </tr>`;
     }).join('');
-    const table=lista.length?`<div class="table-wrap"><table><thead><tr><th>Nº</th><th>Série</th><th>Chave 44</th><th>CNPJ Emit.</th><th>Emitente</th><th>CNPJ Dest.</th><th>Data</th><th>Total</th><th>Protocolo</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
+    const table=lista.length?`<div class="table-wrap"><table><thead><tr><th>Nº</th><th>Garantia</th><th>Série</th><th>Chave 44</th><th>CNPJ Emit.</th><th>Emitente</th><th>CNPJ Dest.</th><th>Data</th><th>Total</th><th>Protocolo</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
     const empty=lista.length===0?`<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado para o filtro.</p></div>`:'';
-    resEl.innerHTML=`<div class="filter-bar"><span class="count">${lista.length}/${DBpdf.length} PDF(s) ${fTxt.txt||fTxt.conf!==''? '• filtrado':''}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ok" style="padding:6px 12px;font-size:11px" id="pdfiso-csv">⬇ Exportar Excel</button><button class="btn btn-sec" style="padding:6px 10px;font-size:11px" id="pdfiso-clear">🗑 Limpar</button></span></div>${table}${empty}<div id="pdfiso-debug" style="display:none;margin-top:10px;padding:14px;background:#1e293b;color:#cbd5e1;font-family:'Cascadia Code',monospace;font-size:11px;white-space:pre-wrap;max-height:280px;overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06)"></div>`;
+    const pend=DBpdf.filter(r=>!r.completo);
+    const dvErr=DBpdf.filter(r=>r.completo&&r.cnpjValido===false);
+    const avisos=[];
+    if(pend.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--err-bg);border:1px solid var(--err);border-radius:var(--radius);color:var(--err-ink);font-size:11px;font-weight:600">⚠ ${pend.length} de ${DBpdf.length} PDF(s) <strong>sem CNPJ e/ou número garantido</strong>: ${pend.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${pend.length>6?' e mais '+(pend.length-6):''} — clique em 🔍 para ver o texto extraído.</div>`);
+    if(dvErr.length) avisos.push(`<div role="status" style="margin-bottom:10px;padding:10px 14px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:11px;font-weight:600">⚠ ${dvErr.length} PDF(s) com CNPJ de <strong>dígito verificador inválido</strong> (possível leitura errada): ${dvErr.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${dvErr.length>6?' e mais '+(dvErr.length-6):''}</div>`);
+    const aviso=avisos.join('');
+    resEl.innerHTML=`${aviso}<div class="filter-bar"><span class="count">${lista.length}/${DBpdf.length} PDF(s) ${fTxt.txt||fTxt.conf!==''? '• filtrado':''}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ok" style="padding:6px 12px;font-size:11px" id="pdfiso-csv">⬇ Exportar Excel</button><button class="btn btn-sec" style="padding:6px 10px;font-size:11px" id="pdfiso-clear">🗑 Limpar</button></span></div>${table}${empty}<div id="pdfiso-debug" style="display:none;margin-top:10px;padding:14px;background:#1e293b;color:#cbd5e1;font-family:'Cascadia Code',monospace;font-size:11px;white-space:pre-wrap;max-height:280px;overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.06)"></div>`;
     document.getElementById('pdfiso-csv').onclick=()=>{
-      const header=['Arquivo','Numero','Serie','DataEmissao','DataSaida','Vencimento','CNPJ_Prestador','Nome_Prestador','IE_Emitente','Endereco','Municipio','UF','CEP','CNPJ_Tomador','Nome_Tomador','Chave','ChaveValida','NatOp','Protocolo','BaseICMS','ValorICMS','BaseST','ValorST','ValorProdutos','Frete','Seguro','Despesas','ValorIPI','ValorTotal','Valor','ConfMedio','NumeroConf','ChaveConf','CnpjConf'];
+      const header=['Arquivo','Numero','Serie','DataEmissao','DataSaida','Vencimento','CNPJ_Prestador','Nome_Prestador','IE_Emitente','Endereco','Municipio','UF','CEP','CNPJ_Tomador','Nome_Tomador','Chave','ChaveValida','NatOp','Protocolo','BaseICMS','ValorICMS','BaseST','ValorST','ValorProdutos','Frete','Seguro','Despesas','ValorIPI','ValorTotal','Valor','ConfMedio','NumeroConf','ChaveConf','CnpjConf','Garantia','NumeroOk','CNPJ_Ok','CNPJ_Fonte','Numero_Ancora','OCR_Reforco'];
       if(window.XLSX){
-        const ws=XLSX.utils.aoa_to_sheet([header,...DBpdf.map(r=>[r.arquivo,r.numero,r.serie,r.data,r.dataSaida,r.vencimento,r.cnpjPrestador,r.nomePrestador,r.ieEmitente,r.enderecoEmitente,r.munEmitente,r.ufEmitente,r.cepEmitente,r.cnpjTomador,r.nomeTomador,r.chave,r.chaveValida,r.natOp,r.protocolo,r.baseICMS,r.valorICMS,r.baseST,r.valorST,r.valorProdutos,r.valorFrete,r.valorSeguro,r.despesasAcessorias,r.valorIPI,r.valorTotalNota,r.valor,r.confMedio,r.numeroConf,r.chaveConf,r.cnpjConf])]);
+        const ws=XLSX.utils.aoa_to_sheet([header,...DBpdf.map(r=>[r.arquivo,r.numero,r.serie,r.data,r.dataSaida,r.vencimento,r.cnpjPrestador,r.nomePrestador,r.ieEmitente,r.enderecoEmitente,r.munEmitente,r.ufEmitente,r.cepEmitente,r.cnpjTomador,r.nomeTomador,r.chave,r.chaveValida,r.natOp,r.protocolo,r.baseICMS,r.valorICMS,r.baseST,r.valorST,r.valorProdutos,r.valorFrete,r.valorSeguro,r.despesasAcessorias,r.valorIPI,r.valorTotalNota,r.valor,r.confMedio,r.numeroConf,r.chaveConf,r.cnpjConf,r.garantia,r.numeroGarantido?'SIM':'NAO',r.cnpjGarantido?'SIM':'NAO',r.cnpjFonte||'',r.numeroAncora||'',r.ocrReforco?'SIM':'NAO'])]);
         const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'PDFs');XLSX.writeFile(wb,`pdf_leitura_${Date.now()}.xlsx`);
       } else {
-        const rows=DBpdf.map(r=>header.map(h=>String({Arquivo:r.arquivo,Numero:r.numero,Serie:r.serie,DataEmissao:r.data,DataSaida:r.dataSaida,Vencimento:r.vencimento,CNPJ_Prestador:r.cnpjPrestador,Nome_Prestador:r.nomePrestador,IE_Emitente:r.ieEmitente,Endereco:r.enderecoEmitente,Municipio:r.munEmitente,UF:r.ufEmitente,CEP:r.cepEmitente,CNPJ_Tomador:r.cnpjTomador,Nome_Tomador:r.nomeTomador,Chave:r.chave,ChaveValida:r.chaveValida,NatOp:r.natOp,Protocolo:r.protocolo,BaseICMS:r.baseICMS,ValorICMS:r.valorICMS,BaseST:r.baseST,ValorST:r.valorST,ValorProdutos:r.valorProdutos,Frete:r.valorFrete,Seguro:r.valorSeguro,Despesas:r.despesasAcessorias,ValorIPI:r.valorIPI,ValorTotal:r.valorTotalNota,Valor:r.valor,ConfMedio:r.confMedio,NumeroConf:r.numeroConf,ChaveConf:r.chaveConf,CnpjConf:r.cnpjConf}[h]||'').replace(/"/g,'""')).join(';'));
+        const rows=DBpdf.map(r=>header.map(h=>String({Arquivo:r.arquivo,Numero:r.numero,Serie:r.serie,DataEmissao:r.data,DataSaida:r.dataSaida,Vencimento:r.vencimento,CNPJ_Prestador:r.cnpjPrestador,Nome_Prestador:r.nomePrestador,IE_Emitente:r.ieEmitente,Endereco:r.enderecoEmitente,Municipio:r.munEmitente,UF:r.ufEmitente,CEP:r.cepEmitente,CNPJ_Tomador:r.cnpjTomador,Nome_Tomador:r.nomeTomador,Chave:r.chave,ChaveValida:r.chaveValida,NatOp:r.natOp,Protocolo:r.protocolo,BaseICMS:r.baseICMS,ValorICMS:r.valorICMS,BaseST:r.baseST,ValorST:r.valorST,ValorProdutos:r.valorProdutos,Frete:r.valorFrete,Seguro:r.valorSeguro,Despesas:r.despesasAcessorias,ValorIPI:r.valorIPI,ValorTotal:r.valorTotalNota,Valor:r.valor,ConfMedio:r.confMedio,NumeroConf:r.numeroConf,ChaveConf:r.chaveConf,CnpjConf:r.cnpjConf,Garantia:r.garantia,NumeroOk:r.numeroGarantido?'SIM':'NAO',CNPJ_Ok:r.cnpjGarantido?'SIM':'NAO',CNPJ_Fonte:r.cnpjFonte||'',Numero_Ancora:r.numeroAncora||'',OCR_Reforco:r.ocrReforco?'SIM':'NAO'}[h]||'').replace(/"/g,'""')).join(';'));
         let csv='\ufeff'+header.join(';')+'\n'+rows.join('\n');
         const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`pdf_leitura_${Date.now()}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);
       }
@@ -1552,7 +1807,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
     resEl.querySelectorAll('.pdfiso-debug').forEach(a=>a.addEventListener('click',e=>{
       e.preventDefault();const r=DBpdf[+e.target.dataset.idx];const dbg=document.getElementById('pdfiso-debug');
       dbg.style.display='block';
-      dbg.textContent=`ARQUIVO: ${r.arquivo}\nCHAVE: ${r.chave||'-'} (valida:${r.chaveValida} conf:${r.chaveConf})\nSERIE: ${r.serie||'-'} PROTOCOLO: ${r.protocolo||'-'} NATOP: ${r.natOp||'-'}\nCNPJs: ${JSON.stringify(r.cnpjsLista||[],null,2)}\nNUMERO: ${r.numero} (ancora:${r.numeroAncora} conf:${r.numeroConf}%) CANDS:${JSON.stringify(r.numeroCands||[])}\nDATA: ${r.data} SAIDA:${r.dataSaida||'-'} VENC:${r.vencimento||'-'} VALOR: ${r.valor}\nEMITENTE: ${r.nomePrestador||'-'} IE:${r.ieEmitente||'-'} END:${r.enderecoEmitente||'-'} ${r.munEmitente||''}/${r.ufEmitente||''} CEP:${r.cepEmitente||'-'}\nVALORES: baseICMS=${r.baseICMS||'-'} vICMS=${r.valorICMS||'-'} baseST=${r.baseST||'-'} vST=${r.valorST||'-'} vProd=${r.valorProdutos||'-'} frete=${r.valorFrete||'-'} seg=${r.valorSeguro||'-'} desp=${r.despesasAcessorias||'-'} ipi=${r.valorIPI||'-'} total=${r.valorTotalNota||'-'}\n--- TEXTO (${r.fullLen} chars) ---\n${r.fullPreview}\n...`;
+      dbg.textContent=`ARQUIVO: ${r.arquivo}\nGARANTIA: ${r.garantia||'-'} | CNPJ fonte: ${r.cnpjFonte||'-'}${r.cnpjPrestador?(r.cnpjValido?' (DV válido)':' (DV INVÁLIDO)'):''} | OCR reforço: ${r.ocrReforco?'sim':'não'}${r.ocrErro?' • erro OCR: '+r.ocrErro:''}\nCHAVE: ${r.chave||'-'} (valida:${r.chaveValida} conf:${r.chaveConf})\nSERIE: ${r.serie||'-'} PROTOCOLO: ${r.protocolo||'-'} NATOP: ${r.natOp||'-'}\nCNPJs: ${JSON.stringify(r.cnpjsLista||[],null,2)}\nNUMERO: ${r.numero||'-'} (ancora:${r.numeroAncora} conf:${r.numeroConf}%) CANDS:${JSON.stringify(r.numeroCands||[])}\nDATA: ${r.data} SAIDA:${r.dataSaida||'-'} VENC:${r.vencimento||'-'} VALOR: ${r.valor}\nEMITENTE: ${r.nomePrestador||'-'} IE:${r.ieEmitente||'-'} END:${r.enderecoEmitente||'-'} ${r.munEmitente||''}/${r.ufEmitente||''} CEP:${r.cepEmitente||'-'}\nVALORES: baseICMS=${r.baseICMS||'-'} vICMS=${r.valorICMS||'-'} baseST=${r.baseST||'-'} vST=${r.valorST||'-'} vProd=${r.valorProdutos||'-'} frete=${r.valorFrete||'-'} seg=${r.valorSeguro||'-'} desp=${r.despesasAcessorias||'-'} ipi=${r.valorIPI||'-'} total=${r.valorTotalNota||'-'}\n--- TEXTO (${r.fullLen} chars) ---\n${r.fullPreview}\n...`;
       dbg.scrollTop=0;
     }));
     resEl.querySelectorAll('.pdfiso-copy').forEach(a=>a.addEventListener('click',e=>{
@@ -1565,9 +1820,12 @@ document.getElementById('baixar').addEventListener('click', async () => {
     overlay.classList.add('active');
     for(let i=0;i<arr.length;i++){
       const f=arr[i]; msg.textContent=`[${i+1}/${arr.length}] ${f.name}`; isoLog(`[${i+1}/${arr.length}] ${f.name}...`,'#94a3b8');
-      try{ const r=await window.ModPDFIsolado.extrair(f); DBpdf.push(r); isoLog(` → num:${r.numero||'-'} | cnpj:${r.cnpjPrestador||'-'} | ${r.data||'-'} | R$${r.valor||'-'} | conf:${r.confMedio}%`, r.confMedio>=60?'#2ecc71':'#e74c3c'); }catch(e){ isoLog(` ✗ ${f.name}: ${e.message}`,'#ef4444'); }
+      try{ const r=await window.ModPDFIsolado.extrair(f); DBpdf.push(r); isoLog(` → ${r.numeroGarantido?'✓':'✗'} nº:${r.numero||'—'} | ${r.cnpjGarantido?'✓':'✗'} cnpj:${r.cnpjPrestador||'—'}${r.cnpjFonte?' ('+r.cnpjFonte+')':''} | ${r.data||'-'} | R$${r.valor||'-'} | conf:${r.confMedio}%${r.completo?'':' ⚠ '+r.garantia}${r.ocrReforco?' | 🔤 OCR reforço':''}`, r.completo?'#2ecc71':'#e74c3c'); }catch(e){ isoLog(` ✗ ${f.name}: ${e.message}`,'#ef4444'); }
     }
-    overlay.classList.remove('active'); isoRender(); isoLog(`✅ ${DBpdf.length} PDF(s) — use debug/copiar em cada card`,'#2ecc71');
+    overlay.classList.remove('active'); isoRender();
+    const pend=DBpdf.filter(r=>!r.completo).length;
+    const dvErr=DBpdf.filter(r=>r.completo&&r.cnpjValido===false).length;
+    isoLog(pend? `⚠ ${DBpdf.length} PDF(s) lidos — ${pend} SEM CNPJ e/ou número (ver aviso acima)` : dvErr? `✅ ${DBpdf.length} PDF(s) — CNPJ e número presentes, mas ${dvErr} com DV inválido (verifique)` : `✅ ${DBpdf.length} PDF(s) — CNPJ e número garantidos em todos`, (pend||dvErr)?'#f59e0b':'#2ecc71');
   }
   const input=document.createElement('input'); input.type='file'; input.accept='.pdf'; input.multiple=true; input.style.display='none'; document.body.appendChild(input);
   input.addEventListener('change',()=>{ if(input.files.length) handlePDFs(input.files); input.value=''; });

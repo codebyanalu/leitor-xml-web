@@ -1,0 +1,21 @@
+# Dados de teste locais (bancada de PDFs)
+amostras/
+testes/node_modules/
+testes/saidas/
+testes/*.log
+testes/*.png
+
+# Artefatos do Tesseract (re-baixados sob demanda)
+por.traineddata
+*.traineddata
+
+# Dados fiscais reais da cliente (nunca publicar)
+testes/verdade.json
+testes/chaves-verdade.json
+testes/montar-verdade.mjs
+
+# Mockups de UI (referência local)
+previews/
+
+# Notas de sessão/planos locais (podem citar dados de cliente)
+.opencode/plans/
