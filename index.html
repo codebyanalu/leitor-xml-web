@@ -4,14 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GCON/SIAN — NF-e / NFS-e</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js" onerror="window.GCON_CDN_TESSERACT=1"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap" media="print" onload="this.media='all'">
+<meta name="description" content="Leitor de NF-e e NFS-e 100% no navegador: importa XML, lê PDF (inclusive escaneado, via OCR), valida CNPJ e exporta CSV/Excel. Nenhum dado sai do computador.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231a4b8c'/%3E%3Cpath d='M7 4h7l4 4v12H7z' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M9 12h6M9 15h4' stroke='%23f59e0b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<!-- CDNs: versao EXATA (nunca major, que resolve para a ultima 4.x e quebra) + SRI. -->
+<!-- integrity/crossorigin sao o que impede um CDN comprometido de injetar codigo. -->
+<!-- Se a SRI falhar, o script nao executa: o app sobe degradado e o usuario ve o aviso da aba. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.4/dist/tesseract.min.js" integrity="sha384-+56qagDlzJ3YYkDcyAXRdhrP7/+ai8qJcS6HpjACl2idDoCyCqRf5VVi7E/XkGae" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="window.GCON_CDN_TESSERACT=1"></script>
 <script>
-
+/* Fallback visivel de CDN. As 6 CDNs tem SRI: se o arquivo mudar ou o CDN servir
+   algo adulterado, o navegador BLOQUEIA o script e a lib simplesmente nao existe.
+   Sem isto, o usuario veria "nada acontece" ao clicar. Aqui cada ausencia vira
+   um aviso concreto dizendo o que parou de funcionar e o que continua funcionando. */
+window.GCON_CDN={};
+(function(){
+  var esperado=[
+    ['chart.js',function(){return typeof Chart!=='undefined';},'os graficos do Dashboard'],
+    ['xlsx',function(){return typeof XLSX!=='undefined';},'a exportacao Excel (o CSV segue funcionando)'],
+    ['pdfjs',function(){return typeof pdfjsLib!=='undefined';},'a leitura de PDF'],
+    ['pdf-lib',function(){return typeof PDFLib!=='undefined';},'a aba Separar PDF'],
+    ['jszip',function(){return typeof JSZip!=='undefined';},'o fallback ZIP da aba Separar PDF'],
+    ['tesseract',function(){return typeof Tesseract!=='undefined';},'o OCR de PDF escaneado (PDF com texto continua funcionando)']
+  ];
+  function avisar(){
+    var faltando=esperado.filter(function(e){try{return !e[1]();}catch(x){return true;}});
+    if(!faltando.length)return;
+    var box=document.getElementById('cdn-avisos');
+    if(!box)return;
+    box.innerHTML='<div role="status" style="margin-bottom:14px;padding:12px 14px;background:var(--warn-bg);border:1px solid var(--warn-ink);border-left:3px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:12px">'
+      +'<strong>Biblioteca externa nao carregou.</strong> Cada CDN e verificada por hash (SRI): se o arquivo vier diferente do esperado, o navegador bloqueia por seguranca. '
+      +'Verifique a conexao e recarregue a pagina. Isso afeta: '
+      +faltando.map(function(e){return e[0]+' ('+e[2]+')';}).join('; ')+'.</div>';
+    box.style.display='block';
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',avisar);
+  else avisar();
+  setTimeout(avisar,2500);
+})();
 </script>
 <script>
 window.ModPDFIsolado=(()=>{
@@ -227,12 +264,42 @@ function eBlocoValores(full,items){
 }
 function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig);if(idx===-1) return "";const janelaAntes=full.slice(Math.max(0,idx-400),idx);let m=janelaAntes.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);const janelaDepois=full.slice(idx,idx+300);m=janelaDepois.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
 function decodChave(ch){ch=d(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
+/* Origens do Tesseract declaradas explicitamente.
+   Sem corePath, o tesseract.js@4 baixa 2 destinos invisiveis no HTML: o core WASM
+   (~4,7 MB) e o tessdata (por.traineddata.gz, ~6,6 MB) — 11 MB no primeiro OCR, sem
+   como auditar no HTML e sem espelho.
+   corePath correto: a dependencia declarada pelo proprio tesseract.js@4.1.4 e
+   tesseract.js-core@^4.0.4 (a serie 4.x do core para em 4.0.4 — apontar 4.1.4 da 404).
+   Confirmado 200 + CORS: *. E precisa ser o DIRECTORIO, porque a lib escolhe entre
+   tesseract-core.wasm.js e tesseract-core-simd.wasm.js conforme o suporte a SIMD. */
+const TESS={corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@v4.0.4',langPath:'https://tessdata.projectnaptha.com/4.0.0'};
+let TESS_WORKER=null;
+/* ORCAMENTO de paginas por arquivo: ~4-12 s por pagina em desktop. Sem teto, um PDF de
+   50 paginas trava o navegador. O documento inteiro cabe nesta janela; se sobrar pagina,
+   isso vira pendencia visivel, nao truncamento silencioso. */
+const OCR_MAX_PAG=20,OCR_MAX_REFORCO=3;
+/* Worker unico, criado uma vez e reaproveitado.
+   API do tesseract.js v4.1.4 (VERIFICADA na fonte do pacote, nao de memoria):
+     Tesseract.createWorker(options) -> createWorker cru; a assinatura publica
+     createWorker(langs, oem, options) SO EXISTE a partir da v5. Aqui, portanto,
+     o idioma e passo separado: loadLanguage() + initialize().
+   Por que worker unico: a v4 cria e destroi um worker a cada recognize() (custo fixo
+   alto + re-handshake dos 11 MB). Reaproveitar mantem o modelo de linguagem em memoria. */
+async function tessWorker(){
+  if(TESS_WORKER)return TESS_WORKER;
+  const w=await Tesseract.createWorker({logger:()=>{},corePath:TESS.corePath,langPath:TESS.langPath});
+  await w.loadLanguage('por');
+  await w.initialize('por');
+  TESS_WORKER=w;
+  return w;
+}
 async function ocrPDF(file,maxPaginas){
   if(typeof Tesseract==='undefined')throw new Error('Tesseract.js não carregou.');
   const buf=await file.arrayBuffer();
   const doc=await pdfjsLib.getDocument({data:buf}).promise;
   let full="";const items=[];const ESC=3;
-  const nPag=maxPaginas?Math.min(doc.numPages,maxPaginas):doc.numPages;
+  const total=doc.numPages;
+  const nPag=maxPaginas?Math.min(total,maxPaginas):total;
   try{
     for(let p=1;p<=nPag;p++){
       const page=await doc.getPage(p);
@@ -247,7 +314,7 @@ async function ocrPDF(file,maxPaginas){
       let tmOcr=null;
       try{
         data=await Promise.race([
-          Tesseract.recognize(blob,'por',{},{tsv:true}),
+          tessWorker().then(w=>w.recognize(blob)),
           new Promise((_,rej)=>{tmOcr=setTimeout(()=>rej(new Error('OCR excedeu o tempo limite de 90s')),90000);})
         ]).then(r=>r.data);
       }finally{clearTimeout(tmOcr);}
@@ -268,7 +335,7 @@ async function ocrPDF(file,maxPaginas){
   }finally{
     await doc.destroy();
   }
-  return{full,items};
+  return{full,items,paginas:nPag,paginasTotal:total,truncado:nPag<total};
 }
 function parseFull(full,items,fonte){
   const ch=eC(full),cj=eJ(full),nu=eN(full,items);
@@ -315,9 +382,11 @@ function mergeExtracao(base,extra){
 }
 async function extrair(file){
   let{full,items}=await tC(file);
-  let fonte="texto",ocrTentado=false,ocrErro="";
+  let fonte="texto",ocrTentado=false,ocrErro="",ocrPaginas=0;
   if(!full.trim()){
-    try{const o=await ocrPDF(file);full=o.full;items=o.items||[];fonte="ocr";ocrTentado=true;}catch(eOCR){
+    /* Teto de paginas no caminho principal tambem: sem ele, um PDF escaneado de 10 paginas
+       custa 40-120 s num unico arquivo e trava a aba. O custo do OCR e linear em paginas. */
+    try{const o=await ocrPDF(file,OCR_MAX_PAG);full=o.full;items=o.items||[];fonte="ocr";ocrTentado=true;ocrPaginas=o.paginas||0;}catch(eOCR){
       const msg=eOCR instanceof Error?eOCR.message:String(eOCR);
       throw new Error('PDF sem texto extraível. '+msg);
     }
@@ -325,9 +394,10 @@ async function extrair(file){
   if(!full.trim())throw new Error('PDF não pôde ser lido - conteúdo ilegível');
   let r=parseFull(full,items,fonte);
   r.arquivo=file.name;
+  r.ocrPaginas=ocrPaginas;
   if((!r.cnpjPrestador||r.cnpjValido!==true||!r.numero)&&!ocrTentado){
     try{
-      const tOcr=await ocrPDF(file,3);ocrTentado=true;
+      const tOcr=await ocrPDF(file,OCR_MAX_REFORCO);ocrTentado=true;
       if(tOcr&&tOcr.full&&tOcr.full.trim()) r=mergeExtracao(r,parseFull(tOcr.full,tOcr.items||[],"ocr"));
     }catch(e){ocrErro=(e&&e.message)||String(e);}
   }
@@ -697,6 +767,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
   <div id="topbar"><div id="crumb"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg><span class="c-brand">GCON·SIAN</span><span class="c-sep">/</span><span class="c-cur" id="crumb-cur">Importar XMLs</span></div><div class="tools"><span class="hora" id="hora"></span><button id="theme-btn" class="icon-btn" type="button" aria-label="Tema escuro" aria-pressed="false" title="Alternar tema"><svg class="i sun" aria-hidden="true"><use href="#i-sun"></use></svg><svg class="i moon" aria-hidden="true"><use href="#i-moon"></use></svg></button></div></div>
   <div id="accent-bar"></div>
   <div id="content">
+    <div id="cdn-avisos" style="display:none"></div>
     <div id="status-bar">
       <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg> <span class="num" id="s-nfe">0</span> produtos NF-e</div>
       <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg> <span class="num" id="s-nfse">0</span> serviços NFS-e</div>
