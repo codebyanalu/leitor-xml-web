@@ -39,10 +39,10 @@ window.GCON_CDN={};
     if(!faltando.length)return;
     var box=document.getElementById('cdn-avisos');
     if(!box)return;
-    box.innerHTML='<div role="status" style="margin-bottom:14px;padding:12px 14px;background:var(--warn-bg);border:1px solid var(--warn-ink);border-left:3px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:12px">'
-      +'<strong>Biblioteca externa nao carregou.</strong> Cada CDN e verificada por hash (SRI): se o arquivo vier diferente do esperado, o navegador bloqueia por seguranca. '
+    box.innerHTML='<div role="status" style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;padding:12px 14px;background:var(--warn-bg);border:1px solid var(--warn-ink);border-left:3px solid var(--warn);border-radius:var(--radius);color:var(--warn-ink);font-size:12px">'
+      +'<svg class="i" aria-hidden="true" style="width:18px;height:18px;flex:none;margin-top:1px"><use href="#i-alert"></use></svg><span><strong>Biblioteca externa nao carregou.</strong> Cada CDN e verificada por hash (SRI): se o arquivo vier diferente do esperado, o navegador bloqueia por seguranca. '
       +'Verifique a conexao e recarregue a pagina. Isso afeta: '
-      +faltando.map(function(e){return e[0]+' ('+e[2]+')';}).join('; ')+'.</div>';
+      +faltando.map(function(e){return e[0]+' ('+e[2]+')';}).join('; ')+'.</span></div>';
     box.style.display='block';
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',avisar);
@@ -77,7 +77,7 @@ window.ModPDFIsolado=(()=>{
    const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°][,\.]?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i,/N[uúu]m(?:ero)?\.?\s*[:.]?\s*\d/i,/N[oº°]\.?\s*\d/i,/Nota\s*(?:de\s*(?:Servico|Servico))?\s*(?:n[oº°]|:)\s*\d/i,/NF[\s\-]*[eE]?\s*[Nº°]\.?\s*\d/i,/RPS\s*[Nº°]\.?\s*\d/i,/Num\.?\s*[:.]?\s*\d/i];
 function d(s){return(s||'').replace(/\D/g,'');}
 function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
-function vH(ch){ch=d(ch);if(ch.length!==44)return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
+function vH(ch){ch=d(ch);if(ch.length!==44)return false;/* degenerados: '000...0' e '111...1' passam no modulo 11 (soma 0 => DV 0) mas nao sao chave */if(/^(\d)\1+$/.test(ch))return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
 async function tC(file){const buf=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:buf}).promise;let full="";const items=[];for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p);const ct=await page.getTextContent();const pageItems=[];for(const it of ct.items){if(!it.str.trim())continue;pageItems.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});items.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});}pageItems.sort((a,b)=>{const dy=b.y-a.y;if(Math.abs(dy)>4)return dy;return a.x-b.x;});for(const it of pageItems)full+=it.str+" ";full+="\n";}await doc.destroy();return{full,items};}
 function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:99,valida:true};}}const runsRep=[...full.matchAll(/\d(?:[\s\.\-]*\d){28,}/g)].map(x=>d(x[0])).filter(x=>x.length>=40&&x.length<=46);for(const dig of runsRep){const c=reparaChave(dig);if(c)return{valor:c,conf:88,valida:true};}let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:vH(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(vH(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:vH(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};
 return{valor:"",conf:0,valida:false};}
@@ -667,7 +667,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #tab-separar{max-width:760px;margin-inline:auto}
 #sep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow)}
 #tab-separar .campo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px}
-#tab-separar .campo label{display:block;font-weight:600;margin:0 0 8px;color:var(--text)}
+#tab-separar .campo label,#tab-separar legend.campo-legenda{display:block;font-weight:600;margin:0 0 8px;color:var(--text)}
 #tab-separar .row{display:flex;gap:8px}
 #tab-separar input[type=text]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
 #tab-separar input[type=file]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--card)}
@@ -740,7 +740,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 </style>
 </head>
 <body>
-<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
+<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
 
 
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
@@ -795,20 +795,20 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
             <input type="file" id="pdfFile" accept=".pdf">
           </div>
         </div>
-        <div class="campo">
-          <label>Modo de detecção</label>
+        <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
+          <legend class="campo-legenda">Modo de detecção</legend>
           <div class="radio-group" id="modos">
             <label><input type="radio" name="modo" value="auto" checked> Automático</label>
             <label><input type="radio" name="modo" value="unica"> Uma página = uma nota</label>
           </div>
-        </div>
-        <div class="campo">
-          <label>Nomeação dos arquivos</label>
+        </fieldset>
+        <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
+          <legend class="campo-legenda">Nomeação dos arquivos</legend>
           <div class="radio-group">
             <label><input type="radio" name="lerNumero" value="sim" checked> Ler número da nota</label>
             <label><input type="radio" name="lerNumero" value="nao"> Não ler (usar página)</label>
           </div>
-        </div>
+        </fieldset>
         <div class="campo">
           <label for="pastaNome">Pasta de destino</label>
           <div class="row">
@@ -875,7 +875,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <p class="sub" style="font-size:11px;color:var(--text3);margin-top:4px">Leitura isolada • número • CNPJs • chave 44 • data • valor — <strong style="color:var(--success)">garantia de CNPJ + número</strong> (chave 44 + OCR de reforço) — sem tocar nos XMLs</p>
           <div style="margin-top:10px;display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center">
             <span class="chip"><svg class="i" aria-hidden="true"><use href="#i-file"></use></svg> Múltiplos PDFs</span>
-            <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px">✓ Garante CNPJ + Nº</span>
+            <span class="chip"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg> Garante CNPJ + Nº</span>
             <span style="background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:20px;font-size:10px"><svg class="i" aria-hidden="true"><use href="#i-bolt"></use></svg> 100% navegador</span>
           </div>
         </div>
@@ -913,6 +913,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
             <span style="font-size:10px;color:var(--text3)">Enter para consultar • cache local automático</span>
           </div>
+          <div id="cnpj-status" role="status" aria-live="polite" style="margin-top:6px;font-size:12px;font-weight:600;color:var(--text3)"></div>
           <div id="cnpj-privacidade" role="note" style="margin-top:10px;padding:10px 12px;background:var(--tint);border:1px solid var(--border);border-left:3px solid var(--info);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.5">
             <strong style="color:var(--primary-ink)">Privacidade:</strong> todo o processamento acontece <strong>no seu navegador</strong>. Os resultados de CNPJ ficam salvos apenas no <code>localStorage</code> deste navegador, com validade de 30 dias, e <strong>não são enviados a nenhum servidor</strong> por este sistema. A única requisição externa é a consulta ao <code>publica.cnpj.ws</code>. Nada sai do seu computador além do CNPJ digitado. Você pode apagar tudo a qualquer momento com o botão "Limpar cache".
           </div>
@@ -1002,7 +1003,7 @@ function rmNS(x){return x.replace(/xmlns(:[^=]+)?="[^"]+"/g,'').replace(/<\?xml[
 function parseXML(texto){
   const doc=new DOMParser().parseFromString(rmNS(texto),'text/xml');
   const err=doc.querySelector('parsererror');
-  if(err)throw new Error('Erro ao parsear XML: '+(err.textContent||'').slice(0,100));
+  if(err)throw new Error('XML inválido ou malformado. Detalhe: '+(err.textContent||'').replace(/\s+/g,' ').slice(0,100));
   return doc;
 }
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
@@ -1445,7 +1446,7 @@ function renderNFE(){
     const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS','IBS','CBS','BC ST','ICMS ST'];
     html+=`<div class="nota-card">
       <div class="header" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">
-        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err">✗ CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok">✓ AUTORIZADA</span>':''}</span>
+        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg> CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg> AUTORIZADA</span>':''}</span>
         <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
       </div>
       <div class="body-detail">
@@ -2029,7 +2030,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
-      const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}">✗ ${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido — confira no debug">✓ CNPJ+Nº • DV ✗</span>`:`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' • CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' • nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`);
+      const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido — confira no debug">✓ CNPJ+Nº • DV ✗</span>`:`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' • CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' • nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`);
       return `<tr>
         <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>

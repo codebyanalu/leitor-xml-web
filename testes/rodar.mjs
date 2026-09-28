@@ -80,8 +80,22 @@ function itensTsv(tsv, esc, page) {
 
 const M = carregarModulo();
 const soOCR = process.argv.includes('--ocr-somente');
+const soEstrutura = process.argv.includes('--so-estrutura');
+
+/* --so-estrutura: so a regressao estrutural (1 s, sem OCR). A bancada completa
+   depende de amostras/ e leva ~2 min por 8 PDFs. */
+if (soEstrutura) {
+  console.log('rodar.mjs: use `node regressao.mjs` para a regressao estrutural.');
+  process.exit(0);
+}
+
 const arquivos = fs.readdirSync(AMOSTRAS).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
 console.log(`${arquivos.length} PDF(s) em amostras/`);
+if (!arquivos.length) {
+  console.error('\n✗ Nenhum PDF em amostras/. A bancada nao tem o que validar.');
+  console.error('  (amostras/ e gitignored por conter notas reais da cliente)');
+  process.exit(1);
+}
 
 const worker = await Tesseract.createWorker('por', 1, { logger: () => {} });
 const resultados = [];
@@ -172,4 +186,17 @@ if (fs.existsSync(verdPath) && !soOCR) {
   const texto = linhas.join('\n');
   fs.writeFileSync(path.join(SAIDAS, 'metricas.txt'), texto);
   console.log(texto);
+
+  /* Gate de verdade: sem isso a bancada e um relatorio, nao um teste — um 0% de acuracia
+     saia com exit 0 e o merge passava. A regra do projeto e 100% (160/160). */
+  const esperado = Number(process.env.GCON_MIN_ACURACIA ?? 100);
+  const pct = tot ? (ok / tot) * 100 : 0;
+  if (pct < esperado) {
+    console.error(`\n✗ BANCADA REPROVADA: ${ok}/${tot} = ${pct.toFixed(1)}% (minimo ${esperado}%)`);
+    const reprovados = Object.entries(porCampo).filter(([, v]) => v.ok < v.tot)
+      .map(([c, v]) => `    ${c}: ${v.ok}/${v.tot}`);
+    console.error('  campos com falha:\n' + (reprovados.join('\n') || '    (nenhum campo individual falhou; o total e que nao bateu)'));
+    process.exit(1);
+  }
+  console.log(`\n✓ BANCADA OK: ${ok}/${tot} = ${pct.toFixed(1)}% (minimo ${esperado}%)`);
 }
