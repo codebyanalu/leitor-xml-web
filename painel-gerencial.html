@@ -1,0 +1,488 @@
+<title>GCON/SIAN — Painel Gerencial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --azul: #1a4b8c; --azul2: #2563af; --azul3: #5b8fd6; --azulbg: #eef4fe;
+    --laranja: #f59e0b; --laranjatx: #92400e; --laranjabg: #fffbeb;
+    --verde: #1a7f5a; --verdetx: #027a48; --verdebge: #ecfdf3;
+    --vermelho: #b91c1c; --vermelhog: #fef2f2;
+    --fundo: #f8fafc; --card: #ffffff; --borda: #e2e8f0; --grade: #eef2f6;
+    --tx: #0f172a; --tx2: #5b6b7f; --tx3: #6b7280;
+    --cinzabg: #f1f4f9;
+    --mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--fundo); color: var(--tx); font-family: Inter, "Segoe UI", system-ui, sans-serif; font-size: 14px; margin: 0; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 56px; }
+  @media (max-width: 700px) { .wrap { padding-inline: 16px; } }
+
+  header.pg { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .logo { width: 44px; height: 44px; border-radius: 10px; background: var(--azul); color: #fff; display: grid; place-items: center; flex: none; }
+  .logo svg { width: 24px; height: 24px; }
+  .htxt { flex: 1; min-width: 240px; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0; }
+  .sub { color: var(--tx2); margin: 4px 0 0; max-width: 72ch; line-height: 1.5; }
+  .relogio { display: flex; gap: 16px; align-items: baseline; font-variant-numeric: tabular-nums; color: var(--tx2); font-size: 12.5px; padding-top: 4px; }
+  .relogio b { color: var(--tx); font-size: 16px; font-weight: 600; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--card); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; }
+  .kpi .r { font-size: 12px; color: var(--tx2); display: flex; align-items: center; gap: 6px; }
+  .kpi .v { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--azul); line-height: 1.15; margin-top: 2px; }
+  .kpi .d { font-size: 11.5px; color: var(--tx2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  section { margin-top: 34px; }
+  .gh { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--borda); padding-bottom: 10px; margin-bottom: 16px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0; }
+  .gh .onde { color: var(--tx2); font-size: 12px; }
+  .card { background: var(--card); border: 1px solid var(--borda); border-radius: 12px; padding: 18px 20px; }
+
+  .barras { display: grid; gap: 14px; }
+  .barra .lin { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 5px; }
+  .barra .lin b { font-weight: 500; }
+  .barra .lin .n { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .barra .tr { background: var(--fundo); border-radius: 6px; height: 12px; overflow: hidden; }
+  .barra .fl { height: 100%; border-radius: 6px; }
+
+  .duas { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .duas { grid-template-columns: 1fr; } }
+
+  .agora { display: grid; gap: 10px; }
+  .agora .it { border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; }
+  .agora .it b { display: block; margin-bottom: 2px; }
+  .agora .it span { color: var(--tx2); font-size: 12.5px; }
+  .agora .it .t { font-variant-numeric: tabular-nums; color: var(--tx3); font-size: 11.5px; display: block; margin-top: 4px; }
+
+  ol.evt { list-style: none; margin: 0; padding: 0; }
+  ol.evt li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--grade); font-size: 13px; align-items: baseline; }
+  ol.evt li:last-child { border-bottom: 0; }
+  ol.evt .h { font-variant-numeric: tabular-nums; color: var(--tx2); font-size: 12.5px; }
+  ol.evt small { display: block; color: var(--tx3); font-size: 11.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; background: var(--fundo); color: var(--tx2); font-weight: 600; font-size: 12px; padding: 9px 12px; border-bottom: 1px solid var(--borda); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--grade); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.dim { color: var(--tx2); }
+  .tw { overflow-x: auto; }
+  .chip { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .chip.ok { background: var(--verdebge); color: var(--verdetx); }
+  .chip.and { background: var(--azulbg); color: var(--azul); }
+  .chip.atn { background: var(--laranjabg); color: var(--laranjatx); }
+  .chip.err { background: var(--vermelhog); color: var(--vermelho); }
+  .chip.fil { background: var(--cinzabg); color: var(--tx2); }
+
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--cinzabg); border-radius: 4px; padding: 1px 5px; color: var(--tx2); }
+  .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+  .ic18 { width: 18px; height: 18px; }
+
+  .barra-f { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .busca { position: relative; flex: 1; min-width: 210px; max-width: 340px; }
+  .busca .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--tx3); pointer-events: none; }
+  .busca input { width: 100%; font: inherit; font-size: 13px; color: var(--tx); background: var(--card); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 30px 8px 33px; outline: none; }
+  .busca input::placeholder { color: var(--tx3); }
+  .busca input:focus { border-color: var(--azul3); box-shadow: 0 0 0 3px rgba(91,143,214,.18); }
+  .busca .limpa { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--tx3); cursor: pointer; padding: 4px; line-height: 0; border-radius: 6px; display: none; }
+  .busca .limpa:hover { color: var(--tx); background: var(--cinzabg); }
+  .busca.on .limpa { display: block; }
+  .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fb { appearance: none; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; background: var(--card); color: var(--tx2); border: 1px solid var(--borda); border-radius: 999px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 7px; }
+  .fb:hover { color: var(--tx); background: var(--cinzabg); }
+  .fb[aria-pressed="true"] { background: var(--azul); border-color: var(--azul); color: #fff; }
+  .fb .n { font-variant-numeric: tabular-nums; font-weight: 600; opacity: .72; }
+  .contador { margin-left: auto; font-size: 12px; color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .contador b { color: var(--tx); font-weight: 600; }
+
+  .gc { background: var(--card); border: 1px solid var(--borda); border-left: 3px solid var(--g); border-radius: 12px; overflow: hidden; }
+  .gc-h { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--grade); }
+  .gc-h .ic { color: var(--g); }
+  .gc-h h3 { font-size: 14px; font-weight: 600; margin: 0; }
+  .gc-h .sub { color: var(--tx2); font-size: 12px; }
+  .gc-h .n { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--tx2); background: var(--cinzabg); border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
+  .gc-b { padding: 4px 0; }
+  .vazio { padding: 22px; text-align: center; color: var(--tx3); font-size: 13px; }
+  .vazio[hidden] { display: none; }
+
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 11px 18px; border-bottom: 1px solid var(--grade); transition: background .1s; }
+  .ln:last-child { border-bottom: 0; }
+  .ln:hover { background: var(--cinzabg); }
+  .ln[hidden] { display: none; }
+  .ln-t b { display: block; font-size: 13.5px; font-weight: 600; }
+  .ln-t span { display: block; color: var(--tx2); font-size: 12.5px; line-height: 1.45; margin-top: 1px; }
+  .ln-r { display: flex; align-items: center; gap: 10px; flex: none; }
+  .resp { font-size: 11.5px; color: var(--tx3); min-width: 104px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .crit { background: var(--card); border: 1px solid var(--borda); border-left: 3px solid var(--laranja); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .crit-h { background: var(--laranjabg); color: var(--laranjatx); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  .destrava { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 12px 18px; }
+  .destrava .rot { font-size: 12.5px; color: var(--tx2); }
+  .pill { font-size: 11.5px; color: var(--tx2); background: var(--cinzabg); border-radius: 6px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 6px; }
+  .pill .ic { width: 13px; height: 13px; color: var(--laranjatx); }
+
+  .amb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .amb { grid-template-columns: 1fr; } }
+  .amb .a { background: var(--card); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; }
+  .amb .a .n { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
+  .amb .a .d { color: var(--tx2); font-size: 12.5px; margin-top: 6px; line-height: 1.45; }
+
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--borda); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--tx3); font-size: 11.5px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+
+<svg style="display:none" aria-hidden="true"><defs>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5z"/></symbol>
+</defs></svg>
+
+<header class="pg">
+  <div class="logo"><svg class="ic" aria-hidden="true" style="width:24px;height:24px"><use href="#i-doc"></use></svg></div>
+  <div class="htxt">
+    <h1>Painel Gerencial — GCON/SIAN</h1>
+    <p class="sub">Leitor de NF-e e NFS-e 100% no navegador. paineis mostra o estado do <b>projeto</b>: o que foi entregue, o que a bancada prova, o que ainda depende de você e onde o sistema roda. Nenhum dado fiscal é exposto aqui.</p>
+  </div>
+  <div class="relogio">
+    <div><b id="rel-h">—</b><br>hora de Brasília</div>
+  </div>
+</header>
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="r"><span class="sw" style="background:var(--azul)"></span>Precisão da extração</div>
+    <div class="v">160/160</div>
+    <div class="d">20 campos × 8 PDFs · 100%</div>
+  </div>
+  <div class="kpi">
+    <div class="r"><span class="sw" style="background:var(--verde)"></span>Regressão estrutural</div>
+    <div class="v">179/179</div>
+    <div class="d">~1 s · sem OCR, sem browser</div>
+  </div>
+  <div class="kpi">
+    <div class="r"><span class="sw" style="background:var(--laranja)"></span>Schema coberto</div>
+    <div class="v">93 + 56</div>
+    <div class="d">campos NF-e + NFS-e</div>
+  </div>
+  <div class="kpi">
+    <div class="r"><span class="sw" style="background:var(--azul3)"></span>Esforço de OCR</div>
+    <div class="v">0 console</div>
+    <div class="d">6 CDNs com SRI · 0 segredo</div>
+  </div>
+</div>
+
+<div class="crit" role="status" aria-label="Pendências que dependem de você">
+  <div class="crit-h"><svg class="ic" aria-hidden="true" style="width:14px;height:14px"><use href="#i-alert"></use></svg> Depende de você</div>
+  <div class="destrava">
+    <span class="rot">Destrava o quê:</span>
+    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-doc"></use></svg>1 PDF de NFS-e</span>
+    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-doc"></use></svg>1 NF-e com ST/FCP</span>
+    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg>passeio dos 7 agentes re-rodado</span>
+    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg>liberação para a feature de paridade fiscal</span>
+  </div>
+</div>
+
+<section>
+  <div class="gh"><h2>Qualidade por situação</h2><span class="onde">gate do projeto: regressão estrutural + bancada de extração</span></div>
+  <div class="card"><div class="barras" id="barras"></div></div>
+</section>
+
+<section>
+  <div class="gh"><h2>A fila</h2><span class="onde">o que trava, o que o squad está resolvendo e o que vem depois</span></div>
+  <div class="duas">
+    <div style="display:grid;gap:16px">
+      <div class="gc" style="--g:var(--laranja)">
+        <div class="gc-h">
+          <svg class="ic ic18" aria-hidden="true"><use href="#i-lock"></use></svg>
+          <div><h3>Bloqueado — precisa de você</h3><div class="sub">nenhum item avança sem insumo ou decisão sua</div></div>
+          <button class="fb" data-grupo-alvo="bloq" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="bloq">0</span></button>
+        </div>
+        <div class="gc-b">
+          <div class="vazio" data-so="bloq">Nada bloqueado.</div>
+        </div>
+      </div>
+
+      <div class="gc" style="--g:var(--azul)">
+        <div class="gc-h">
+          <svg class="ic ic18" aria-hidden="true"><use href="#i-play"></use></svg>
+          <div><h3>Próximo lote</h3><div class="sub">a feature que dá paridade fiscal ao leitor de PDF</div></div>
+          <button class="fb" data-grupo-alvo="prox" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="prox">0</span></button>
+        </div>
+        <div class="gc-b">
+          <div class="vazio" data-so="prox">Nada na fila.</div>
+        </div>
+      </div>
+
+      <div class="gc" style="--g:var(--cinzabg)">
+        <div class="gc-h">
+          <svg class="ic ic18" aria-hidden="true"><use href="#i-doc"></use></svg>
+          <div><h3>Resolvido neste ciclo</h3><div class="sub">o que já está publicado e provado</div></div>
+          <button class="fb" data-grupo-alvo="feito" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="feito">0</span></button>
+        </div>
+        <div class="gc-b">
+          <div class="vazio" data-so="feito">Nada entregue ainda.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="barra-f">
+        <div class="busca" id="busca">
+          <svg class="ic" aria-hidden="true" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--tx3)"><use href="#i-search"></use></svg>
+          <input id="q" type="search" placeholder="filtrar por texto, código ou commit…" aria-label="filtrar itens">
+          <button class="limpa" id="qLimpa" aria-label="limpar filtro"><svg class="ic" style="width:14px;height:14px"><use href="#i-x"></use></svg></button>
+        </div>
+        <div class="filtros" role="group" aria-label="filtrar por grupo">
+          <button class="fb" data-grupo="todos" aria-pressed="true">Todos <span class="n">0</span></button>
+          <button class="fb" data-grupo="bloq" aria-pressed="false">Bloqueado <span class="n">0</span></button>
+          <button class="fb" data-grupo="prox" aria-pressed="false">Próximo <span class="n">0</span></button>
+          <button class="fb" data-grupo="feito" aria-pressed="false">Resolvido <span class="n">0</span></button>
+        </div>
+        <span class="contador"><b id="vis">0</b> visíveis</span>
+      </div>
+      <div class="gc" style="--g:var(--azul3)">
+        <div class="gc-h" id="cab-lista">
+          <svg class="ic ic18" aria-hidden="true"><use href="#i-doc"></use></svg>
+          <div><h3 id="tit-lista">Todos os itens</h3><div class="sub" id="sub-lista">fonte única: o filtro atua nesta lista e nos contadores dos grupos</div></div>
+        </div>
+        <div class="gc-b" id="lista">
+          <div class="ln" data-grupo="bloq" data-txt="nfs-e amostra precisa de voce">
+            <div class="ln-t"><b>Amostra de NFS-e em PDF</b><span>Não há nenhuma nota de serviço em todo o disco: 0 XML e 0 PDF. Sem ela, ISS/CSRF/IBS ficam validados só contra fixture sintética — e o relatório dirá isso com todas as letras.</span></div>
+            <div class="ln-r"><span class="chip atn">falta insumo</span><span class="resp">1 arquivo</span></div>
+          </div>
+          <div class="ln" data-grupo="bloq" data-txt="st fcp icms substituicao tributaria nf-e">
+            <div class="ln-t"><b>NF-e com ST e FCP</b><span>No corpus de 1.564 XMLs: ST aparece em 2 notas (0,1%) e FCP em nenhuma. Sem uma, esses dois grupos entram como “não consta no documento”.</span></div>
+            <div class="ln-r"><span class="chip atn">falta insumo</span><span class="resp">1 arquivo</span></div>
+          </div>
+          <div class="ln" data-grupo="bloq" data-txt="passeio sete agentes checklist re-rodar">
+            <div class="ln-t"><b>Passeio dos 7 agentes</b><span>Os 4 bloqueios do ciclo foram corrigidos em 4 lotes, mas o checklist precisa ser re-rodado para fechar a regra do projeto.</span></div>
+            <div class="ln-r"><span class="chip and">ação sua</span><span class="resp">1 comando</span></div>
+          </div>
+
+          <div class="ln" data-grupo="prox" data-txt="paridade pdf xml leitor de pdf itens ncm cst cfop">
+            <div class="ln-t"><b>Paridade PDF ↔ XML no leitor de PDF</b><span>Hoje o PDF extrai 20 campos e o XML extrai 93. Falta: itens (NCM/CST/CFOP/un/qCom/vUnCom), ST, FCP, IPI por item, PIS/COFINS, vTotTrib e tipo de nota pela chave (55/65/57/58).</span></div>
+            <div class="ln-r"><span class="chip and">planejado</span><span class="resp">9 ondas</span></div>
+          </div>
+          <div class="ln" data-grupo="prox" data-txt="escada de convergencia ocr retry reler regiao">
+            <div class="ln-t"><b>Escada de convergência no OCR</b><span>Ler → conferir → se divergir, reler só a região em escala maior, até 2 tentativas. É o que transforma “tentei” em “100% ou pendente de conferência”.</span></div>
+            <div class="ln-r"><span class="chip and">planejado</span><span class="resp">5 níveis</span></div>
+          </div>
+          <div class="ln" data-grupo="prox" data-txt="corpus 84 pdfs bancada scanner digital boleto">
+            <div class="ln-t"><b>Corpus de 84 PDFs na bancada</b><span>Hoje são 8, todos DANFE da mesma emitente e todos sem camada de texto. O corpus dos Downloads tem 84, de 4 origens: digital com texto, print-to-PDF imagem, scanner de verdade e não-nota (boleto).</span></div>
+            <div class="ln-r"><span class="chip and">planejado</span><span class="resp">8 → 84</span></div>
+          </div>
+
+          <div class="ln" data-grupo="feito" data-txt="contraste acessibilidade teclado 627b8e0">
+            <div class="ln-t"><b>Contraste e acessibilidade</b><span>tokens de hover, badge sólido no dark, borda de aviso, foco, teclado nos alvos clicáveis e live region permanente. Dashboard em dark saiu de 3,56:1 no primeiro render.</span></div>
+            <div class="ln-r"><span class="chip ok">627b8e0</span><span class="resp">22:05</span></div>
+          </div>
+          <div class="ln" data-grupo="feito" data-txt="seguranca xss redos lgpd 138af48">
+            <div class="ln-t"><b>Segurança</b><span>6 sinks XSS fechados (o do <code>publica.cnpj.ws</code> levava CPF de sócios), ReDoS eliminado (200 espaços levavam 70,6 s), 10 <code>console.*</code> removidas, aviso de LGPD e cache com TTL.</span></div>
+            <div class="ln-r"><span class="chip ok">138af48</span><span class="resp">22:17</span></div>
+          </div>
+          <div class="ln" data-grupo="feito" data-txt="infraestrutura sri cdn tesseract 11 mb c81933c">
+            <div class="ln-t"><b>Infraestrutura</b><span>SRI nas 6 CDNs conferida byte a byte, tesseract pinado em 4.1.4, origens do OCR declaradas (11 MB que eram invisíveis no HTML), teto de páginas e aviso visível de CDN fora.</span></div>
+            <div class="ln-r"><span class="chip ok">c81933c</span><span class="resp">22:42</span></div>
+          </div>
+          <div class="ln" data-grupo="feito" data-txt="testes regressao 179 casos gate f736ac3">
+            <div class="ln-t"><b>Regressão e gate</b><span>179 casos estruturais em ~1 s, cobrindo o que a bancada de OCR nunca viu. E a bancada virou gate de verdade: antes um 0% de acurácia saía com exit 0.</span></div>
+            <div class="ln-r"><span class="chip ok">f736ac3</span><span class="resp">23:03</span></div>
+          </div>
+          <div class="ln" data-grupo="feito" data-txt="obsidian vault hook agente 11d2665">
+            <div class="ln-t"><b>Vault do Obsidian com dono</b><span>Agente com escrita restrita ao vault e hook que reescreve o estado do MOC sozinho, sem LLM. 31 notas, 0 links quebrados.</span></div>
+            <div class="ln-r"><span class="chip ok">11d2665</span><span class="resp">23:12</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="vazio" hidden id="vazio">Nada encontrado com esse filtro.</div>
+    </div>
+  </div>
+</section>
+
+
+
+<section>
+  <div class="gh"><h2>Detalhe das entregas</h2><span class="onde">o que cada lote provou, e como</span></div>
+  <div class="card tw">
+    <table>
+      <thead><tr><th>Lote</th><th>O que mudou</th><th>Como foi provado</th><th>Achado surprise</th><th>Commit</th></tr></thead>
+      <tbody>
+        <tr><td><b>Contraste e acessibilidade</b></td><td class="dim">tokens de hover, badge sólido no dark, borda de aviso, foco, teclado, live region</td><td class="dim">179 casos + cálculo WCAG próprio nos 2 temas</td><td><span class="chip and">dashboard em dark a 3,56:1 no primeiro render</span></td><td><code>627b8e0</code></td></tr>
+        <tr><td><b>Segurança</b></td><td class="dim">escape na fronteira, console, globais, LGPD, ReDoS</td><td class="dim">varredura + medição do ReDoS</td><td><span class="chip err">200 espaços = 70,6 s</span></td><td><code>138af48</code></td></tr>
+        <tr><td><b>Infraestrutura</b></td><td class="dim">SRI, pin, corePath, teto de OCR, aviso de CDN</td><td class="dim">6/6 SRI conferidos + OCR real no browser</td><td><span class="chip err">tesseract.js-core 4.1.4 não existe</span></td><td><code>c81933c</code></td></tr>
+        <tr><td><b>Testes</b></td><td class="dim">179 casos, gate com exit 1, npm test de verdade</td><td class="dim">npm test + prova de que reprova</td><td><span class="chip err">#cnpj-status não existia no HTML</span></td><td><code>f736ac3</code></td></tr>
+        <tr><td><b>Vault</b></td><td class="dim">agente restrito + hook sem LLM</td><td class="dim">hook executado contra o MOC real, com git real</td><td><span class="chip atn">ahead/behind invertidos no hook</span></td><td><code>11d2665</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="gh"><h2>Agora</h2><span class="onde">estado do projeto neste ciclo</span></div>
+  <div class="duas">
+    <div class="card">
+      <div class="agora">
+        <div class="it"><b>Leitor de PDF lê 20 campos; o XML lê 93</b><span>É a maior lacuna funcional do projeto. A nota 742197 não imprime ST, FCP, PIS nem COFINS: o sistema precisa dizer “não consta no documento” em vez de chutar valor.</span><span class="t">alvo: 9 ondas · 1 linha por nota + aba de itens</span></div>
+        <div class="it"><b>Bancada cega para a UI, até ontem</b><span>Ela fatia o <code>index.html</code> antes da linha 355, então tema, sprite, acessibilidade e CDNs nunca foram testados. Agora são 179 casos em 1 s.</span><span class="t">resolvido em f736ac3</span></div>
+        <div class="it"><b>OCR é o teto do produto</b><span>As amostras são JPEG a ~201 dpi sem fonte, fatiadas em faixas. Nenhuma regex conserta glyph borrado; o que move a precisão é o pipeline de imagem e a escada de convergência.</span><span class="t">4–12 s por página</span></div>
+        <div class="it"><b>Dados reais fora do git</b><span>1.564 XMLs e 84 PDFs da cliente vivem nos Downloads, nunca no repositório. O vault recebe só agregados e formatos.</span><span class="t">regra mantida desde 27/09</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <ol class="evt">
+        <li><span class="h">18:09</span><span>Painel gerencial do projeto de referência lido estruturado<small>mesma linguagem visual, dados reais deste projeto</small></span></li>
+        <li><span class="h">17:44</span><span>Redesign de interface mergeado<small>tema claro/escuro, breadcrumb, sprite SVG, responsivo</small></span></li>
+        <li><span class="h">17:31</span><span>Passeio dos 7 agentes rodado pela primeira vez<small>4 de 7 bloquearam — o número 160/160 não cobria nada do redesign</small></span></li>
+        <li><span class="h">23:12</span><span>5 lotes publicados<small>contraste, segurança, infraestrutura, testes e vault</small></span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="gh"><h2>Ambientes</h2><span class="onde">single-file, sem build, sem servidor</span></div>
+  <div class="amb">
+    <div class="a">
+      <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--azul)"><use href="#i-monitor"></use></svg>Local</div>
+      <div class="d">Abrir o <code>index.html</code> direto no navegador. Tudo funciona, inclusive as CDNs. Único lugar onde o OCR roda de verdade (o harness usa worker próprio).</div>
+    </div>
+    <div class="a">
+      <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--verde)"><use href="#i-globe"></use></svg>GitHub Pages</div>
+      <div class="d"><code>codebyanalu/leitor-xml-web</code> · branch <code>main</code>. Push de 27/09: <code>d072771..11d2665</code>, 7 commits, 0 atrás.</div>
+    </div>
+    <div class="a">
+      <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--laranjatx)"><use href="#i-shield"></use></svg>Privacidade</div>
+      <div class="d">Nenhum XML ou PDF sai da máquina. A única chamada externa é a consulta de CNPJ, com TTL de 30 dias e botão de apagar.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>Painel do projeto GCON/SIAN · ciclo de 27/09/2026 · horários de Brasília (UTC-3). Nenhum dado fiscal é exposto neste arquivo.</span>
+  <span id="pub" style="font-variant-numeric:tabular-nums"></span>
+</footer>
+</div>
+
+<script>
+(function () {
+  var ROTULOS = {
+    bloq: 'Bloqueado — precisa de você',
+    prox: 'Próximo lote',
+    feito: 'Resolvido neste ciclo',
+    todos: 'Todos os itens'
+  };
+
+  // ---- barras de situação ----
+  var st = [
+    ['Corrigido e publicado', 5, 'var(--verde)'],
+    ['Pendente de insumo seu', 3, 'var(--laranja)'],
+    ['Próximo lote', 3, 'var(--azul)']
+  ];
+  var total = st.reduce(function (a, r) { return a + r[1]; }, 0);
+  document.getElementById('barras').innerHTML = st.map(function (r) {
+    var pct = Math.round(r[1] / total * 100);
+    return '<div class="barra" title="' + r[1] + ' de ' + total + ' — ' + pct + '%">'
+      + '<div class="lin"><b>' + r[0] + '</b><span class="n">' + r[1] + ' · ' + pct + '%</span></div>'
+      + '<div class="tr"><div class="fl" style="width:' + (r[1] / total * 100).toFixed(1) + '%;background:' + r[2] + '"></div></div></div>';
+  }).join('');
+
+  /* FONTE ÚNICA: os .ln vivem em #lista e não são copiados para lugar nenhum.
+     Os grupos da esquerda são só cabeçalho + contador, derivados daqui. */
+  var ITENS = Array.prototype.slice.call(document.querySelectorAll('#lista .ln[data-grupo]'));
+  var q = document.getElementById('q');
+  var box = document.getElementById('busca');
+  var limpo = document.getElementById('qLimpa');
+  var vis = document.getElementById('vis');
+  var vazio = document.getElementById('vazio');
+  var grupo = 'todos';
+
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function texto(el) { return norm((el.getAttribute('data-txt') || '') + ' ' + el.textContent); }
+  function algum(l) { return Array.prototype.some.call(l, function (c) { return !c.hidden; }); }
+
+  function contadores() {
+    // cabeçalhos de grupo (esquerda) e botões de filtro (direita) contam a MESMA lista
+    document.querySelectorAll('[data-badge]').forEach(function (b) {
+      var g = b.getAttribute('data-badge');
+      b.textContent = g === 'todos' ? ITENS.length
+        : ITENS.filter(function (el) { return el.getAttribute('data-grupo') === g; }).length;
+    });
+    document.querySelectorAll('.fb[data-grupo] .n').forEach(function (n) {
+      var g = n.closest('.fb').getAttribute('data-grupo');
+      n.textContent = g === 'todos' ? ITENS.length
+        : ITENS.filter(function (el) { return el.getAttribute('data-grupo') === g; }).length;
+    });
+  }
+
+  function aplicar() {
+    var termo = norm(q.value).trim();
+    box.classList.toggle('on', !!termo);
+    ITENS.forEach(function (el) {
+      var okG = grupo === 'todos' || el.getAttribute('data-grupo') === grupo;
+      var okQ = !termo || texto(el).indexOf(termo) !== -1;
+      el.hidden = !(okG && okQ);
+    });
+    var visiveis = ITENS.filter(function (el) { return !el.hidden; });
+    vis.textContent = visiveis.length;
+    vazio.hidden = visiveis.length > 0;
+    document.getElementById('tit-lista').textContent = ROTULOS[grupo] || 'Todos os itens';
+    // "vazios" dos grupos: só quando o grupo inteiro some, não quando o filtro esconde tudo
+    ['bloq', 'prox', 'feito'].forEach(function (g) {
+      var noGrupo = ITENS.filter(function (el) { return el.getAttribute('data-grupo') === g; });
+      var marcador = document.querySelector('[data-so="' + g + '"]');
+      if (marcador) marcador.hidden = noGrupo.length > 0;
+    });
+  }
+
+  function marcar(alvo) {
+    document.querySelectorAll('.fb[data-grupo]').forEach(function (x) {
+      x.setAttribute('aria-pressed', x.getAttribute('data-grupo') === alvo ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-grupo-alvo]').forEach(function (x) {
+      x.setAttribute('aria-pressed', x.getAttribute('data-grupo-alvo') === alvo ? 'true' : 'false');
+    });
+    grupo = alvo;
+    aplicar();
+  }
+
+  document.querySelectorAll('.fb[data-grupo]').forEach(function (b) {
+    b.addEventListener('click', function () { marcar(b.getAttribute('data-grupo')); });
+  });
+  document.querySelectorAll('[data-grupo-alvo]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var g = b.getAttribute('data-grupo-alvo');
+      marcar(grupo === g ? 'todos' : g);
+    });
+  });
+  q.addEventListener('input', aplicar);
+  limpo.addEventListener('click', function () { q.value = ''; aplicar(); q.focus(); });
+
+  contadores();
+  aplicar();
+
+  // ---- relógio e data de publicação ----
+  var rel = document.getElementById('rel-h');
+  function tick() {
+    rel.textContent = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  tick();
+  setInterval(tick, 1000);
+  document.getElementById('pub').textContent = 'gerado em ' + new Date().toLocaleDateString('pt-BR');
+})();
+</script>
