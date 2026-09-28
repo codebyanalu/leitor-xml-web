@@ -9,9 +9,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js" onerror="console.error('Tesseract.js CDN falhou ao carregar')"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js" onerror="window.GCON_CDN_TESSERACT=1"></script>
 <script>
-if(typeof Tesseract==='undefined'){console.warn('Tesseract.js não disponível - OCR desabilitado');}
+
 </script>
 <script>
 window.ModPDFIsolado=(()=>{
@@ -319,7 +319,6 @@ async function extrair(file){
   if(!full.trim()){
     try{const o=await ocrPDF(file);full=o.full;items=o.items||[];fonte="ocr";ocrTentado=true;}catch(eOCR){
       const msg=eOCR instanceof Error?eOCR.message:String(eOCR);
-      console.error('OCR falhou:',eOCR);
       throw new Error('PDF sem texto extraível. '+msg);
     }
   }
@@ -346,7 +345,6 @@ function finalizar(r,full,fonte,ocrTentado,ocrErro){
   r.garantia=falta.length?"falta "+falta.join(" e "):"CNPJ+número OK";
   r.confMedio=Math.round(((r.chaveConf||0)+(r.cnpjConf||0)+(r.numeroConf||0))/3);
   r.fullPreview=full.slice(0,2200);r.fullLen=full.length;
-  window._lastOCRDebug={full:full.slice(0,5000),valor:r.valor,numero:r.numero,numeroAncora:r.numeroAncora};
   return r;
 }
 
@@ -895,7 +893,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 
 <script>
 'use strict';
-console.log('GCON/SIAN iniciado');
+
 
 // ═══ DATA ═══
 const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
@@ -939,8 +937,12 @@ function parseXML(texto){
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
 function moeda(v){return `R$ ${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
 function pct(v){return `${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%`}
-function vl(v){const s=String(v||'').trim();return(!s||s==='nan'||s==='None')?'':s}
 function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
+/* Escape de HTML — texto do nó E atributos (& < > " ').
+   Vigia em todo texto que venha de arquivo (XML/PDF/OCR) ou de fetch, antes de entrar via innerHTML.
+   Fica no escopo do script (e nao dentro de um IIFE) porque tem consumidores em varios modulos. */
+function ESC(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+const esc=ESC;
 function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
 function agora(){const d=new Date();return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 
@@ -1190,7 +1192,6 @@ async function handleFiles(files){
     msg.textContent=`[${i+1}/${arr.length}] ${file.name}`;
     try{
       const texto=await readFileAsText(file);
-      console.log(`OK ${file.name} (${texto.length} chars)`);
       const tipo=detectType(texto);
       if(tipo==='nfse'){
         const r=extrairNFSe(file.name,texto);
@@ -1208,7 +1209,6 @@ async function handleFiles(files){
     }catch(e){
       errCount++;const emsg=e.message||String(e);
       logHTML(`  [${i+1}/${arr.length}] ${(file.name||'').slice(0,48)} - ${emsg.slice(0,80)}`,'err');
-      console.error(`ERRO ${file.name}:`,e);
     }
   }
 
@@ -1225,7 +1225,6 @@ async function handleFiles(files){
   }
   updateStatus();populateFilters();
   overlay.classList.remove('active');
-  console.log(`DB: ${DB.nfe.length} NFE, ${DB.nfse.length} NFSE`);
 }
 
 function updateStatus(){
@@ -1238,8 +1237,8 @@ function updateStatus(){
 function populateFilters(){
   const sn=document.getElementById('filtro-nfe-cnpj');
   const ss=document.getElementById('filtro-nfse-cnpj');
-  sn.innerHTML='<option value="">Todos emitentes</option>'+[...new Set(DB.nfe.map(p=>p.CNPJ_Emitente).filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('');
-  ss.innerHTML='<option value="">Todos prestadores</option>'+[...new Set(DB.nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('');
+  sn.innerHTML='<option value="">Todos emitentes</option>'+[...new Set(DB.nfe.map(p=>p.CNPJ_Emitente).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
+  ss.innerHTML='<option value="">Todos prestadores</option>'+[...new Set(DB.nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
 }
 
 // ═══ RENDER NF-e (COMPLETO) ═══
@@ -1349,7 +1348,7 @@ function nfeItemDetalhe(p){
 function renderNFE(){
   try{
   const c=document.getElementById('nfe-list');
-  if(!c){console.error('nfe-list not found');return;}
+  if(!c)return;
   const filtro=document.getElementById('filtro-nfe').value.toLowerCase();
   const fc=document.getElementById('filtro-nfe-cnpj').value;
   let d=DB.nfe;
@@ -1431,7 +1430,7 @@ function renderNFE(){
     </div>`;
   }
   c.innerHTML=html;
-  }catch(e){console.error('renderNFE error:',e);document.getElementById('nfe-list').innerHTML='<div style="color:red;padding:20px">Erro ao renderizar: '+String(e.message||e).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';}
+  }catch(e){document.getElementById('nfe-list').innerHTML='<div style="color:var(--err-ink);padding:20px">Erro ao renderizar: '+esc(String(e.message||e))+'</div>';}
 }
 function toggleDet(el){
   const b=el.nextElementSibling;
@@ -1677,20 +1676,19 @@ document.getElementById('upload-area').addEventListener('drop',e=>{e.preventDefa
 // ═══ START ═══
 function tick(){document.getElementById('hora').textContent=agora();setTimeout(tick,1000)}
 tick();updateStatus();
-console.log('GCON/SIAN pronto. DB:',DB.sessaoId);
 
 // ═══ SEPARADOR DE PDF ═══
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 const PADROES_SEP = [
-  /(?:Nota\s*Fiscal|NF\s*e?[°º]?\s*[.:]?)\s*[Nn]?[o°º]?\.?\s*[:.]?\s*(\d{1,15})/gi,
-  /N[°º][s°]?\.?\s*[.:]?\s*(\d{1,15})/gi,
-  /N\.\s*(\d{1,15})/gi,
-  /(?:N[uú]mero|NUMERO)\s*(?:da\s*)?(?:nota|fiscal)?\s*[.:]?\s*(\d{1,15})/gi,
+  /(?:Nota\s{0,4}Fiscal|NF\s{0,4}e?[°º]?\s{0,4}[.:]?)\s{0,4}[Nn]?[o°º]?\.?\s{0,4}[:.]?\s{0,4}(\d{1,15})/gi,
+  /N[°º][s°]?\.?\s{0,4}[.:]?\s{0,4}(\d{1,15})/gi,
+  /N\.\s{0,4}(\d{1,15})/gi,
+  /(?:N[uú]mero|NUMERO)\s{0,4}(?:da\s{0,4})?(?:nota|fiscal)?\s{0,4}[.:]?\s{0,4}(\d{1,15})/gi,
 ];
 function sepStatus(msg, cls) {
   const el = document.getElementById('status');
-  el.innerHTML = msg;
+  el.textContent = msg;
   el.className = cls || '';
 }
 function sepLog(msg) {
@@ -1925,11 +1923,11 @@ document.getElementById('baixar').addEventListener('click', async () => {
 // ═══ MÓDULO ISOLADO: LEITURA PDF (número/CNPJ/chave) — zero impacto no XML ═══
 (() => {
   const DBpdf=[]; const logEl=document.getElementById('pdfiso-log'); const resEl=document.getElementById('pdfiso-result');
-  function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'#cbd5e1';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+  const esc=ESC; /* esc vive no escopo do script (ver ESC) — antes daqui quebrava os consumidores fora deste IIFE */
+  function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'var(--code-fg)';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
   function fmtCNPJ(c){return c?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):'';}
   function fmtChave(ch){return ch?ch.replace(/(\d{4})/g,'$1 ').trim():'';}
   function pfiltro(){return{txt:(document.getElementById('pdfiso-busca')?.value||'').toLowerCase(),conf:document.getElementById('pdfiso-filtro-conf')?.value||''};}
-  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   function isoRender(){
     const kpis=document.getElementById('pdfiso-kpis');
     if(!DBpdf.length){resEl.innerHTML='';kpis.style.display='none';return;}
@@ -1967,7 +1965,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
         <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
         <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjPrestador)}</td>
-        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nomePrestador)}">${r.nomePrestador||'—'}</td>
+        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nomePrestador)}">${esc(r.nomePrestador)||'—'}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
         <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
         <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
@@ -2076,7 +2074,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
   }
   async function consultar(){
     const c=d(inp.value);
-    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
+    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">${esc(e.message)}Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
     const cacheKey=CHAVE_CACHE+c;
     const cached=lerCache(cacheKey);
     if(cached){try{render(cached,true);return;}catch(e){}}
@@ -2084,15 +2082,29 @@ document.getElementById('baixar').addEventListener('click', async () => {
     try{
       const r=await fetch(API+c, {headers:{'Accept':'application/json'}});
       if(!r.ok) throw new Error('HTTP '+r.status+' — CNPJ não encontrado');
-      const dados=await r.json();
+      const dados=escProfundo(await r.json());
       gravarCache(cacheKey,dados);
       render(dados,false);
       st.textContent='✓ OK'; st.style.color='var(--success)';
     }catch(e){
       res.style.display='block';
-      res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ ${e.message}</div>`;
+      res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">${esc(e.message)}✗ ${e.message}</div>`;
       st.textContent='✗ erro'; st.style.color='var(--err)';
     }finally{btn.disabled=false; btn.textContent='Consultar';}
+  }
+  /* Higiene de fronteira: a resposta de publica.cnpj.ws é dado de terceiro com PII (CPF de sócios,
+     e-mail, telefone) e entra no DOM via innerHTML. Em vez de escapar 40 interpolações — e
+     esquecer uma — a carga é escapada uma vez, em profundidade, logo após o fetch. Qualquer
+     campo novo herda a proteção; números/booleanos passam intactos. */
+  function escProfundo(v,prof){
+    if(prof>8)return '';
+    if(v===null||v===undefined)return v;
+    if(typeof v==='string')return esc(v);
+    if(typeof v!=='object')return v;
+    if(Array.isArray(v))return v.map(x=>escProfundo(x,(prof||0)+1));
+    const out={};
+    for(const k in v){if(Object.prototype.hasOwnProperty.call(v,k))out[k]=escProfundo(v[k],(prof||0)+1);}
+    return out;
   }
   function render(dados,cached){
     const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
@@ -2178,7 +2190,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
       try{
         const r=await fetch(API+c); 
         if(!r.ok) throw new Error('HTTP '+r.status);
-        const j=await r.json(); gravarCache(CHAVE_CACHE+c, j);
+        const j=escProfundo(await r.json()); gravarCache(CHAVE_CACHE+c, j);
         const est=j.estabelecimento||{};
         resultados.push({cnpj:c, razao:j.razao_social||'', fantasia:est.nome_fantasia||'', uf:est.estado?.sigla||'', situacao:est.situacao_cadastral||'', ie:(est.inscricoes_estaduais||[]).find(e=>e.ativo)?.inscricao_estadual||'', ok:true, msg:''});
         loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,'#2ecc71');
