@@ -12,7 +12,7 @@ Responsável por definir a estrutura, padrões e decisões de design do sistema 
 
 ### 2. Estrutura de dados
 - **Banco de dados global `DB`**: Objeto centralizando NF-e, NFS-e, arquivos e metadados de sessão
-- **Esquemas HNFE/HNFSE**: 423 campos NF-e e 56 campos NFS-e — definição de contrato de dados
+- **Esquemas HNFE/HNFSE**: 93 campos HNFE e 56 campos HNFSE — definição de contrato de dados
 - **LocalStorage cache**: Dados de consulta CNPJ são cacheados localmente para respeitar limite de 3/min
 
 ### 3. Fluxo de processamento

@@ -16,9 +16,17 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 - **Consultar CNPJ**: aba Ferramentas → consulta `publica.cnpj.ws` (grátis, CORS) — razão social, fantasia, situação, IE/contribuinte ICMS, Simples/MEI com datas, endereço, contato, sócios com faixa etária — cache local
 - **Visualização NF-e/NFS-e**: cards com emitente/destinatário, itens, impostos detalhados (ICMS/IPI/PIS/COFINS/IBS/CBS/ISS/CSRF)
 - **Dashboard**: KPIs + 6 gráficos Chart.js
-- **Exportação**: CSV e XLSX completos (40 colunas PDF, 71 NF-e, 56 NFS-e)
+- **Exportação**: CSV e XLSX completos (40 colunas PDF, 93 NF-e, 56 NFS-e)
 - **Busca**: filtro por texto/CNPJ/confiança
 - **Interface**: tema claro/escuro persistente, breadcrumb de navegação, ícones SVG vetoriais (zero emoji) e layout responsivo (desktop/tablet/mobile)
+
+## Privacidade
+
+Todo o processamento acontece **no navegador**. Nada é enviado a servidor algum por este sistema: os XMLs e PDFs nunca saem da máquina. As únicas requisições externas são (1) as CDNs das bibliotecas e (2) a consulta de CNPJ ao `publica.cnpj.ws`, que recebe apenas o CNPJ digitado. Os resultados de CNPJ ficam em `localStorage` **por 30 dias** e podem ser apagados a qualquer momento pelo botão "Limpar cache" (Ferramentas → Consultar CNPJ).
+
+## Design tokens
+
+Todas as cores, raios e sombras vivem como variáveis CSS em `:root` (tema claro) e `:root[data-theme="dark"]` (tema escuro). Para criar um novo tema, basta declarar o mesmo conjunto de variáveis em outro seletor — **nenhum valor de cor deve ser escrito à mão em `<style>` ou em `style=""`**. JS que precisa de cor (Chart.js) lê o token via `getComputedStyle(root).getPropertyValue('--x')`, nunca um literal.
 
 ## Funcionalidade Nova: Leitura de PDFs Imagens (OCR)
 
@@ -54,6 +62,7 @@ Colunas de auditoria na exportação: `Garantia`, `NumeroOk`, `CNPJ_Ok`, `CNPJ_F
 | SheetJS/xlsx (CDN) | Excel |
 | Tesseract.js (CDN) | OCR para PDFs imagem |
 | publica.cnpj.ws | Consulta CNPJ |
+| Inter via Google Fonts (CDN) | Tipografia (400–800); cai para Segoe UI/system-ui se a CDN falhar |
 
 ## Licença
 

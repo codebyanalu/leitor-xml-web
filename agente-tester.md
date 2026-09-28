@@ -7,7 +7,7 @@ Responsável por validar que o GCON/SIAN funciona corretamente, criar casos de t
 
 ### 1. Testes de extração NF-e (XML)
 - [ ] Validar parse de XMLs NF-e modelo 55 com diferentes estruturas (versões, namespaces)
-- [ ] Testar extração de todos os campos HNFE (423 campos) em amostras reais de XML
+- [ ] Testar extração de todos os campos HNFE (93 campos) em amostras reais de XML
 - [ ] Validar campos de imposto (ICMS, IPI, PIS, COFINS, IBS, CBS) com valores zero e não-zero
 - [ ] Testar detecção de NF-e cancelada (cStat=101) vs autorizada (cStat=100) vs denegada (cStat=110)
 - [ ] Verificar Campos derivados: CNPJ emitente formatado, data em formato brasileiro, valores monetários

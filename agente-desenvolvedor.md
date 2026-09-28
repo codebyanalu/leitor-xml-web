@@ -9,7 +9,7 @@ Responsável por implementar, manter e estender a lógica do GCON/SIAN. Trabalha
 - Parse de XMLs da NF-e (modelo 55)
 - Extração de campos:ide, emit, dest, total, imposto, detalhes do produto
 - Manipulação de namespaces XML (`rmNS`, `parseXML`)
-- Geração do objeto HNFE (423 campos esperados)
+- Geração do objeto HNFE (93 campos esperados)
 - Inserção de novos campos tributários (IBS, CBS, PIS, COFINS)
 
 ### 2. Extração NFS-e (XML)

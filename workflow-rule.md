@@ -96,7 +96,7 @@ Estas regras NÃO podem ser ignoradas e IMPOSSIBILITAM o merge caso não sejam a
 - [BLOQUEIO] **XML malformed handling**: O código deve lançar erro específico "XML inválido ou malformado" quando o parser encontrar erros, e NÃO mostrar erro genérico ou quebrar a UI.
 
 ### 3. Arquitetura e Estrutura (Arquiteto/Desenvolvedor)
-- [BLOQUEIO] **Schema HNFE/HNFSE compliance**: Todos os campos novos devem seguir o padrão dos 423 campos NF-e e 56 campos NFS-e. Ausência de campo obrigatório que quebre o objeto de retorno bloqueia o merge.
+- [BLOQUEIO] **Schema HNFE/HNFSE compliance**: Todos os campos novos devem seguir o padrão dos 93 campos HNFE e 56 campos HNFSE. Ausência de campo obrigatório que quebre o objeto de retorno bloqueia o merge.
 - [BLOQUEIO] **Single File Architecture**: O `index.html` deve continuar sendo um arquivo auto-contido. Qualquer importação de JS externo (exceto CDNs já listados) deve ser aprovada por Arquiteto e DevSecOps.
 - [BLOQUEIO] **CSS Variables usage**: Cores, sombras, border-radius devem usar as variáveis `--primary`, `--surface`, `--text`, etc. Uso de hardcoded cores (hex/rgb direto) em novos estilos bloqueia o merge.
 
@@ -146,8 +146,8 @@ Vamos testar com uma feature de exemplo:
 ```
 Issue: "Adicionar suporte a campo ICMS-ST na extração NF-e"
 
-Etapa 1 - Desenvolvedor: Adiciona campo nas 423 linhas HNFE, atualiza extração NF-e
-Etapa 2 - Arquiteto: Verifica se novo campo segue padrão dos outros 423
+Etapa 1 - Desenvolvedor: Adiciona campo nas 93 linhas HNFE, atualiza extração NF-e
+Etapa 2 - Arquiteto: Verifica se novo campo segue padrão dos outros 93
 Etapa 3 - Tester: Cria XMLs de teste com ICMS-ST preenchido e vazio
 Etapa 4 - QA: Valida se comments e padrões estão ok
 Etapa 5 - DevSecOps: Verifica se regexs novas não causam ReDoS

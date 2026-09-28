@@ -13,7 +13,7 @@ Leia `conhecimento/arquiteto.md`. Ao final, devolva bullets de "Aprendizados" pa
 
 ## O que você valida
 1. **Single File Architecture**: `index.html` continua auto-contido? Alguma importação JS nova além das CDNs aprovadas?
-2. **Schema HNFE/HNFSE**: campos novos seguem o padrão dos 423 campos NF-e / 56 NFS-e? Não quebram o objeto de retorno?
+2. **Schema HNFE/HNFSE**: campos novos seguem o padrão dos 93 campos NF-e / 56 NFS-e? Não quebram o objeto de retorno?
 3. **Fluxo global**: `Upload → Extrair → Popular DB → Renderizar → Exportar` permanece íntegro? A mudança respeita a separação NF-e vs NFS-e?
 4. **Objeto global `DB`**: crescimento coerente, sem estados paralelos ou duplicados; `sessaoId` preservado.
 5. **Padrões**: handlers centralizados, navegação por `data-tab`, utils reutilizados (`f`, `moeda`, `dataBr`, `vH`) em vez de reimplementados.
