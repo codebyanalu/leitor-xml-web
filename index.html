@@ -916,7 +916,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
   #logo{padding:16px 4px 12px}
   #logo h1{font-size:11px;line-height:1.25;overflow-wrap:anywhere}
   #logo p,.nav-section{display:none}
-  .nav-btn{justify-content:center;padding:11px 0;gap:0}
+  .nav-btn{justify-content:center;padding:11px 0;gap:0;min-height:44px}
   .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .nav-btn .icon{width:auto}
   .nav-btn .icon svg.i{width:20px;height:20px}
@@ -2400,6 +2400,15 @@ document.getElementById('baixar').addEventListener('click', async () => {
   function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'var(--code-fg)';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
   function fmtCNPJ(c){return c?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):'';}
   function fmtChave(ch){return ch?ch.replace(/(\d{4})/g,'$1 ').trim():'';}
+/* Celula vazia da tabela do leitor de PDF. O "—" cobre tres estados ("não li", "o
+   documento não tem", "recusei por ambiguidade") e nada na tela dizia qual. A regra do
+   leitor é "vazio em vez de errado", então o vazio carrega o porquê no title.
+   (O nome não pode ser `vazio`: já existe um `const vazio` em eBlocoValores.) */
+const celVazia=(txt,tip)=>`<span title="${esc(tip||'não lido nesta extração: o campo existe no PDF, mas o texto não foi lido sem ambiguidade')}" style="cursor:help">${esc(txt||'—')}</span>`;
+/* O badge verde só é verde com um segundo sinal. Passeio (Designer): "achei um CNPJ
+   com DV válido e um número" não é "esse é o emitente" — e o defeito que a chave
+   estrutural conserta era exatamente emitente trocado por tomador. */
+const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
   function pfiltro(){return{txt:(document.getElementById('pdfiso-busca')?.value||'').toLowerCase(),conf:document.getElementById('pdfiso-filtro-conf')?.value||''};}
   function isoRender(){
     const kpis=document.getElementById('pdfiso-kpis');
@@ -2455,20 +2464,18 @@ document.getElementById('baixar').addEventListener('click', async () => {
    mudança conserta era exatamente emitente trocado por tomador. Então o verde
    passa a exigir um segundo sinal: o nome colado no mesmo CNPJ. Sem ele o estado
    é "não confirmado" e aparece em warn, com a contagem no banner. */
-const celVazia=(txt,tip)=>`<span title="${esc(tip||'não lido nesta extração: o campo existe no PDF, mas o texto não foi lido sem ambiguidade')}" style="cursor:help">${esc(txt||'—')}</span>`;
-const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
 const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido - confira no debug">✗ CNPJ+Nº · DV ✗</span>`:(emitenteConfirmado(r)?`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' · CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' · nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`:`<span class="pdfiso-badge warn" title="CNPJ com DV válido e número localizados, mas o emitente NÃO foi confirmado: o nome do emitente não pôde ser lido sem ambiguidade neste PDF, então o CNPJ veio do texto e não da chave">~ CNPJ+Nº · emissor não confirmado</span>`));
       return `<tr>
         <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>
-        <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
+        <td style="font-family:monospace;font-size:11px">${celVazia(r.serie)}</td>
         <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjPrestador)}</td>
-        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nomePrestador)}">${esc(r.nomePrestador)||'—'}</td>
+        <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" >${celVazia(r.nomePrestador)}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
-        <td style="font-size:11px;white-space:nowrap">${r.data||'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${celVazia(r.data)}</td>
         <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
-        <td style="font-size:11px;white-space:nowrap">${r.protocolo?r.protocolo.slice(-8):'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${celVazia(r.protocolo?r.protocolo.slice(-8):"")}</td>
         <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px" aria-label="Ver texto extraído da nota" title="Ver texto extraído">detalhar</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px" aria-label="Copiar dados da nota" title="Copiar dados">copiar</a></td>
       </tr>`;
     }).join('');
