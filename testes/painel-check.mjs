@@ -578,13 +578,19 @@ console.log('\n5.1 · AFIRMAÇÕES DO PAINEL CONFERIDAS NA FONTE');
   // index.html realmente trata hoje: escape na fronteira/render + cache.
   const sinksIndex = (htmlIndex.match(/esc\((?:e\.message|r\.msg|r\.razao|r\.fantasia|r\.uf|r\.situacao|r\.ie)\)/g) || []).length;
   const escProf = /function escProfundo\(/.test(htmlIndex) && /dados=escProfundo\(dados\)/.test(htmlIndex);
-  const csvAntiFormula = /if\(\/\^\[=\+\\-\?@\t\\r\]\/[\s\S]{0,60}?s="'"/.test(htmlIndex)
-    || /if\(\/\^\[=+\\-\?@\\t\\r\]\/[\s\S]{0,60}?s="'"/.test(htmlIndex)
-    || /const q=v=>\{let s=String\(v\?\?''\);if\(\/\^/.test(htmlIndex);
+  /* O escape do CSV virou um helper compartilhado (window.GCON.csvCelula) usado
+     pelo lote de CNPJ e pelo leitor de PDF. A prova e por string (o .source do
+     prefixo aparece uma unica vez), nao por regex escrito a mao sobre o fonte. */
+  const csvAntiFormula = /window\.GCON=\{csvCelula:/.test(htmlIndex)
+    && htmlIndex.split(/^[=+\-@\t\r]/.source).length - 1 === 1
+    && /const q=window\.GCON\.csvCelula;/.test(htmlIndex)
+    && /\.map\(window\.GCON\.csvCelula\)\.join\(';'\)/.test(htmlIndex);
   ok('o index.html tem escape em profundidade no render (o sink de que o painel fala)',
     escProf);
-  ok('o index.html neutraliza fórmula no CSV do lote',
-    csvAntiFormula);
+  ok('o index.html neutraliza fórmula no CSV, num helper só, nos DOIS exports (lote e PDF)',
+    csvAntiFormula,
+    'csvCelula=' + /window\.GCON=\{csvCelula:/.test(htmlIndex)
+    + ' ocorrencias=' + (htmlIndex.split(/^[=+\-@\t\r]/.source).length - 1));
   ok('o index.html escapa os campos da tabela do lote um a um',
     /esc\(r\.razao\)[\s\S]{0,200}?esc\(r\.fantasia\)[\s\S]{0,200}?esc\(r\.situacao\)/.test(htmlIndex),
     String(sinksIndex) + ' escapes de campo');

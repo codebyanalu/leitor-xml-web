@@ -891,28 +891,44 @@ await (async () => {
       els['cnpj-cache-aviso'].style.display + ' / ' + els['cnpj-cache-aviso'].innerHTML.slice(0, 80));
   }
 
-  // ── B7: injeção de fórmula no CSV do lote ──
+  // ── B7: injeção de fórmula no CSV (um helper só, compartilhado) ──
   {
-    const bloco = /const q=v=>[\s\S]*?return '"'\+s\.replace\(\/"\/g,'""'\)\+'"';};/.exec(html);
-    ok('a função de escape do CSV do lote existe', !!bloco, bloco && bloco[0]);
-    if (bloco) {
-      // `const q=v=>…;` é declaração; vira expressão para o sandbox.
-      const q = vm.runInNewContext('(' + bloco[0].replace(/^const q=/, '').replace(/;\s*$/, '') + ')',
-        {}, { filename: 'csv#q' });
+    /* Passeio (DevSecOps): o escape do CSV do lote morava dentro da IIFE dele e o
+       export do leitor de PDF nao escapava nada. Com o eEndereco deixando de usar
+       a classe [A-Z0-9 .,-] e o nome do participante aceitando os tokens crus do
+       texto do PDF, `=HYPERLINK("http://evil.tld","clique")` passou a chegar ao
+       .csv do leitor de PDF. O helper virou `window.GCON.csvCelula` e os dois
+       caminhos de exportacao passam a chamalo. */
+    /* O fonte e executado como esta: nada de reescrever a expressao (uma
+       transformacao de texto aqui ja quebrou uma vez e o sintoma foi um
+       SyntaxError sem relacao com a regra testada). */
+    const ini = html.indexOf('window.GCON={csvCelula:');
+    const fim = ini < 0 ? -1 : html.indexOf('}};', ini) + 3;
+    const sbCsv = { window: {} };
+    let carregouCelula = '';
+    try { vm.runInNewContext(html.slice(ini, fim), sbCsv, { filename: 'csv#celula' }); carregouCelula = 'ok'; } catch (e) { carregouCelula = e.message; }
+    const celula = ini < 0 ? null : sbCsv.window.GCON && sbCsv.window.GCON.csvCelula;
+    ok('a função de escape do CSV existe em UM lugar só (window.GCON.csvCelula)', typeof celula === 'function', carregouCelula);
+    /* A unidade da contagem e o padrao do proprio sanitizador (o .source dele), e
+       nao um regex escrito a mao: escaped duas vezes, esse padrao erra em silencio
+       e o teste vira verde sem verificar nada. */
+    const ALVO = /^[=+\-@\t\r]/.source;
+    const nDup = html.split(ALVO).length - 1;
+    ok('a escape do CSV não é duplicada (nenhuma segunda implementação do prefixo de fórmula)',
+      nDup === 1, nDup + ' ocorrência(s) de ' + ALVO);
+    ok('o export do LOTE de CNPJ usa o helper compartilhado', /const q=window\.GCON\.csvCelula;/.test(html));
+    ok('o export do LEITOR DE PDF usa o helper compartilhado',
+      /\.map\(window\.GCON\.csvCelula\)\.join\(';'\)/.test(html)
+      && !/pdf_leitura[\s\S]{0,400}?replace\(\/"\/g,'""'\)/.test(html),
+      (/\.map\(window\.GCON\.csvCelula\)/.test(html) ? 'ok' : 'nao achou o .map(window.GCON.csvCelula)'));
+    if (typeof celula === 'function') {
+      const q = celula;
       const casos = [['=1+1', '\'=1+1'], ['@SUM(A1)', "'@SUM(A1)"], ['-2+3+cmd', "'-2+3+cmd"],
         ['+41', "'+41"], ['\tcmd', "'\tcmd"], ['EMPRESA LTDA', 'EMPRESA LTDA'],
         ['=HYPERLINK("x")', '\'=HYPERLINK(""x"")']];
       casos.forEach(([entra, esperado]) => {
-        ok('CSV neutraliza fórmula: ' + JSON.stringify(entra), q(entra) === '"' + esperado + '"',
-          q(entra));
+        ok('CSV neutraliza fórmula: ' + JSON.stringify(entra), q(entra) === '"' + esperado + '"', q(entra));
       });
-      /* O invariante é sobre o CONTEÚDO entre aspas: nunca pode começar com
-         =, +, - ou @. O prefixo ' do Excel é o que impede a execução. */
-      ok('nenhum campo exportado começa com =, +, - ou @ cru',
-        ['=1+1', '@SUM(A1)', '-1', '+1', '\tX', '\rX']
-          .every((v) => /^"'?[=+\-@\t\r]/.test(q(v))), q('=1+1'));
-      ok('aspas duplas continuam duplicadas (delimitador intacto)',
-        q('a"b') === '"a""b"', q('a"b'));
       /* O XLSX vai por XLSX.utils.aoa_to_sheet, que escreve string como string
          (fórmula exigiria {f:...}), então o risco é do caminho CSV — que é o
          caminho de reserva e o que roda quando a CDN do Excel cai. */
@@ -1151,6 +1167,291 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
     /exportAvisoTimer=setTimeout\([\s\S]{0,120}?b\.style\.display='none'/.test(html));
 }
 
+// ══════════════════════════════════════════════════════════════
+grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por CNPJ');
+// ══════════════════════════════════════════════════════════════
+/* Tudo aqui é sintético e roda em ~1 ms: a bancada (285 campos) depende de
+   amostras/ e de OCR, então numa clonagem nova ela não existe. Estes casos
+   congelam as regras que a bancada provou em PDFs reais, sem dado de cliente.
+
+   Origem de cada regra: a bancada com 14 notas (2 emissores, camada de texto e
+   escaneadas) expôs 4 defeitos que davam 99% de confiança em dado errado:
+   - o código de barras colado no endereço cria um run de 48 dígitos e TRÊS janelas
+     de 44 passam no módulo 11; as duas erradas têm cUF/AAMM impossíveis;
+   - "NATUREZA DA OPERAÇÃO" casado pela metade devolvia "ÇÃO" como natureza;
+   - o rotulo da própria tabela ("BAIRRO / DISTRITO CEP ...") virava endereço;
+   - o CNPJ impresso com máscara não era encontrado, zerando os nomes.
+
+   O sandbox carrega o ModPDFIsolado INTEIRO (fatia do IIFE até o </script>, com o
+   return reescrito), e não função por função. O recorte `function N\([\s\S]*?\n\}`
+   só funciona em função multi-linha: a maioria do módulo é one-liner, então a
+   captura vazava até a próxima função que fecha na coluna 1 — `d` (linha 71) puxava
+   `vC`, `vH`, `chaveEstrutural` e `eC` inteiro, e a mesma peça era colada cinco
+   vezes. A asserção de tamanho (`mod.length > 2000`) media essa duplicação, não
+   cobertura. E o recorte não alcança `parseFull`, que é onde moram três das seis
+   correções deste diff. */
+{
+  const ini = html.indexOf('window.ModPDFIsolado=(()=>{');
+  const fim = html.indexOf('</script>', ini);
+  ok('o módulo ModPDFIsolado existe e fecha no </script>', ini > 0 && fim > ini, ini + '..' + fim);
+  const EXPORTAR = ['d', 'vC', 'vH', 'chaveEstrutural', 'chaveOk', 'reparaChave', 'isNoiseNum', 'ehRotulo',
+    'idxCnpj', 'nomePertoCnpj', 'eNome', 'eDatas', 'eVenc', 'eNatOp', 'eEndereco', 'eSerie',
+    'eJ', 'eN', 'eC', 'decodChave', 'parseFull', 'finalizar', 'mergeExtracao'];
+  let mod = ini > 0 ? html.slice(ini, fim) : '';
+  const mRet = mod.match(/return\s*\{[^}]*extrair[^}]*\}\s*;/);
+  ok('o return do ModPDFIsolado é encontrado (o contrato mudou?)', !!mRet);
+  const faltando = EXPORTAR.filter((n) => !new RegExp('function ' + n + '\\s*\\(').test(mod));
+  ok('toda função exercitada por este grupo existe no módulo', faltando.length === 0, faltando.join(','));
+  if (mRet) mod = mod.replace(mRet[0], 'return{' + EXPORTAR.join(',') + '};');
+  const sb = {
+    window: {}, console: { log() {}, warn() {}, error() {} },
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {}, clear() {} },
+    /* createElement LANÇA de propósito: um caso que alcance ocrPDF/tC morre com
+       mensagem, em vez de devolver texto vazio e passar por construção. */
+    document: { createElement: () => { throw new Error('canvas indisponível no gate'); } },
+    setTimeout, clearTimeout, Date, Math, JSON, Intl, Promise,
+  };
+  vm.createContext(sb);
+  let carregou = '';
+  try { vm.runInContext(mod, sb, { filename: 'index.html#ModPDFIsolado' }); carregou = 'ok'; }
+  catch (e) { carregou = e.message; }
+  ok('o módulo do leitor de PDF carrega no sandbox', carregou === 'ok', carregou);
+  const M = sb.window.ModPDFIsolado;
+  if (M) {
+    const CHAVE_OK = '35260911222333000181550010000001231123456783';
+    /* Janelas forjadas com a MESMA forma do defeito real: no PDF "NF 738838" o
+       codigo de barras sai colado no endereco ("... - 100 3326 0806 ... 1-SAIDA 1")
+       e forma um run de 48 digitos; tres janelas de 44 passam no modulo 11 e duas
+       tem estrutura impossible. Aqui as duas janelas falsas foram recalculadas por
+       busca (vH true + estrutura falsa + CNPJ interno com DV invalido), a partir da
+       chave sintetica acima: cUF plausivel, mes 91 e mod 50 na primeira; cUF 43,
+       mes 60 e mod 15 na segunda. */
+    const JANELAS_FALSAS = [
+      '52609112223330001815500100000012311234567835',
+      '43526091122233300018155001000000123112345678',
+    ];
+    ok('a chave de verdade passa no DV e na estrutura', M.chaveOk(CHAVE_OK) === true);
+    JANELAS_FALSAS.forEach((j, i) => {
+      ok('janela falsa #' + (i + 1) + ' passa no DV puro (por isso o DV não basta)', M.vH(j) === true, j);
+      ok('janela falsa #' + (i + 1) + ' é rejeitada pela estrutura da chave', M.chaveEstrutural(j) === false,
+        'cUF=' + j.slice(0, 2) + ' AAMM=' + j.slice(2, 6) + ' mod=' + j.slice(20, 22));
+    });
+    ok('estrutura: cUF fora de 11..53 é rejeitada', M.chaveEstrutural('00260911222333000181550010000001231123456783') === false);
+    ok('estrutura: mês 00 ou 13 é rejeitado', M.chaveEstrutural('35260011222333000181550010000001231123456783') === false);
+    ok('estrutura: modelo diferente de 55/65 é rejeitado', M.chaveEstrutural('35260911222333000181500010000001231123456783') === false);
+    ok('o reparaChave exige estrutura, não só DV', /\bok=\(c\)=>chaveOk\(c\)&&vC\(c\.slice\(6,20\)\)/.test(html));
+
+    ok('rótulo de tabela não vira endereço',
+      M.eEndereco('ENDEREÇO BAIRRO / DISTRITO CEP ROD QR 325 Nr SN - EMPRESA') === '',
+      JSON.stringify(M.eEndereco('ENDEREÇO BAIRRO / DISTRITO CEP ROD QR 325 Nr SN - EMPRESA')));
+    ok('endereço com número e CFOP depois volta só o logradouro',
+      M.eEndereco('ENDEREÇO: RUA EXEMPLO - 100 1- SAÍDA [1] 3326 0806 0203 1800') === 'RUA EXEMPLO - 100',
+      JSON.stringify(M.eEndereco('ENDEREÇO: RUA EXEMPLO - 100 1- SAÍDA [1] 3326 0806 0203 1800')));
+
+    /* texto plano: rótulo, depois o ruído do protocolo e da IE, depois o valor */
+    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 131267892684769 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
+    ok('natureza da operação pula o rótulo do protocolo e lê o valor',
+      M.eNatOp(NAT) === 'VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE', JSON.stringify(M.eNatOp(NAT)));
+    const NAT_OCR = 'NATUREZA DA OPERAÇÃO INSCRIÇÃO ESTADUAL TNSCR ESTADUAL SUBSTITUTO TRIBUTÁRIO VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT 85586181 DESTINATÁRIO';
+    ok('natureza da operação sobrevive ao OCR que leu "INSCR.ESTADUAL" como "TNSCR ESTADUAL"',
+      M.eNatOp(NAT_OCR) === 'VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT', JSON.stringify(M.eNatOp(NAT_OCR)));
+    ok('sem verbo de operação no rotulo, a natureza volta vazia (não "ÇÃO")',
+      M.eNatOp('NATUREZA DA OPERAÇÃO 85586181 DESTINATÁRIO') === '', JSON.stringify(M.eNatOp('NATUREZA DA OPERAÇÃO 85586181 DESTINATÁRIO')));
+    ok('o rótulo da natureza é casado inteiro (não deixa o "ÇÃO" solto)',
+      /NATUREZA\\s\*DA\\s\*OPERA\[CÇ\]\[AÃ\]O/i.test(html));
+
+    ok('o CNPJ é localizado mesmo impresso com máscara', M.idxCnpj('EMITENTE 11.222.333/0001-81 AUTORIZADA', '11222333000181') > 0);
+    ok('CNPJ com espaço entre os grupos também é localizado', M.idxCnpj('REF 11 222 334 0001 26 FIM', '11222334000126') > 0);
+    ok('CNPJ com separador duplo não quebra nem vira regex inválida',
+      M.idxCnpj('CNPJ 11.222.333//0001-81', '11222333000181') >= 0);
+
+    /* nome: a razão social do destinatário vem ANTES do CNPJ dele, e o nome do
+       emitente numa DANFE de conta de terceiro é o da fábrica — o teste do CNPJ
+       mais próximo é o que separa um do outro. */
+    const JANELA = 'DADOS DO EMITENTE TRANSPORTES EXEMPLO INDUSTRIA E COMERCIO LTDA EMITENTE CNPJ/CPF 11.222.333/0001-81 DESTINATÁRIO NOME / RAZÃO SOCIAL CÓD. DEALER CNPJ / CPF EXEMPLO SERVICOS LTDA 000004844 11.222.334/0001-26';
+    ok('nome do destinatário aceito: sufixo empresarial + CNPJ mais próximo é o dele',
+      M.nomePertoCnpj(JANELA, '11222334000126') === 'EXEMPLO SERVICOS LTDA', JSON.stringify(M.nomePertoCnpj(JANELA, '11222334000126')));
+    ok('nome de empresa com "SERVICOS" no meio não é cortado como rótulo',
+      /EXEMPLO SERVICOS LTDA/.test(M.nomePertoCnpj(JANELA, '11222334000126')));
+    ok('a fábrica não é devolvida como nome do revendedor (CNPJ diferente por perto)',
+      M.nomePertoCnpj(JANELA, '11222333000181') !== 'INDUSTRIA E COMERCIO DE VEICULOS LTDA',
+      JSON.stringify(M.nomePertoCnpj(JANELA, '11222333000181')));
+    ok('"SA" dentro de "SANTO" não casa como sufixo empresarial',
+      M.nomePertoCnpj('FAZENDA SANTO ANTONIO LTDA 11.222.333/0001-81', '11222333000181') === 'FAZENDA SANTO ANTONIO LTDA',
+      JSON.stringify(M.nomePertoCnpj('FAZENDA SANTO ANTONIO LTDA 11.222.333/0001-81', '11222333000181')));
+    ok('CNPJ com máscara não entra no nome (o token tem 6+ dígitos)',
+      M.nomePertoCnpj('11.222.335/0001-70 EXEMPLO MANUTENCAO LTDA 11.222.336/0001-15', '11222336000115') === 'EXEMPLO MANUTENCAO LTDA',
+      JSON.stringify(M.nomePertoCnpj('11.222.335/0001-70 EXEMPLO MANUTENCAO LTDA 11.222.336/0001-15', '11222336000115')));
+    ok('eNome não acha nome sem CNPJ (sinal de que a nota não tem o campo)',
+      M.eNome('NATUREZA DA OPERAÇÃO VENDA LTDA', [], '') === '');
+
+    /* data de saída: sem o rótulo, o leitor não chega a 2ª data do documento */
+    const DT = 'DATA DA EMISSÃO 17/09/2026 11:34:18 HORA DA SAÍDA 1 VENCIMENTO 06.09.2026';
+    const dts = M.eDatas(DT);
+    ok('data de emissão vem do rótulo', dts.data === '17/09/2026', dts.data);
+    ok('data de saída sem rótulo fica vazia (não é a 2ª data qualquer)',
+      dts.dataSaida === '', JSON.stringify(dts.dataSaida));
+    ok('vencimento vem do rótulo', dts.vencimento === '06.09.2026', dts.vencimento);
+
+    ok('o código de barras (15 dígitos) não engole o número colado nele',
+      /\.replace\(\/\\d\{14,\}\/g,' '\)/.test(html),
+      (/\.replace\(\/\\d\{1[0-9],?\}\/g,' '\)/.exec(html) || [''])[0]);
+    /* Este caso e de INTENCAO declarada: ele casa o literal do fonte, e nao o
+       comportamento. O fuzz diferencial (16.928 entradas) mostrou que trocar
+       \d{15,} por \d{14,} nao muda o numero lido em nenhuma entrada - a janela
+       ja barra runs de 11+ digitos. O literal fica para documentar a intencao; se
+       alguem reverter o codigo, este caso acusa, mas quem decide se o numero sai
+       certo e o caso 6 do 13.2 (comportamento). */
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  grupo('13.2 · LEITOR DE PDF: os ramos que a bancada NÃO alcança');
+  // ══════════════════════════════════════════════════════════════
+  /* chaveValida=false é 0/14 nas notas reais, então a bancada de 2,5 min não alcança
+     nenhum destes ramos. O passeio (Tester) rodou as asserções do 13.1 contra 7
+     mutantes — cada correção revertida — e NENHUMA quebrou: os casos congelavam
+     intenção, não comportamento. Aqui os seis casos são de comportamento, e cada um
+     morre quando a correção que o motivou volta. Todos sintéticos, sem dado de
+     cliente, e sem browser/OCR (rodam no mesmo vm do 13.1). */
+  if (M) {
+    const EMIT = '11222333000181';   // CNPJ do emitente
+    const TOM = '11222334000126';    // CNPJ do destinatário
+    /* Janela de 44 forjada com a forma do defeito real: cUF plausível, AAMM com mês
+       impossível (80) e o CNPJ do OUTRO participante nas posições 7-20, com DV válido.
+       O DV foi calculado pelo módulo 11, então a janela passa no DV por construção e
+       é rejeitada pela estrutura. Era exatamente isto que fazia o emitente virar
+       tomador com `garantia = "CNPJ+número OK"`. */
+    const JANELA = '35268011222334000126550010007388381123456783';
+    const CHAVE_OK = '35260911222333000181550010000001231123456783';
+
+    ok('a janela forjada está armada: DV passa, estrutura falha, e o CNPJ interno é do tomador',
+      M.vH(JANELA) === true && M.chaveEstrutural(JANELA) === false && M.chaveOk(JANELA) === false
+      && M.vC(JANELA.slice(6, 20)) === true && JANELA.slice(6, 20) === TOM);
+
+    const PDF = 'DADOS DO EMITENTE NOME / RAZÃO SOCIAL DISTRIBUIDORA EXEMPLO LTDA CNPJ / CPF 11.222.333/0001-81 '
+      + 'DESTINATÁRIO NOME / RAZÃO SOCIAL COMERCIO DE VEICULOS LTDA CNPJ / CPF 11.222.334/0001-26 '
+      + 'CODIGO DE BARRAS ' + JANELA + ' DATA DA EMISSÃO 17/09/2026 NOTA FISCAL Nº 738838';
+    const r = M.finalizar(M.parseFull(PDF, [], 'texto'), PDF, 'texto', false, '');
+
+    /* 1 · o CNPJ das posições 7-20 só vale com chave validada. */
+    ok('chave não validada: o prestador NÃO vem das posições 7-20 (que são do tomador)',
+      r.chaveValida === false && r.cnpjPrestador === EMIT && r.cnpjFonte !== 'chave 44',
+      'prest=' + r.cnpjPrestador + ' fonte=' + r.cnpjFonte);
+    ok('e as duas pontas não se trocam (prest=emitente, tom=destinatário)',
+      r.cnpjPrestador === EMIT && r.cnpjTomador === TOM,
+      'prest=' + r.cnpjPrestador + ' toma=' + r.cnpjTomador);
+
+    /* 2 · eJ: fragmento de 14 dígitos do código de barras não é CNPJ de ninguém. */
+    const listaCnpj = M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 738838').lista;
+    ok('eJ: nenhum fragmento de 14 sai do código de barras de 44',
+      listaCnpj.length === 0, JSON.stringify(listaCnpj.map((c) => c.dig)));
+    ok('eJ: o CNPJ impresso ao lado do rótulo SOBREVIVE ao corte por span',
+      M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' CNPJ / CPF 11.222.333/0001-81').prest === EMIT);
+
+    /* 3 · nomePertoCnpj: run cortado volta vazio, nunca a cauda do nome. */
+    const LONGO = 'DADOS DO EMITENTE INDUSTRIA E COMERCIO DE VEICULOS NOVOS E USADOS LTDA '
+      + 'CNPJ / CPF 11.222.333/0001-81 DESTINATARIO EXEMPLO SERVICOS LTDA 11.222.334/0001-26';
+    const nomeLongo = M.nomePertoCnpj(LONGO, EMIT);
+    ok('nome com mais de 8 tokens volta vazio (nunca a cauda "… NOVOS E USADOS LTDA")',
+      nomeLongo !== 'E COMERCIO DE VEICULOS NOVOS E USADOS LTDA' && !/USADOS LTDA$/.test(nomeLongo),
+      JSON.stringify(nomeLongo));
+
+    /* 4 · o nome do destinatário não pode responder pelo emitente. O bloco do
+       destinatário cai fora dos 60 caracteres à direita da janela, e o "CNPJ mais
+       próximo antes" virava o do emitente: eNome devolvia o nome do tomador como
+       nome do emitente. Só o CNPJ que vem DEPOIS do nome pode validá-lo. */
+    ok('o nome do tomador NÃO vira o nome do emitente',
+      M.eNome(LONGO, [], EMIT) !== 'EXEMPLO SERVICOS LTDA',
+      'eNome(emit) devolveu ' + JSON.stringify(M.eNome(LONGO, [], EMIT)));
+    ok('e o nome do emitente segue saindo quando é curto e colado no CNPJ dele',
+      M.nomePertoCnpj('DADOS DO EMITENTE DISTRIBUIDORA EXEMPLO LTDA 11.222.333/0001-81', EMIT) === 'DISTRIBUIDORA EXEMPLO LTDA',
+      JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE DISTRIBUIDORA EXEMPLO LTDA 11.222.333/0001-81', EMIT)));
+
+    /* 5 · numeroAncora: DV válido + estrutura ruim = "chave não validada". */
+    const ra = M.parseFull('CONTEUDO DA NOTA ' + JANELA + ' DATA DA EMISSAO 17/09/2026', [], 'texto');
+    ok('âncora diz "chave não validada" (o DV era válido; o que falhou foi a estrutura)',
+      ra.chaveValida === false && ra.numeroAncora.includes('não validada')
+      && !ra.numeroAncora.includes('DV inválido'), JSON.stringify(ra.numeroAncora));
+
+    /* 6 · eN: o número colado no código de barras é lido (comportamento, não literal). */
+    const en = M.eN('NÚMERO DA NOTA  123456789012345 738838', []);
+    ok('número colado num código de 15 dígitos é lido com confiança alta',
+      en.valor === '738838' && en.conf >= 90, JSON.stringify(en.valor) + ' conf ' + en.conf);
+
+    /* 7 · a chave autêntica não regride: fonte "chave 44" e confiança 98/99.
+       A chave sintética tem nNF = 000000123, então o número esperado é 123 —
+       a âncora "NOTA 56783" do texto existe de propósito e NÃO pode ganhar. */
+    const okRec = M.parseFull('CODIGO DE BARRAS ' + CHAVE_OK + ' DATA DA EMISSÃO 17/09/2026 NOTA 56783', [], 'texto');
+    ok('chave autêntica: chaveValida, prestador pela chave, número da chave e confiança 98/99',
+      okRec.chaveValida === true && okRec.cnpjFonte === 'chave 44' && okRec.cnpjConf === 98
+      && okRec.numeroConf === 99 && okRec.numero === '123',
+      'fonte=' + okRec.cnpjFonte + ' cConf=' + okRec.cnpjConf + ' nConf=' + okRec.numeroConf + ' n=' + okRec.numero);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  grupo('13.3 · CONTRATOS que o passeio estreitou');
+  // ══════════════════════════════════════════════════════════════
+  /* Cada linha aqui é um ponto em que um dos sete agentes encontrou um furo e a
+     correção não tinha caso: sem caso, o próximo passeio reintroduz. */
+  if (M) {
+    const EMIT = '11222333000181';
+    const CHAVE_OK = '35260911222333000181550010000001231123456783';
+
+    /* Ano: o guard anterior (ano<0||ano>99) era inalcançável — `+slice(2,4)` de uma
+       string de dígitos é sempre 0..99 — e o README dizia "ano e mês plausíveis".
+       A NF-e existe desde 2006, então abaixo de 6 não é chave. */
+    ok('estrutura: ano abaixo de 2006 é rejeitado (o guard antigo era inalcançável)',
+      M.chaveEstrutural('35' + '0309' + EMIT + '55' + '001' + '000000001' + '1' + '12345678'.slice(0, 0) + '12345678') === false,
+      M.chaveEstrutural('35' + '0309' + EMIT + '55' + '001' + '000000001' + '1' + '12345678'));
+    ok('estrutura: ano plausível continua aceito', M.chaveEstrutural(CHAVE_OK) === true);
+
+    /* idxCnpj: o try/catch nao e a guarda. `new RegExp` so lanca em entrada
+       invalida; metacaractere compila e devolve regex ERRADO em silencio
+       (medido no passeio: "6.0(2)0" virava regex com grupo). A guarda e o
+       /^\d{14}$/ sobre a entrada. */
+    ok('idxCnpj recusa entrada que nao sao 14 dígitos (metacaractere não vira regex)',
+      M.idxCnpj('TEXTO QUALQUER', '6.0(2)0') === -1 && M.idxCnpj('TEXTO', '1122233300018') === -1
+      && M.idxCnpj('TEXTO', '') === -1, 'o catch nunca entrava nesses casos');
+    ok('idxCnpj ainda acha o CNPJ de 14 dígitos', M.idxCnpj('EMITENTE 11.222.333/0001-81 FIM', EMIT) > 0);
+
+    /* Um leitor de CNPJ só, com uma política de ocorrência só. Antes o mesmo
+       literal vivia em eJ e em nomePertoCnpj, e idxCnpj montava o dele — as três
+       discordavam sobre "qual impressão deste CNPJ vale". */
+    ok('o leitor de CNPJ do documento é um só (eJ, idxCnpj e nomePertoCnpj usam o mesmo)',
+      /\/\* Leitor de CNPJ do documento, em UM lugar so/.test(html) && /const RE_CNPJ=/.test(html)
+      && /const cnpjs=\(txt\)=>cnpjsNoTexto\(txt\)/.test(html) && /const cand=cnpjsNoTexto\(full\)/.test(html),
+      'cnpjsNoTexto=' + (html.match(/cnpjsNoTexto\(/g) || []).length + ' usos');
+    ok('CNPJ impresso dentro do código de barras é descartado, o ao lado do rótulo não',
+      M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' CNPJ / CPF 11.222.333/0001-81').prest === EMIT
+      && M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 1234').lista.length === 0);
+
+    /* Listas de rótulo por consumidor: cabeçalho de tabela x ficha do participante.
+       "EXCEL"/"EMISSORA"/"BANCO" são razão social e não podem quebrar o nome. */
+    ok('razão social que começa com palavra de cabeçalho de tabela NÃO é descartada',
+      M.nomePertoCnpj('DADOS DO EMITENTE EXCEL COMERCIO LTDA 11.222.333/0001-81', EMIT) === 'EXCEL COMERCIO LTDA',
+      JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE EXCEL COMERCIO LTDA 11.222.333/0001-81', EMIT)));
+    ok('e "BANCO … S/A" também (SA é sufixo empresarial, não rótulo)',
+      M.nomePertoCnpj('DADOS DO EMITENTE BANCO DO EXEMPLO S/A 11.222.333/0001-81', EMIT) === 'BANCO DO EXEMPLO S/A',
+      JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE BANCO DO EXEMPLO S/A 11.222.333/0001-81', EMIT)));
+    ok('mas a linha de rótulos ainda quebra o nome (NOME / RAZÃO SOCIAL …)',
+      M.nomePertoCnpj('DADOS DO EMITENTE NOME / RAZÃO SOCIAL EXEMPLO COMERCIO LTDA 11.222.333/0001-81', EMIT) === 'EXEMPLO COMERCIO LTDA',
+      JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE NOME / RAZÃO SOCIAL EXEMPLO COMERCIO LTDA 11.222.333/0001-81', EMIT)));
+
+    /* A UI que o Designer apontou: badge verde exige segundo sinal, KPI conta o
+       predicado do rótulo, e a célula vazia carrega o porquê. Aqui é contrato de
+       fonte (o painel-check confere as afirmações do painel contra a fonte). */
+    ok('o badge verde exige emitente confirmado (chave validada OU nome colado no CNPJ)',
+      /const emitenteConfirmado=\(r\)=>r\.cnpjFonte==='chave 44'\|\|!!r\.nomePrestador;/.test(html)
+      && /emissor não confirmado/.test(html));
+    ok('o KPI "Com chave 44 · validadas" conta o mesmo predicado do rótulo',
+      /pdfiso-k-chave'\)\.textContent=DBpdf\.filter\(r=>r\.chaveValida\)/.test(html)
+      && !/pdfiso-k-chave'\)\.textContent=DBpdf\.filter\(r=>r\.chave\)/.test(html));
+    ok('a célula vazia da tabela explica o porquê (não é "—" mudo)',
+      /const celVazia=\(txt,tip\)=>/.test(html) && /não lido nesta extra/.test(html));
+    ok('o glifo de chave não validada tem nome acessível (não é glifo solto)',
+      /aria-label="Chave de 44 dígitos lida, mas não validada/.test(html));
+  }
+}
 // ══════════════════════════════════════════════════════════════
 console.log('\n' + '='.repeat(58));
 console.log('REGRESSÃO: ' + passou + ' passaram, ' + falhou + ' falharam');

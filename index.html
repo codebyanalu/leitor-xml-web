@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCON/SIAN — NF-e / NFS-e</title>
+<title>GCON/SIAN </title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +25,16 @@
    Sem isto, o usuario veria "nada acontece" ao clicar. Aqui cada ausencia vira
    um aviso concreto dizendo o que parou de funcionar e o que continua funcionando. */
 window.GCON_CDN={};
+/* Celula de CSV, em UM lugar so. Injeção de fórmula: duplicar aspas neutraliza o
+   delimitador, nao a fórmula. Um campo que comece com =, +, - ou @ é EXECUTADO
+   pelo Excel ao abrir o .csv, e o prefixo ' é o escape padrão do CSV.
+   Os dois caminhos de exportacao usam esta função: o lote de CNPJ (que já
+   neutralizava) e o leitor de PDF (que nao neutralizava — e passou a alcançar
+   `=HYPERLINK(...)` quando o eEndereco deixou de usar a classe [A-Z0-9 .,-]
+   e o nome do participante passou a aceitar os tokens crus do texto do PDF).
+   O XLSX nao precisa: o SheetJS escreve celula de texto como texto, e o Excel so
+   avalia celula com tipo de formula. */
+window.GCON={csvCelula:function(v){let s=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}};
 (function(){
   var esperado=[
     ['chart.js',function(){return typeof Chart!=='undefined';},'os graficos do Dashboard'],
@@ -71,11 +81,35 @@ window.ModPDFIsolado=(()=>{
 function d(s){return(s||'').replace(/\D/g,'');}
 function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
 function vH(ch){ch=d(ch);if(ch.length!==44)return false;/* degenerados: '000...0' e '111...1' passam no modulo 11 (soma 0 => DV 0) mas nao sao chave */if(/^(\d)\1+$/.test(ch))return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
+/* Estrutura da chave de acesso: cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3)
+   nNF(9) tpEmis(1) cNF(8) cDV(1). O modulo 11 sozinho NAO identifica a chave.
+   Medido no PDF "NF 738838": o codigo de barras colado no endereco
+   ("... - 100 3326 0806 ...") gera um run de 48 digitos e TRES janelas de 44
+   passam no DV. Duas tem AAMM com mes inexistente e mod fora de 55/65, e o eC
+   pegava a primeira delas: o numero saia 500073883 em vez de 738838, o CNPJ do
+   emitente virava o do tomador e a garantia ainda dizia "CNPJ+número OK".
+   cUF e as 27 unidades da federacao mais o exterior (11-53); a NF-e so existe
+   desde 2006, entao ano abaixo de 6 nao e chave; mod e 55 (NF-e) ou 65 (NFC-e). */
+function chaveEstrutural(ch){ch=d(ch);if(ch.length!==44)return false;const uf=+ch.slice(0,2),ano=+ch.slice(2,4),mes=+ch.slice(4,6),mod=ch.slice(20,22);if(uf<11||uf>53)return false;if(mes<1||mes>12)return false;if(ano<6)return false;if(mod!=="55"&&mod!=="65")return false;return true;}
+function chaveOk(ch){return vH(ch)&&chaveEstrutural(ch);}
 async function tC(file){const buf=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:buf}).promise;let full="";const items=[];for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p);const ct=await page.getTextContent();const pageItems=[];for(const it of ct.items){if(!it.str.trim())continue;pageItems.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});items.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});}pageItems.sort((a,b)=>{const dy=b.y-a.y;if(Math.abs(dy)>4)return dy;return a.x-b.x;});for(const it of pageItems)full+=it.str+" ";full+="\n";}await doc.destroy();return{full,items};}
-function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:99,valida:true};}}const runsRep=[...full.matchAll(/\d(?:[\s\.\-]*\d){28,}/g)].map(x=>d(x[0])).filter(x=>x.length>=40&&x.length<=46);for(const dig of runsRep){const c=reparaChave(dig);if(c)return{valor:c,conf:88,valida:true};}let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:vH(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(vH(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:vH(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};
+function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);
+/* 1) janela exata que passa no DV E na estrutura: e a chave de verdade */
+for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(chaveOk(v))return{valor:v,conf:99,valida:true};}}
+const runsRep=[...full.matchAll(/\d(?:[\s\.\-]*\d){28,}/g)].map(x=>d(x[0])).filter(x=>x.length>=40&&x.length<=46);for(const dig of runsRep){const c=reparaChave(dig);if(c)return{valor:c,conf:88,valida:true};}
+/* 2) janela que so passa no DV. Vira leitura de confianca baixa com ChaveValida
+      falso: mostrar os 44 digitos e auditar e melhor que esconder. O que ela NAO
+      pode fazer (e o parseFull obedece):
+        - virar CNPJ de participante: `if(chaveValida&&dec&&dec.cnpj&&vC(...))`
+        - virar numero de nota quando o texto ja achou um (`chaveValida||!numero`).
+      Se o texto nao achou nada, o nNF dela entra com confianca 80 e a ancora
+      escrita e "chave 44 (pos 26-34) • chave não validada" — o fallback e
+      deliberado e auditavel, nao um acidente. */
+for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(vH(v))return{valor:v,conf:70,valida:false};}}
+let all=[...compact.matchAll(/\d{44}/g)].map(m=>m[0]);if(all.length)return{valor:all[0],conf:70,valida:chaveOk(all[0])};let spaced=[...full.matchAll(/(\d{4}[\s\.\-]*){11}/g)];for(const s of spaced){const dig=d(s[0]);if(dig.length>=44){for(let i=0;i<=dig.length-44;i++){const v=dig.slice(i,i+44);if(chaveOk(v))return{valor:v,conf:92,valida:true};}const v=dig.slice(0,44);return{valor:v,conf:60,valida:chaveOk(v)};}}if(m44.length&&m44[0].length>=44)return{valor:m44[0].slice(0,44),conf:60,valida:false};
 return{valor:"",conf:0,valida:false};}
 function reparaChave(dig){
-  const ok=(c)=>vH(c)&&vC(c.slice(6,20));
+  const ok=(c)=>chaveOk(c)&&vC(c.slice(6,20));
   if(ok(dig))return dig;
   const porFim=(base,k)=>{let r=null;const rec=(cur)=>{if(r)return;if(cur.length===44){if(ok(cur))r=cur;return;}for(let x=0;x<10;x++){rec(cur+x);}};rec(base);return r;};
   const porIni=(base,k)=>{let r=null;const rec=(cur)=>{if(r)return;if(cur.length===44){if(ok(cur))r=cur;return;}for(let x=0;x<10;x++){rec(x+cur);}};rec(base);return r;};
@@ -98,11 +132,40 @@ function reparaChave(dig){
 }
 
 
-function eJ(full){const re=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}|\b\d{14}\b/g;const cand=[...full.matchAll(re)].map(m=>({raw:m[0],dig:d(m[0]),valida:vC(d(m[0])),idx:m.index})).filter(c=>c.dig.length===14);const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};}
+/* Leitor de CNPJ do documento, em UM lugar so, com uma politica de ocorrencia so.
+   Passeio (Arquiteto): o mesmo literal de CNPJ mascarado vivia em eJ e em
+   nomePertoCnpj, e o idxCnpj montava o dele — e as tres nao concordavam sobre
+   "qual impressao deste CNPJ vale". A unica Regra agora e esta: CNPJ impresso que
+   cai DENTRO de um span de 44+ digitos (o codigo de barras) e descartado, porque
+   ali o CNPJ do emitente aparece nas posicoes 7-20 da chave e nao e uma segunda
+   impressao do documento. Vale a copia que o leitor ve ao lado do rotulo.
+   O piso de 44 protege o codigo interno de 9 digitos colado no CNPJ
+   ("000004844 11.222.334/0001-26" = 23 digitos). */
+const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
+function spansCodigoBarras(txt){return [...txt.matchAll(/\d(?:[\s\.\-]*\d){43,}/g)].map(m=>[m.index,m.index+m[0].length]);}
+function cnpjsNoTexto(txt){
+  const spans=spansCodigoBarras(txt),out=[];
+  for(const m of txt.matchAll(new RegExp(RE_CNPJ.source,'g'))){
+    if(spans.some(([a,b])=>m.index>=a&&m.index+m[0].length<=b)) continue;
+    const dig=d(m[0]);
+    if(dig.length!==14) continue;
+    out.push({raw:m[0],dig,valida:vC(dig),idx:m.index});
+  }
+  return out;
+}
+function eJ(full){
+  const cand=cnpjsNoTexto(full);
+  const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};
+}
 function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;if(/^\d{2}\.\d{2}\.\d{4}$/.test(n))return true;if(dig.length>=10&&/^\d{2}[\.\-\/]\d{2}[\.\-\/]\d{4}$/.test(n))return true;if(/^\(\d{2}\)\s*\d{4,5}[\-]?\d{4}$/.test(n))return true;if(/^\d{2}\s*\d{4,5}\s*\d{4}$/.test(n))return true;if(/^\d{8,}$/.test(dig)&&dig.length>=10)return true;return false;}
-function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{15,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor){const standalone=[...full.matchAll(/\b(\d{6})\b/g)].map(m=>{const n=parseInt(m[1]);const before=full.slice(Math.max(0,m.index-30),m.index);const hasNoAfter=/N[º°]|Nota|NF|n[uú]mero/i.test(before);return{val:m[1],idx:m.index,nearNo:hasNoAfter,num:n};}).filter(x=>{if(isNoiseNum(x.val,full))return false;if(/^\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}$/.test(x.val))return false;if(x.num%1000===0&&x.num>=100000)return false;return true;});if(standalone.length){standalone.sort((a,b)=>{if(a.nearNo&&!b.nearNo)return -1;if(!a.nearNo&&b.nearNo)return 1;return b.num-a.num;});best={valor:standalone[0].val,conf:standalone[0].nearNo?55:40,ancora:standalone[0].nearNo?"fallback 6 dígitos (perto de Nº)":"fallback 6 dígitos",cands:standalone.slice(0,4).map(x=>x.val)};}}if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
+function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];/* \d{15,} virou \d{14,}: o codigo de barras impresso na DANFE tem 15 digitos
+   e ficava inteiro na janela, engolindo o numero que estava colado nele. */
+for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{14,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor){const standalone=[...full.matchAll(/\b(\d{6})\b/g)].map(m=>{const n=parseInt(m[1]);const before=full.slice(Math.max(0,m.index-30),m.index);const hasNoAfter=/N[º°]|Nota|NF|n[uú]mero/i.test(before);return{val:m[1],idx:m.index,nearNo:hasNoAfter,num:n};}).filter(x=>{if(isNoiseNum(x.val,full))return false;if(/^\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}$/.test(x.val))return false;if(x.num%1000===0&&x.num>=100000)return false;return true;});if(standalone.length){standalone.sort((a,b)=>{if(a.nearNo&&!b.nearNo)return -1;if(!a.nearNo&&b.nearNo)return 1;return b.num-a.num;});best={valor:standalone[0].val,conf:standalone[0].nearNo?55:40,ancora:standalone[0].nearNo?"fallback 6 dígitos (perto de Nº)":"fallback 6 dígitos",cands:standalone.slice(0,4).map(x=>x.val)};}}if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
 function eData(full){const m=full.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);return m?m[0]:"";}
-function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=eVenc(full);return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:(all[1]||""),vencimento:venc,todas:all};}
+function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=eVenc(full);/* A data de saida so e aceita depois do rotulo. Antes caia no "all[1]",
+   que e qualquer data do documento (o timestamp de autorizacao, no DANFE da
+   o emissor da amostra) - data errada com 99% de confianca. Sem rotulo, fica vazia. */
+return{data:emis?emis[1]:(all[0]||""),dataSaida:saida?saida[1]:"",vencimento:venc,todas:all};}
 function eValor(full){
   const aposRotulo=(re,modo)=>{
     const m=re.exec(full);
@@ -162,11 +225,71 @@ function eProtocolo(full){
   }
   return "";
 }
-function eNatOp(full){const m=/NATUREZA\s*DA\s*OPERA/i.exec(full);if(!m) return "";const resto=full.slice(m.index+m[0].length);const linhas=resto.split("\n").map(s=>s.trim()).filter(Boolean);let cand="";for(const ln of linhas.slice(0,5)){if(/INSCRI|CNPJ|\bI\.E\./i.test(ln)&&!/OPERAC/i.test(ln))continue;cand=ln;break;}if(!cand)cand=linhas[0]||"";cand=cand.split(/\s{2,}/)[0];cand=cand.replace(/^["'\s:]+/,"");cand=cand.split(/ INSCRI/i)[0];cand=cand.replace(/\s+\d{7,14}$/,"");return cand.trim().slice(0,80);}
+/* Guarda "isto e um rotulo, nao um dado". No texto plano da DANFE os rotulos e os
+   valores ficam colados na mesma linha (o pdf.js entrega a pagina como uma unica
+   linha gigante), entao extrator por rotulo devolve rotulo: endereco="BAIRRO /
+   DISTRITO CEP ROD QR 325 SN", natOp="ÇÃO". Valor ilegivel e devolvido vazio -
+   a coluna de garantia e a auditoria existem para dizer o que faltou.
+
+   Passeio (QA): a lista e match de PREFIXO, e palavra de razao social pode comecar
+   com rotulo de tabela (EXCEL, EMISSORA, BANCO, TRANSPORTADORA) — o run do nome
+   quebra e o nome volta vazio. Entao sao duas listas, por consumidor:
+     - ehRotuloTabela: cabecalho de endereco/tabela. Vale para eEndereco e para o
+       corte de tokens do eNatOp, onde a duvida real e "isto e rotulo de celula".
+     - ehRotuloNome: so as palavras que ESTRUTURAM o nome no DANFE (NOME, RAZAO,
+       CNPJ, EMISS, DESTINAT...). Vale no nomePertoCnpj.
+   Nenhuma das duas decide sozinha: quem aprova o nome e o teste do CNPJ colado. */
+/* Data e documento sao rotulo nos DOIS contextos (nenhum nome de empresa comeca
+   com "DATA" ou "DOCUMENTO"), entao vivem nas duas listas. O resto e dividido:
+   VALOR/BASE/CEP/BAIRRO/etc. sao cabecalho de tabela e quebram o nome por engano
+   ("EXCEL", "EMISSORA", "BANCO" sao razao social); NOME/RAZAO/EMISS/DESTINAT
+   estruturam a ficha do participante e so interessam ao nome. */
+const ROTULO_TABELA=/^(BAIRRO|DISTRITO|CEP|MUNIC|CIDADE|UF|P[AÍ]S|FONE|FAX|INSCRI|INSC|VALOR|BASE|C[AÁ]LCULO|QTDE|QUANT|DESCRI|NCM|CST|CFOP|PESO|DATA|HORA|ENDERE|CNPJ|CPF|FATURA|VENCIMENTO|MOEDA|TRANSPORT|INFORMA|RESERVADO|CONTROLE|DOCUMENTO|AUXILIAR|CHAVE|S[EÉ]RIE|N[º°°.]|EXCE|COMPROD|ITEM|P[ÁA]GINA|FOLHA)/i;
+const ROTULO_NOME=/^(NOME|RAZ[AÃ]O|SOCIAL|C[ÓO]D|DEALER|EMISS|IDENTIFICA|DESTINAT|REMETENTE|EMITENTE|AUTORIZ|OPERA|NATUREZA|PROTOCOLO|DADOS|DATA|HORA|DOCUMENTO|CNPJ|CPF|INSCRI|INSC)/i;
+function ehRotulo(t,lista){return(lista||ROTULO_TABELA).test(String(t||'').trim());}
+/* Localiza o CNPJ no texto aceitando mascara: o DANFE imprime "11.222.333/0001-81"
+   e o indexOf dos 14 digitos crus nunca encontrava, o que zerava nomePrestador e
+   nomeTomador em todas as notas com CNPJ formatado. Cada digito e literal e cada
+   separador e uma classe de 1 caractere: sem quantificador aninhado, logo sem
+   ReDoS. Medido (passeio/DevSecOps): 1,5 ms no pior caso de 200 KB de entrada
+   (a real tem 3,4 KB e leva 0,006 ms); o try/catch NAO e a guarda — `new RegExp`
+   so lanca em entrada invalida, e metacaractere compila e devolve regex errado em
+   silencio, entao a guarda e o /^\d{14}$/ sobre a entrada. */
+function idxCnpj(full,dig){
+  if(!/^\d{14}$/.test(String(dig||''))) return -1;
+  try{const m=new RegExp(dig.split('').join('[\\s.\\-\\/]*')).exec(full);return m?m.index:-1;}catch(e){return full.indexOf(dig);}}
+function eNatOp(full){
+  const m=/NATUREZA\s*DA\s*OPERA[CÇ][AÃ]O/i.exec(full);if(!m) return "";
+  const resto=full.slice(m.index+m[0].length,m.index+m[0].length+300);
+  /* O rotulo e o valor vem colados, e antes do valor ainda aparecem os rotulos do
+     protocolo e da inscricao estadual. Corta esses prefixos: sem isso a natureza
+     da operacao saia "INSCRIÇÃO ESTADUAL INSCR.ESTADUAL SUBSTITUTO TRIBUTÁRIO
+     ..." ou "PROTOCOLO DE AUTORIZAÇÃO DE USO ...", com 99% de confianca. */
+  const limpo=resto.replace(/PROTOCOLO\s*DE\s*AUTORIZA[CÇ][AÃ]O\s*DE\s*USO|INSCRI[CÇ][AÃ]O\s*ESTADUAL|INSCR\.?\s*ESTADUAL|INSC\.?\s*ESTADUAL|SUBST\.?\s*TRIB\.?|SUBSTITUTO\s+TRIBUT[AÁ]RIO/gi,' ');
+  const out=[];
+  for(const tk of limpo.split(/\s+/)){
+    if(!tk) continue;
+    if(/^\d{7,}$/.test(tk)) break;                                   /* protocolo, IE, cNF */
+    if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(tk)) break;         /* data */
+    if(/^\d{1,2}:\d{2}/.test(tk)) break;                              /* hora */
+    if(ehRotulo(tk,ROTULO_TABELA)) continue;
+    out.push(tk);
+    if(out.length>=18) break;
+  }
+  /* O valor comeca no primeiro token que e verbo de operacao. O OCR nem sempre
+     le o rotulo da IE ("INSCR.ESTADUAL" saiu "TNSCR ESTADUAL" na 742504), e
+     exigir que o primeiro token fosse o verbo devolvia vazio. Cortar no primeiro
+     verbo aceita o lixo de prefixo sem aceitar o valor errado. */
+  const VERBO=/^(VENDA|REMESSA|TRANSPORTE|DEVOLU[CÇ][AÃ]O|ENTRADA|S[AÃ]IDA|OUTRAS|COMPRA|SERVI[CÇ]O|CESS[AÃ]O|LOCA[CÇ][AÃ]O|PROMO[CÇ][AÃ]O|REGULARIZA|CONTRATO|INUTILIZA)/i;
+  const i=out.findIndex(t=>VERBO.test(t));
+  const v=(i<0?"":out.slice(i).join(' ')).replace(/[.,;:]+$/,'').trim();
+  if(!v||v.length<6) return "";
+  return v.slice(0,80);
+}
 function eIE(full){let all=[...full.matchAll(/INSCRI[ÇC][ÃA]O\s*ESTADUAL[^\d]*(\d{7,14})/gi)];if(all.length) return all[0][1];return "";}
 function eCEP(full){const m=full.match(/\b\d{5}-\d{3}\b/);return m?m[0]:"";}
 function eMunicipioUF(full){const m=full.match(/MUNIC[IÍ]PIO:\s*([A-ZÀ-Ú \-]+?)\s+UF:\s*([A-Z]{2})/i);return m?{mun:m[1].trim(),uf:m[2]}:{mun:"",uf:""};}
-function eEndereco(full){const m=full.match(/ENDERE[ÇC]O:\s*RUA\s*VOLKSWAGEN[^\n]*?100/i);if(m) return "RUA VOLKSWAGEN - 100";const m2=full.match(/ENDERE[ÇC]O:\s*([A-Z0-9 \-\,\.]{10,80}?)(?:\s{2,}BAIRRO|\s{2,}MUNIC)/i);return m2?m2[1].trim().slice(0,60):"";}
+function eEndereco(full){const m=/ENDERE[CÇ]O:?\s*([^\n]{6,90})/.exec(full);if(!m) return "";let v=m[1].split(/\s{2,}/)[0];v=v.split(/ (?:BAIRRO|DISTRITO|MUNIC|CIDADE|CEP|FONE|FAX)\b/i)[0];v=v.replace(/\s+\d{4,}\S*.*$/,'');v=v.replace(/\s*\d\s*[-–]\s*(?:SA[IÍ]DA|ENTRADA)\b.*$/i,'');v=v.replace(/\s*\[\d+\].*$/,'');v=v.replace(/\s+/g,' ').trim();if(ehRotulo(v)||v.length<5) return "";return v.slice(0,60);}
 function mapaItens(items){if(!items||!items.length)return null;let text="";const map=[];let prev=null;for(const it of items){if(prev!==null&&it.page!==prev)text+="\n";prev=it.page;const s=String(it.str==null?"":it.str);const ini=text.length;text+=s;map.push({it,ini,fim:ini+s.length});text+=" ";}return{text,map};}
 function numEm(s){const mm=String(s||"").match(/R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}/);return mm?mm[0].replace(/^R?\$?\s*/,""):null;}
 function acharRotulo(mapa,re){const m=re.exec(mapa.text);if(!m)return null;const ini=m.index,fim=m.index+m[0].length;const its=mapa.map.filter(e=>e.ini<fim&&e.fim>ini).map(e=>e.it);if(!its.length)return null;const page=its[0].page;let x0=Infinity,x1=-Infinity,sy=0;for(const i of its){const w=i.w||0;x0=Math.min(x0,i.x);x1=Math.max(x1,i.x+w);sy+=i.y;}return{page,x0,x1,y:sy/its.length};}
@@ -255,7 +378,62 @@ function eBlocoValores(full,items){
   }
   return out;
 }
-function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=full.indexOf(cnpjDig);if(idx===-1) return "";const janelaAntes=full.slice(Math.max(0,idx-400),idx);let m=janelaAntes.match(/([A-Z][A-Z \.&\/\-]{8,70}LTDA)/i);if(m) return m[1].replace(/\s+/g,' ').trim().slice(0,60);const janelaDepois=full.slice(idx,idx+300);m=janelaDepois.match(/[A-Z][A-Z \.&\/\-]{5,60}(LTDA|ME|EPP|SA|EIRELI)/i);return m?m[0].trim().slice(0,50):"";}
+/* Nome do_participante: anda token a token, junta a sequencia ate achar um
+   sufixo empresarial (LTDA, EPP, SA, S/A, EIRELI, COOPERATIVA) e so aceita o
+   resultado se (a) nenhum token da sequencia for rotulo de DANFE e (b) o CNPJ
+   valido mais proximo do nome for exatamente o CNPJ que estamos nomeando.
+   Sem a exigencia do CNPJ, na DANFE de "conta de terceiro" (caixa do emitente com
+   a razao social da fabrica, chave com o CNPJ do revendedor) o leitor devolvia a
+   fabrica para o revendedor. Sem o corte por rotulo, o nome engolia a linha de
+   rotulos e voltava "ME / RAZÃO SOCIAL CÓD. DEALER CNPJ / CPF ... MAA". Aceita
+   minuscula e acento: "TRANSPORTES EXEMPLO INDUSTRIA E COMERCIO
+   LTDA" tem um "e" minusculo no meio. */
+function nomePertoCnpj(janela,cnpjDig){
+  const SUF=/^(LTDA|LTME|EPP|SA|S\/A|EIRELI|COOPERATIVA)(?![A-Za-zÀ-ÿ])/i;
+  /* O leitor de CNPJ vem de cnpjsNoTexto (o mesmo do eJ): uma politica de
+     ocorrencia so. Aqui sem o corte de codigo de barras a ancora do nome podia
+     nascer dentro do proprio codigo de barras, e o nome saia pela janela errada. */
+  const cnpjs=(txt)=>cnpjsNoTexto(txt).filter(x=>x.valida).map(x=>({d:x.dig,i:x.idx}));
+  let run=[],runIni=0,pos=0,cortado=false;
+  for(const t of janela.split(/\s+/)){
+    const ini=pos;pos+=t.length+1;
+    const limpo=t.replace(/[.,;:()\[\]]/g,'');
+    if(!limpo||/\d{6,}/.test(limpo)){run=[];cortado=false;continue;}
+    if(ehRotulo(limpo,ROTULO_NOME)||t.endsWith('/')){run=[];cortado=false;continue;}
+    if(!run.length){runIni=ini;cortado=false;}
+    run.push(t);
+    /* runIni tem de andar junto com o shift. Sem isso, num run com mais de 8
+       tokens a distancia do CNPJ e medida a partir do token que JA SAIU do run.
+       E `cortado` impede devolver a cauda do run como se fosse o nome inteiro:
+       fragmento de razao social e a mesma mentira do "ME / RAZAO SOCIAL ... MAA",
+       so que em outra forma. Run cortado volta vazio e a auditoria diz. */
+    if(run.length>8){run.shift();cortado=true;runIni=pos-run.join(' ').length;}
+    if(!SUF.test(limpo)) continue;
+    if(cortado) continue;
+    const nome=run.join(' ').trim();
+    if(nome.length<6||run.length>8) continue;
+    /* A posicao do run vem do percorrimento, nao de indexOf: "DA" aparece em
+       "DADOS" no comeco da janela e o indexOf media a distancia a partir dali. */
+    const depois=cnpjs(janela.slice(runIni+nome.length))[0];
+    /* So o CNPJ que vem DEPOIS do nome pode valida-lo. No DANFE o nome sempre
+       precede o CNPJ dele ("NOME / RAZAO SOCIAL ... X LTDA 000004844
+       11.222.334/0001-26"). Aceitar tambem o CNPJ que vem ANTES e o que permitia
+       o nome do destinatario responder pelo emitente: o bloco do destinatario
+       cai fora da janela de 60 caracteres a direita, o "mais proximo antes" vira
+       o CNPJ do emitente, e eNome devolvia "EXEMPLO SERVICOS LTDA" como nome do
+       emitente - dado errado com 99% de confianca, que era o defeito que este
+       leitor passou a semana inteira para nao cometer. Vazio e o modo seguro. */
+    const RAIO=nome.length+40;
+    const perto=depois&&nome.length+depois.i<=RAIO?depois:null;
+    if(perto&&perto.d===cnpjDig) return nome;
+    run=[];
+  }
+  return "";
+}
+function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=idxCnpj(full,cnpjDig);if(idx===-1) return "";/* A janela vai ate 800 antes e 60 depois do CNPJ: o nome do destinatario
+   vem ANTES do CNPJ dele ("NOME / RAZAO SOCIAL ... EXEMPLO SERVICOS LTDA 000004844
+   11.222.334/0001-26"), e uma janela que so olhava para frente nunca achava. */
+const v=nomePertoCnpj(full.slice(Math.max(0,idx-800),idx+60),cnpjDig);return v?v.slice(0,60):"";}
 function decodChave(ch){ch=d(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
 /* Origens do Tesseract declaradas explicitamente.
    Sem corePath, o tesseract.js@4 baixa 2 destinos invisiveis no HTML: o core WASM
@@ -342,14 +520,22 @@ function parseFull(full,items,fonte){
   if(dec){
     if(dec.nNFInt&&dec.nNFInt!=="0"&&(chaveValida||!numero)){
       numero=dec.nNFInt;numeroConf=chaveValida?99:80;
-      numeroAncora="chave 44 (pos 26-34)"+(chaveValida?"":" • DV inválido");
+      numeroAncora="chave 44 (pos 26-34)"+(chaveValida?"":" • chave não validada");
       numeroCands=[dec.nNF+" → "+dec.nNFInt+" (chave)"].concat(numeroCands);
     }
     if(dec.serieInt&&dec.serieInt!=="0"&&(!serie||serie==="0")) serie=dec.serieInt;
   }
   const lista=(cj.lista||[]).filter(c=>c.dig&&!/^(.)\1+$/.test(c.dig)&&!(chave.includes(c.dig)&&(!dec||c.dig!==dec.cnpj)));
   let cnpjPrest="",cnpjConf=0,cnpjFonte="";
-  if(dec&&dec.cnpj&&vC(dec.cnpj)){cnpjPrest=dec.cnpj;cnpjConf=chaveValida?98:75;cnpjFonte="chave 44";}
+  /* O CNPJ das posicoes 7-20 so vale com chaveValida. Provado com uma janela
+     forjada que passa no DV, e tem estrutura invalida, e traz o CNPJ do TOMADOR
+     nas posicoes 7-20: o leitor devolvia o tomador como emitente com
+     cnpjValido=true, cnpjFonte="chave 44", completo=true e garantia
+     "CNPJ+número OK" — a mesma mentira da chave deslocada, so que agora vem pelo
+     CNPJ e nao pelo numero. Sem emitente, a linha cai no vermelho e o reforco de
+     OCR dispara: dado faltando com auditoria vale mais que participante trocado
+     em silencio. O numero e a serie mantem o fallback da chave (ver acima). */
+  if(chaveValida&&dec&&dec.cnpj&&vC(dec.cnpj)){cnpjPrest=dec.cnpj;cnpjConf=98;cnpjFonte="chave 44";}
   if(!cnpjPrest){
     const val=lista.find(c=>c.valida);
     if(val){cnpjPrest=val.dig;cnpjConf=fonte==="ocr"?85:95;cnpjFonte=fonte==="ocr"?"OCR":"texto";}
@@ -357,7 +543,10 @@ function parseFull(full,items,fonte){
   }
   let cnpjTom=cj.toma||"";
   if(cnpjTom===cnpjPrest||(cnpjTom&&chave.includes(cnpjTom))) cnpjTom="";
-  if(!cnpjTom){const other=lista.find(c=>c.dig&&c.dig!==cnpjPrest);if(other)cnpjTom=other.dig;}
+  /* Sem emitente conhecido, lista[0] NAO e o destinatario: e o primeiro CNPJ
+     valido do documento, que e o proprio emitente. Rotulá-lo de tomador trocava
+     as duas pontas quando o prestador fica vazio. */
+  if(!cnpjTom&&cnpjPrest){const other=lista.find(c=>c.dig&&c.dig!==cnpjPrest);if(other)cnpjTom=other.dig;}
   const nomeP=eNome(full,items,cnpjPrest),nomeT=eNome(full,items,cnpjTom);
   return{arquivo:"",chave,chaveValida,chaveConf,cnpjPrestador:cnpjPrest,cnpjTomador:cnpjTom,cnpjConf,cnpjFonte,cnpjValido:cnpjPrest?vC(cnpjPrest):false,cnpjsLista:lista,numero,numeroConf,numeroAncora,numeroCands,data:datas.data,dataSaida:datas.dataSaida,vencimento:datas.vencimento,todasDatas:datas.todas,valor,nomePrestador:nomeP,nomeTomador:nomeT,serie,protocolo,natOp,ieEmitente:ie,cepEmitente:cep,munEmitente:munUf.mun,ufEmitente:munUf.uf,enderecoEmitente:endereco,baseICMS:bv.baseICMS,valorICMS:bv.valorICMS,baseST:bv.baseST,valorST:bv.valorST,valorProdutos:bv.valorProdutos,valorFrete:bv.frete,valorSeguro:bv.seguro,despesasAcessorias:bv.despesas,valorIPI:bv.ipi,valorTotalNota:bv.total,fonteTexto:fonte};
 }
@@ -2229,7 +2418,11 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const ok=DBpdf.filter(r=>r.confMedio>=70).length;
     document.getElementById('pdfiso-k-ok').textContent=ok;
     document.getElementById('pdfiso-sub-total').textContent=ok?Math.round(ok/DBpdf.length*100)+'% alta': '—';
-    document.getElementById('pdfiso-k-chave').textContent=DBpdf.filter(r=>r.chave).length;
+    /* O sub-rotulo do KPI diz "validadas", então o filtro tem que ser o mesmo
+       predicado: contava r.chave (chave lida), e com chave estruturalmente inválida
+       virando saída normal do leitor o número passou a afirmar validação de chave
+       reprovada. */
+    document.getElementById('pdfiso-k-chave').textContent=DBpdf.filter(r=>r.chaveValida).length;
     document.getElementById('pdfiso-k-cnpj').textContent=DBpdf.filter(r=>r.cnpjPrestador).length;
     const comGar=DBpdf.filter(r=>r.completo).length;
     const elG=document.getElementById('pdfiso-k-garantia'); if(elG) elG.textContent=comGar;
@@ -2256,12 +2449,20 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
-      const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido — confira no debug">✓ CNPJ+Nº • DV ✗</span>`:`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' • CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' • nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`);
+/* Badge de garantia. Passeio (Designer): o verde era "achei um CNPJ com DV válido
+   e um número", não "esse é o emitente". Com o caminho da chave fechado (a chave só
+   vale com DV e estrutura), cnpjFonte só pode ser texto/OCR — e o defeito que esta
+   mudança conserta era exatamente emitente trocado por tomador. Então o verde
+   passa a exigir um segundo sinal: o nome colado no mesmo CNPJ. Sem ele o estado
+   é "não confirmado" e aparece em warn, com a contagem no banner. */
+const celVazia=(txt,tip)=>`<span title="${esc(tip||'não lido nesta extração: o campo existe no PDF, mas o texto não foi lido sem ambiguidade')}" style="cursor:help">${esc(txt||'—')}</span>`;
+const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
+const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido - confira no debug">✗ CNPJ+Nº · DV ✗</span>`:(emitenteConfirmado(r)?`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' · CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' · nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`:`<span class="pdfiso-badge warn" title="CNPJ com DV válido e número localizados, mas o emitente NÃO foi confirmado: o nome do emitente não pôde ser lido sem ambiguidade neste PDF, então o CNPJ veio do texto e não da chave">~ CNPJ+Nº · emissor não confirmado</span>`));
       return `<tr>
         <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>
         <td style="font-family:monospace;font-size:11px">${r.serie||'—'}</td>
-        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'✓':r.chave?'✗':''}</td>
+        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjPrestador)}</td>
         <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nomePrestador)}">${esc(r.nomePrestador)||'—'}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
@@ -2275,8 +2476,10 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const empty=lista.length===0?`<div class="empty-state"><p>Nenhum resultado para o filtro.</p></div>`:'';
     const pend=DBpdf.filter(r=>!r.completo);
     const dvErr=DBpdf.filter(r=>r.completo&&r.cnpjValido===false);
+    const naoConfirmado=DBpdf.filter(r=>r.completo&&!emitenteConfirmado(r));
     const avisos=[];
     if(pend.length) avisos.push(`<div style="margin-bottom:10px;padding:10px 14px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:11px;font-weight:600">Atenção: ${pend.length} de ${DBpdf.length} PDF(s) <strong>sem CNPJ e/ou número garantido</strong>: ${pend.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${pend.length>6?' e mais '+(pend.length-6):''} — clique em "detalhar" para ver o texto extraído.</div>`);
+    if(naoConfirmado.length) avisos.push(`<div style="margin-bottom:10px;padding:10px 14px;background:var(--warn-bg);border-left:3px solid var(--warn-ink);border-radius:var(--radius);color:var(--warn-ink);font-size:11px;font-weight:600">${naoConfirmado.length} PDF(s) com <strong>emissor não confirmado</strong>: o CNPJ tem DV válido e o número foi lido, mas o nome do emitente não pôde ser lido sem ambiguidade — o CNPJ veio do texto do PDF, não da chave. Confira no detalhe antes de usar.</div>`);
     if(dvErr.length) avisos.push(`<div style="margin-bottom:10px;padding:10px 14px;background:var(--warn-bg);border:1px solid var(--warn-ink);border-radius:var(--radius);color:var(--warn-ink);font-size:11px;font-weight:600">Atenção: ${dvErr.length} PDF(s) com CNPJ de <strong>dígito verificador inválido</strong> (possível leitura errada): ${dvErr.slice(0,6).map(r=>esc(r.arquivo)).join(', ')}${dvErr.length>6?' e mais '+(dvErr.length-6):''}</div>`);
     const aviso=avisos.join('');
     document.getElementById('pdfiso-avisos').innerHTML=aviso;
@@ -2287,7 +2490,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
         const ws=XLSX.utils.aoa_to_sheet([header,...DBpdf.map(r=>[r.arquivo,r.numero,r.serie,r.data,r.dataSaida,r.vencimento,r.cnpjPrestador,r.nomePrestador,r.ieEmitente,r.enderecoEmitente,r.munEmitente,r.ufEmitente,r.cepEmitente,r.cnpjTomador,r.nomeTomador,r.chave,r.chaveValida,r.natOp,r.protocolo,r.baseICMS,r.valorICMS,r.baseST,r.valorST,r.valorProdutos,r.valorFrete,r.valorSeguro,r.despesasAcessorias,r.valorIPI,r.valorTotalNota,r.valor,r.confMedio,r.numeroConf,r.chaveConf,r.cnpjConf,r.garantia,r.numeroGarantido?'SIM':'NAO',r.cnpjGarantido?'SIM':'NAO',r.cnpjFonte||'',r.numeroAncora||'',r.ocrReforco?'SIM':'NAO'])]);
         const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'PDFs');XLSX.writeFile(wb,`pdf_leitura_${Date.now()}.xlsx`);
       } else {
-        const rows=DBpdf.map(r=>header.map(h=>String({Arquivo:r.arquivo,Numero:r.numero,Serie:r.serie,DataEmissao:r.data,DataSaida:r.dataSaida,Vencimento:r.vencimento,CNPJ_Prestador:r.cnpjPrestador,Nome_Prestador:r.nomePrestador,IE_Emitente:r.ieEmitente,Endereco:r.enderecoEmitente,Municipio:r.munEmitente,UF:r.ufEmitente,CEP:r.cepEmitente,CNPJ_Tomador:r.cnpjTomador,Nome_Tomador:r.nomeTomador,Chave:r.chave,ChaveValida:r.chaveValida,NatOp:r.natOp,Protocolo:r.protocolo,BaseICMS:r.baseICMS,ValorICMS:r.valorICMS,BaseST:r.baseST,ValorST:r.valorST,ValorProdutos:r.valorProdutos,Frete:r.valorFrete,Seguro:r.valorSeguro,Despesas:r.despesasAcessorias,ValorIPI:r.valorIPI,ValorTotal:r.valorTotalNota,Valor:r.valor,ConfMedio:r.confMedio,NumeroConf:r.numeroConf,ChaveConf:r.chaveConf,CnpjConf:r.cnpjConf,Garantia:r.garantia,NumeroOk:r.numeroGarantido?'SIM':'NAO',CNPJ_Ok:r.cnpjGarantido?'SIM':'NAO',CNPJ_Fonte:r.cnpjFonte||'',Numero_Ancora:r.numeroAncora||'',OCR_Reforco:r.ocrReforco?'SIM':'NAO'}[h]||'').replace(/"/g,'""')).join(';'));
+        const rows=DBpdf.map(r=>header.map(h=>String({Arquivo:r.arquivo,Numero:r.numero,Serie:r.serie,DataEmissao:r.data,DataSaida:r.dataSaida,Vencimento:r.vencimento,CNPJ_Prestador:r.cnpjPrestador,Nome_Prestador:r.nomePrestador,IE_Emitente:r.ieEmitente,Endereco:r.enderecoEmitente,Municipio:r.munEmitente,UF:r.ufEmitente,CEP:r.cepEmitente,CNPJ_Tomador:r.cnpjTomador,Nome_Tomador:r.nomeTomador,Chave:r.chave,ChaveValida:r.chaveValida,NatOp:r.natOp,Protocolo:r.protocolo,BaseICMS:r.baseICMS,ValorICMS:r.valorICMS,BaseST:r.baseST,ValorST:r.valorST,ValorProdutos:r.valorProdutos,Frete:r.valorFrete,Seguro:r.valorSeguro,Despesas:r.despesasAcessorias,ValorIPI:r.valorIPI,ValorTotal:r.valorTotalNota,Valor:r.valor,ConfMedio:r.confMedio,NumeroConf:r.numeroConf,ChaveConf:r.chaveConf,CnpjConf:r.cnpjConf,Garantia:r.garantia,NumeroOk:r.numeroGarantido?'SIM':'NAO',CNPJ_Ok:r.cnpjGarantido?'SIM':'NAO',CNPJ_Fonte:r.cnpjFonte||'',Numero_Ancora:r.numeroAncora||'',OCR_Reforco:r.ocrReforco?'SIM':'NAO'}[h]||'')).map(window.GCON.csvCelula).join(';'));
         let csv='\ufeff'+header.join(';')+'\n'+rows.join('\n');
         const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`pdf_leitura_${Date.now()}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);
       }
@@ -2296,7 +2499,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
     resEl.querySelectorAll('.pdfiso-debug').forEach(a=>a.addEventListener('click',e=>{
       e.preventDefault();const r=DBpdf[+e.target.dataset.idx];const dbg=document.getElementById('pdfiso-debug');
       dbg.style.display='block';
-      dbg.textContent=`ARQUIVO: ${r.arquivo}\nGARANTIA: ${r.garantia||'-'} | CNPJ fonte: ${r.cnpjFonte||'-'}${r.cnpjPrestador?(r.cnpjValido?' (DV válido)':' (DV INVÁLIDO)'):''} | OCR reforço: ${r.ocrReforco?'sim':'não'}${r.ocrErro?' • erro OCR: '+r.ocrErro:''}\nCHAVE: ${r.chave||'-'} (valida:${r.chaveValida} conf:${r.chaveConf})\nSERIE: ${r.serie||'-'} PROTOCOLO: ${r.protocolo||'-'} NATOP: ${r.natOp||'-'}\nCNPJs: ${JSON.stringify(r.cnpjsLista||[],null,2)}\nNUMERO: ${r.numero||'-'} (ancora:${r.numeroAncora} conf:${r.numeroConf}%) CANDS:${JSON.stringify(r.numeroCands||[])}\nDATA: ${r.data} SAIDA:${r.dataSaida||'-'} VENC:${r.vencimento||'-'} VALOR: ${r.valor}\nEMITENTE: ${r.nomePrestador||'-'} IE:${r.ieEmitente||'-'} END:${r.enderecoEmitente||'-'} ${r.munEmitente||''}/${r.ufEmitente||''} CEP:${r.cepEmitente||'-'}\nVALORES: baseICMS=${r.baseICMS||'-'} vICMS=${r.valorICMS||'-'} baseST=${r.baseST||'-'} vST=${r.valorST||'-'} vProd=${r.valorProdutos||'-'} frete=${r.valorFrete||'-'} seg=${r.valorSeguro||'-'} desp=${r.despesasAcessorias||'-'} ipi=${r.valorIPI||'-'} total=${r.valorTotalNota||'-'}\n--- TEXTO (${r.fullLen} chars) ---\n${r.fullPreview}\n...`;
+      dbg.textContent=`ARQUIVO: ${r.arquivo}\nGARANTIA: ${r.garantia||'-'} | CNPJ fonte: ${r.cnpjFonte||'-'}${r.cnpjPrestador?(r.cnpjValido?' (DV válido)':' (DV INVÁLIDO)'):''} | OCR reforço: ${r.ocrReforco?'sim':'não'}${r.ocrErro?' • erro OCR: '+r.ocrErro:''}\nCHAVE: ${r.chave||'-'} (valida:${r.chaveValida} conf:${r.chaveConf})\nSERIE: ${celVazia(r.serie)} PROTOCOLO: ${r.protocolo||'-'} NATOP: ${r.natOp||'-'}\nCNPJs: ${JSON.stringify(r.cnpjsLista||[],null,2)}\nNUMERO: ${r.numero||'-'} (ancora:${r.numeroAncora} conf:${r.numeroConf}%) CANDS:${JSON.stringify(r.numeroCands||[])}\nDATA: ${r.data} SAIDA:${r.dataSaida||'-'} VENC:${r.vencimento||'-'} VALOR: ${r.valor}\nEMITENTE: ${r.nomePrestador||'-'} IE:${r.ieEmitente||'-'} END:${r.enderecoEmitente||'-'} ${r.munEmitente||''}/${r.ufEmitente||''} CEP:${r.cepEmitente||'-'}\nVALORES: baseICMS=${r.baseICMS||'-'} vICMS=${r.valorICMS||'-'} baseST=${r.baseST||'-'} vST=${r.valorST||'-'} vProd=${r.valorProdutos||'-'} frete=${r.valorFrete||'-'} seg=${r.valorSeguro||'-'} desp=${r.despesasAcessorias||'-'} ipi=${r.valorIPI||'-'} total=${r.valorTotalNota||'-'}\n--- TEXTO (${r.fullLen} chars) ---\n${r.fullPreview}\n...`;
       dbg.scrollTop=0;
     }));
     resEl.querySelectorAll('.pdfiso-copy').forEach(a=>a.addEventListener('click',e=>{
@@ -2802,10 +3005,9 @@ document.getElementById('baixar').addEventListener('click', async () => {
         ws['!cols']=[{wch:18},{wch:44},{wch:30},{wch:6},{wch:16},{wch:14},{wch:8},{wch:24}];
         const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lote'); XLSX.writeFile(wb,`cnpj_lote_${Date.now()}.xlsx`);
       }else{
-        /* Injeção de fórmula: duplicar aspas neutraliza o delimitador, não a
-           fórmula. Um campo de nome que comece com =, +, - ou @ é EXECUTADO
-           pelo Excel ao abrir o .csv. O prefixo ' é o escape padrão do CSV. */
-        const q=v=>{let s=String(v??'');if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+    /* Injeção de fórmula: o escape mora em window.GCON.csvCelula (um lugar só,
+       compartilhado com a exportação do leitor de PDF). */
+    const q=window.GCON.csvCelula;
         const csv='\uFEFF'+[header,...rows].map(l=>l.map(q).join(';')).join('\r\n');
         baixarNome(`cnpj_lote_${Date.now()}.csv`,new Blob([csv],{type:'text/csv;charset=utf-8'}));
       }
