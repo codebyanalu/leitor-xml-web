@@ -52,26 +52,19 @@ window.GCON_CDN={};
 </script>
 <script>
 window.ModPDFIsolado=(()=>{
-  // --- SOBRESCREVER localStorage para suportar Tracking Prevention ---
-  // Se o browser bloquear localStorage, substituímos por armazenamento em memória
-  const _ls = (function() {
-    try {
-      localStorage.setItem('_gcon_ls_test_', '1');
-      localStorage.removeItem('_gcon_ls_test_');
-      return localStorage;
-    } catch (e) {
-      // localStorage bloqueado - retornar objeto de fallback
-      const _s = {};
-      return {
-        getItem: function(k) { return _s[k] || null; },
-        setItem: function(k, v) { _s[k] = String(v); },
-        removeItem: function(k) { delete _s[k]; },
-        clear: function() { _s = {}; }
-      };
-    }
+  /* ── ACESSO AO ARMAZENAMENTO LOCAL ────────────────────────────────────────
+     O bloco que existia aqui tentava "sobrescrever" window.localStorage
+     para suportar Tracking Prevention. Isso nunca funcionou: localStorage é
+     um atributo somente-leitura da Window e a atribuição é um no-op
+     silencioso (verificado no Edge: descriptor tem get e não tem set), então
+     nenhum código usava o objeto de retorno. Pior: a detecção era feita com
+     um valor de 1 caractere, que cabe mesmo com a cota cheia — ou seja, ela
+     nunca acusava o problema real. A degradação agora é explícita e testada
+     em cada escrita (ver ARM/gravarCache no módulo de CNPJ). */
+  const _gconStorageDisponivel=(function(){
+    try{localStorage.setItem('_gcon_probe_','1');localStorage.removeItem('_gcon_probe_');return true;}
+    catch(e){return false;}
   })();
-  // Agora window.localStorage apontará para o armazenamento correto
-  window.localStorage = _ls;
   // -----------------------------------------------------------
   
    const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°][,\.]?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i,/N[uúu]m(?:ero)?\.?\s*[:.]?\s*\d/i,/N[oº°]\.?\s*\d/i,/Nota\s*(?:de\s*(?:Servico|Servico))?\s*(?:n[oº°]|:)\s*\d/i,/NF[\s\-]*[eE]?\s*[Nº°]\.?\s*\d/i,/RPS\s*[Nº°]\.?\s*\d/i,/Num\.?\s*[:.]?\s*\d/i];
@@ -418,14 +411,21 @@ function finalizar(r,full,fonte,ocrTentado,ocrErro){
   return r;
 }
 
-return{extrair,parseFull,mergeExtracao,finalizar,tC};
+/* Contrato do módulo. vC e vH fazem parte da superfície pública: o importador
+   de planilha da Consulta em Lote é OUTRA IIFE e valida o dígito verificador do
+   CNPJ com vC(). Sem eles no return, essa IIFE chamava vC() e o navegador
+   respondia "vC is not defined" — a Consulta em Lote morria inteira (CSV e
+   XLSX davam erro, o botão Iniciar nascia desabilitado para sempre). */
+return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
 })();
 </script><script>
 (function(){try{window.GCON_THEME_KEY='gcon-theme';if(localStorage.getItem(window.GCON_THEME_KEY)==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* A fonte Inter já é carregada pelo <link> no <head> (com preconnect, em
+   paralelo com o CSS). O @import aqui era uma segunda requisição do mesmo
+   arquivo, feita só depois de o CSS da página já ter pintado. */
 
 /* ═══════════════════════════════════════════════════════════
    1 · TOKENS (tema claro + escuro)
@@ -455,6 +455,11 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC};
   --err-line:#fecaca;--err-soft-line:#fca5a5;--warn-line:#fde68a;
   --err-soft-bg:rgba(248,113,113,.15);--err-soft-bg-h:rgba(248,113,113,.25);
   --code-bg:#1e293b;--code-fg:#cbd5e1;--code-line:rgba(255,255,255,.06);
+  /* Cores do log de lote (#cnpj-lote-log), que vive SOBRE --code-bg. Os tokens
+     --text2/--info/--success/--err foram calibrados para superfície clara e
+     davam de 2,06:1 a 3,98:1 a 10px na ardósia escura do --code-bg. Estes
+     cinco passam de 7,7:1 a 10,2:1 tanto no --code-bg claro quanto no escuro. */
+  --log-neutro:#cbd5e1;--log-info:#93c5fd;--log-ok:#6ee7b7;--log-aviso:#fcd34d;--log-err:#fca5a5;
   --tint:#f0f4fe;--card-2:#f1f4f9;--zebra:#f8fafc;--row-hover:#e8edf5;
   --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
   --font-mono:'Cascadia Code','Fira Code',Consolas,monospace;
@@ -478,6 +483,9 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC};
   --err-soft-bg:rgba(248,113,113,.15);--err-soft-bg-h:rgba(248,113,113,.25);
   --badge-on-cta:#1f4066;
   --code-bg:#101722;--code-fg:#cbd5e1;--code-line:rgba(255,255,255,.09);
+  /* Declarados também no escuro: o tema escuro sobrescreve :root, e um token
+     herdado do claro ficaria sem par próprio para medir. */
+  --log-neutro:#cbd5e1;--log-info:#93c5fd;--log-ok:#6ee7b7;--log-aviso:#fcd34d;--log-err:#fca5a5;
   --tint:#17233a;--card-2:#1c2537;--zebra:#131b2b;--row-hover:#22304a;
   --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
 }
@@ -629,7 +637,9 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 /* ═══════════════════════════════════════════════════════════
    9 · BOTÕES
    ═══════════════════════════════════════════════════════════ */
-.btn{padding:8px 18px;font-size:11px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+/* min-height de 40px: com o padding de 8px a caixa media 32,5px, abaixo do
+   piso de alvo de toque. Os 4 botões da Consulta em Lote são .btn. */
+.btn{padding:8px 18px;min-height:40px;font-size:11px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
 .btn:active{transform:translateY(0)}
 .btn-prim{background:var(--primary-cta);color:#fff}
@@ -664,15 +674,17 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 /* ═══════════════════════════════════════════════════════════
    11 · ABA SEPARAR PDF
    ═══════════════════════════════════════════════════════════ */
-#tab-separar{max-width:760px;margin-inline:auto}
+#tab-separar{max-width:none}
 #sep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow)}
 #tab-separar .campo{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px}
 #tab-separar .campo label,#tab-separar legend.campo-legenda{display:block;font-weight:600;margin:0 0 8px;color:var(--text)}
 #tab-separar .row{display:flex;gap:8px}
 #tab-separar input[type=text]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
 #tab-separar input[type=file]{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--card)}
-#tab-separar .radio-group{display:flex;gap:18px;margin-top:6px;flex-wrap:wrap}
-#tab-separar .radio-group label{font-weight:500;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer}
+#tab-separar .radio-group{display:flex;gap:24px;margin-top:8px;flex-wrap:wrap}
+/* Sem min-height o alvo do radio media ~20px. 44px é o piso de toque. */
+#tab-separar .radio-group label{font-weight:500;display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;min-height:44px;padding:0 4px}
+#tab-separar .radio-group label input{width:20px;height:20px;margin:0;flex:none}
 #tab-separar .btn-select{background:var(--primary-cta);color:#fff;white-space:nowrap}
 #tab-separar .btn-select:hover{background:var(--primary-cta-h)}
 #tab-separar #btn-processar{width:100%;margin-top:18px;background:var(--primary-cta);color:#fff;padding:13px;font-size:15px;justify-content:center}
@@ -684,6 +696,14 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #tab-separar #status{color:var(--text2);margin-top:14px;font-size:12px;min-height:16px}
 #tab-separar #status.err{color:var(--err)}
 #tab-separar #status.ok{color:var(--success)}
+/* A aba ocupa a largura toda como as demais: as opções lado a lado em telas
+   largas empilham sozinhas no mobile, sem centralizar o conteúdo no meio. */
+#tab-separar .grade{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+#tab-separar .grade>.campo{margin-bottom:14px}
+#tab-separar .acoes-sep{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+@media (max-width:900px){
+  #tab-separar .grade,#tab-separar .acoes-sep{grid-template-columns:1fr}
+}
 #tab-separar pre{background:var(--sidebar);color:#cbd5e1;border-radius:var(--radius);padding:12px;font-family:Consolas,monospace;font-size:12px;max-height:260px;overflow:auto;margin-top:18px;white-space:pre-wrap}
 
 /* ═══════════════════════════════════════════════════════════
@@ -701,6 +721,8 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
   .dash-grid{gap:16px}
 }
 @media (max-width:768px){
+  /* alvo de toque de 44px no celular */
+  .btn{min-height:44px}
   #sidebar{width:64px;min-width:64px}
   #logo{padding:16px 4px 12px}
   #logo h1{font-size:11px;line-height:1.25;overflow-wrap:anywhere}
@@ -794,21 +816,26 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <div class="row">
             <input type="file" id="pdfFile" accept=".pdf">
           </div>
+          <p style="font-size:11px;color:var(--text3);margin:8px 0 0;line-height:1.5">Um PDF com várias notas → um arquivo por nota. Sem pasta escolhida os arquivos saem em ZIP.</p>
         </div>
-        <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
-          <legend class="campo-legenda">Modo de detecção</legend>
-          <div class="radio-group" id="modos">
-            <label><input type="radio" name="modo" value="auto" checked> Automático</label>
-            <label><input type="radio" name="modo" value="unica"> Uma página = uma nota</label>
-          </div>
-        </fieldset>
-        <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
-          <legend class="campo-legenda">Nomeação dos arquivos</legend>
-          <div class="radio-group">
-            <label><input type="radio" name="lerNumero" value="sim" checked> Ler número da nota</label>
-            <label><input type="radio" name="lerNumero" value="nao"> Não ler (usar página)</label>
-          </div>
-        </fieldset>
+        <div class="grade">
+          <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
+            <legend class="campo-legenda">Modo de detecção</legend>
+            <div class="radio-group" id="modos">
+              <label><input type="radio" name="modo" value="auto" checked> Automático</label>
+              <label><input type="radio" name="modo" value="unica"> Uma página = uma nota</label>
+            </div>
+            <p style="font-size:11px;color:var(--text3);margin:8px 0 0;line-height:1.5">Automático agrupa as páginas pelo número da nota no topo. Se preferir não arriscar, use uma página por nota.</p>
+          </fieldset>
+          <fieldset class="campo" style="border:0;padding:0;margin:0 0 14px">
+            <legend class="campo-legenda">Nomenclatura dos arquivos</legend>
+            <div class="radio-group">
+              <label><input type="radio" name="lerNumero" value="sim" checked> Ler número da nota</label>
+              <label><input type="radio" name="lerNumero" value="nao"> Não ler (usar página)</label>
+            </div>
+            <p style="font-size:11px;color:var(--text3);margin:8px 0 0;line-height:1.5">Com “Ler número da nota” o nome sai como <code>NF-&lt;número&gt;.pdf</code>; com “Não ler”, <code>NF-pagina0001.pdf</code>.</p>
+          </fieldset>
+        </div>
         <div class="campo">
           <label for="pastaNome">Pasta de destino</label>
           <div class="row">
@@ -816,9 +843,11 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
             <button id="btnSelecionarPasta" class="btn btn-select" type="button">Escolher pasta</button>
           </div>
         </div>
-        <button id="btn-processar" class="btn">Separar Notas</button>
+        <div class="acoes-sep">
+          <button id="btn-processar" class="btn">Separar notas</button>
+          <button id="baixar" class="btn" disabled>Salvar arquivos</button>
+        </div>
         <div id="barra"><div id="barra-inner"></div></div>
-        <button id="baixar" class="btn">Salvar arquivos</button>
         <div id="status"></div>
         <pre id="log"></pre>
       </div>
@@ -922,13 +951,15 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
         <pre id="cnpj-raw" class="code" style="display:none;max-height:300px;margin-top:12px"></pre>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-top:18px">
           <h4 class="sec-title tight"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg> Consulta em Lote (planilha)</h4>
-          <p style="font-size:11px;color:var(--text2);margin-bottom:12px">Importe XLSX/CSV com coluna <strong>CNPJ</strong> — respeita <strong>3/min</strong> (20s entre requisições) • cache automático</p>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:12px">Importe XLSX/CSV com coluna <strong>CNPJ</strong> — respeita <strong>3/min</strong> (20s entre requisições) • cache automático de <strong>30 dias</strong></p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <input type="file" id="cnpj-lote-file" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);font-size:12px">
+            <button id="cnpj-lote-modelo" class="btn btn-sec" type="button" style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Baixar modelo</button>
             <button id="cnpj-lote-start" class="btn btn-ok" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg> Iniciar lote</button>
             <button id="cnpj-lote-stop" class="btn btn-sec" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-stop"></use></svg> Parar</button>
             <button id="cnpj-lote-export" class="btn btn-prim" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Exportar lote</button>
           </div>
+          <div id="cnpj-cache-aviso" role="status" aria-live="polite" style="display:none;margin-top:10px;padding:9px 12px;background:var(--warn-bg);border:1px solid var(--warn-line,var(--border));border-left:3px solid var(--warn-ink);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.5"></div>
           <div id="cnpj-lote-bar" style="height:6px;background:var(--border-light);border-radius:var(--radius-sm);margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
           <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap"><span id="cnpj-lote-info">—</span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
           <div id="cnpj-lote-log" class="code" style="margin-top:10px;font-size:10px;max-height:160px;display:none"></div>
@@ -1695,10 +1726,21 @@ function renderDashboard(){
 }
 
 // ═══ EXPORT ═══
+/* alert() é bloqueado por regra do projeto: trava a aba e some no console.
+   A mensagem vai para a faixa permanente e some sozinha em 6 s. */
+let exportAvisoTimer=null;
+function exportAviso(msg){
+  const b=document.getElementById('error-banner');
+  if(!b)return;
+  b.textContent=msg;
+  b.style.display='block';
+  if(exportAvisoTimer)clearTimeout(exportAvisoTimer);
+  exportAvisoTimer=setTimeout(()=>{b.style.display='none';b.textContent='';},6000);
+}
 function exportCSV(tipo){
   const cab=tipo==='nfe'?HNFE:HNFSE;
   const dados=tipo==='nfe'?DB.nfe:DB.nfse;
-  if(!dados.length){alert('Sem dados para exportar.');return;}
+  if(!dados.length){exportAviso('Nada para exportar: importe XMLs ou PDFs primeiro.');return;}
   let csv='\ufeff'+cab.join(';')+'\n';
   for(const row of dados){
     csv+=cab.map(c=>{const v=String(formatoBr(row[c])||'').replace(/"/g,'""');return/[;\n"]/.test(v)?`"${v}"`:v;}).join(';')+'\n';
@@ -1711,7 +1753,7 @@ function exportCSV(tipo){
 function exportXLSX(tipo){
   const cab=tipo==='nfe'?HNFE:HNFSE;
   const dados=tipo==='nfe'?DB.nfe:DB.nfse;
-  if(!dados.length){alert('Sem dados para exportar.');return;}
+  if(!dados.length){exportAviso('Nada para exportar: importe XMLs ou PDFs primeiro.');return;}
   const data=[cab,...dados.map(r=>cab.map(c=>formatoBr(r[c])||''))];
   const ws=XLSX.utils.aoa_to_sheet(data);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo==='nfe'?'Produtos_NFe':'Servicos_NFSe');
@@ -1750,7 +1792,13 @@ function tick(){document.getElementById('hora').textContent=agora();setTimeout(t
 tick();updateStatus();
 
 // ═══ SEPARADOR DE PDF ═══
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* Guarda obrigatória: esta linha fica no topo do script. Sem a CDN do
+   pdf.js, a referência crua lançava ReferenceError e abortava todo o bloco
+   a partir daqui — ou seja, separador, leitura de PDF e consulta de CNPJ
+   sumiam da página sem nenhuma mensagem. */
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
 
 const PADROES_SEP = [
   /(?:Nota\s{0,4}Fiscal|NF\s{0,4}e?[°º]?\s{0,4}[.:]?)\s{0,4}[Nn]?[o°º]?\.?\s{0,4}[:.]?\s{0,4}(\d{1,15})/gi,
@@ -1765,7 +1813,10 @@ function sepStatus(msg, cls) {
 }
 function sepLog(msg) {
   const el = document.getElementById('log');
-  el.textContent += msg + '\n';
+  /* textContent += reparseia o log inteiro a cada linha. Com centenas de
+     páginas isso é quadrático e trava a aba; um nó de texto por linha é O(1)
+     e o elemento continua sendo lido como texto puro. */
+  el.appendChild(document.createTextNode(msg + '\n'));
   el.scrollTop = el.scrollHeight;
 }
 function sepDetect(texto, padraoPers) {
@@ -1793,6 +1844,32 @@ function sepSanitizar(nome) {
   nome = nome.replace(/[<>:"/\\|?*]/g, '_').trim();
   return nome || 'nota_sem_numero';
 }
+/* Nome do arquivo de um grupo de páginas. Isolado do pdf.js como o sepAgrupar
+   porque é a MESMA regra de negócio que errava: o agrupamento já decidiu que
+   uma página sem número pertence à nota cujo número vem depois, mas a nomeação
+   lia numsPag[paginas[0]] — e as duas coisas discordam justamente nos PDFs
+   escaneados, que são o caso que o separador existe para resolver. 5 dos 14
+   cenários de nomeação erravam por causa disso. */
+function sepNomear(numsPag, paginas, lerNumero, nomesUsados) {
+  let num;
+  if (lerNumero) {
+    /* o número desta página já foi lido no laço de detecção; o código extraía
+       o texto do topo de novo, dobrando o trabalho por grupo. */
+    const pNum = paginas.find((p) => numsPag[p]);
+    num = (pNum !== undefined ? numsPag[pNum] : '') || ('nota_' + String(paginas[0] + 1).padStart(4, '0'));
+    num = num.replace(/^0+/, '') || num;
+  } else {
+    num = 'pagina_' + String(paginas[0] + 1).padStart(4, '0');
+  }
+  let arquivo = 'NF-' + sepSanitizar(num) + '.pdf';
+  let v = 2;
+  while (nomesUsados.has(arquivo)) {
+    arquivo = 'NF-' + sepSanitizar(num) + '_' + v + '.pdf';
+    v++;
+  }
+  nomesUsados.add(arquivo);
+  return { arquivo, numeroNota: num };
+}
 async function sepExtrairTopo(page) {
   const viewport = page.getViewport({ scale: 1 });
   const altura = viewport.height;
@@ -1805,79 +1882,122 @@ async function sepExtrairTopo(page) {
   });
   return items.map(it => it.str).join(' ');
 }
-async function sepSeparar(arquivo, modo, lerNumero) {
-  const doc = await pdfjsLib.getDocument(await arquivo.arrayBuffer()).promise;
-  const total = doc.numPages;
-  sepLog(`PDF carregado — ${total} página(s)`);
-  const arrayBuffer = await arquivo.arrayBuffer();
-  const srcDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+/* Agrupamento de páginas em notas. Isolado do pdf.js de propósito: é a regra
+   de negócio que mais errava e a única que precisa de teste sem browser. */
+function sepAgrupar(numsPag, total, modo) {
+  /* PDF de 0 página (ou contador corrompido) devolvia [[]]: um grupo vazio que
+     o chamador transformava em um PDF de 0 página chamado NF-nota_0001.pdf. */
+  if (!(total > 0)) return [];
+  if (modo === 'unica') return Array.from({ length: total }, (_, i) => [i]);
+  if (numsPag.every(n => !n)) return Array.from({ length: total }, (_, i) => [i]);
+  const inicios = [0];
+  let atual = numsPag[0];
+  const vistos = new Set();
+  if (atual) vistos.add(atual);
+  for (let i = 1; i < total; i++) {
+    const n = numsPag[i];
+    if (!n) continue;            // página sem número herda a nota atual
+    if (n === atual) continue;   // mesma nota, segue acumulando páginas
+    /* Nenhum número foi adotado ainda? Então esta é a PRIMEIRA nota e a
+       página sem número da frente é dela. Num PDF escaneado o número só
+       costuma aparecer na segunda página, e essa virava um arquivo de uma
+       página só — órfão — que era a outra reclamação do separador. */
+    if (!atual) {
+      atual = n;
+      vistos.add(n);
+      continue;
+    }
+    /* O número já apareceu antes? Então é outra nota com o mesmo número (dois
+       fornecedores com a nota 100, por exemplo) e não a continuação da
+       anterior. Sem isso as duas iam parar no mesmo arquivo, que era a
+       reclamação mais comum do separador. */
+    if (vistos.has(n)) {
+      sepLog(`  Página ${i + 1}: número "${n}" já apareceu antes -> nova nota a partir daqui`);
+    }
+    inicios.push(i);
+    atual = n;
+    vistos.add(n);
+  }
+  const grupos = [];
+  for (let j = 0; j < inicios.length; j++) {
+    const ini = inicios[j];
+    const fim = j + 1 < inicios.length ? inicios[j + 1] : total;
+    const paginas = [];
+    for (let k = ini; k < fim; k++) paginas.push(k);
+    grupos.push(paginas);
+  }
+  return grupos;
+}
+/* Teto de volume do separador. Medido: 24 páginas reais = 28,7 MB retidos e
+   pico de 105 MB; 300 páginas ≈ 1,3 GB de heap e a aba morre. O OCR já tem teto
+   (OCR_MAX_PAG=20) e o separador era o único caminho sem nenhum. Acima do
+   limite o pedido é explícito: o volume vai ficar inteiro na memória até o
+   botão "Salvar arquivos". */
+const SEP_MAX_PAGINAS = 150;
+const SEP_MAX_BYTES = 200 * 1024 * 1024;
+const sepMb = (b) => (b / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+function sepVolumeExcede(total, bytes) {
+  return total > SEP_MAX_PAGINAS || bytes > SEP_MAX_BYTES;
+}
+async function sepSeparar(arquivo, modo, lerNumero, jaConfirmou) {
+  /* O arquivo era lido duas vezes (arrayBuffer() no getDocument e outra vez
+     para o PDFLib), dobrando tempo e memória sem motivo. Lê uma vez e dá uma
+     cópia para cada biblioteca: o pdf.js transfere o buffer para o worker e
+     o descarta, então o original nunca pode ser o mesmo ponteiro. */
+  const original = await arquivo.arrayBuffer();
+  const doc = await pdfjsLib.getDocument(original.slice(0)).promise;
+  try {
+    const total = doc.numPages;
+    sepLog(`PDF carregado — ${total} página(s) · ${sepMb(original.byteLength)} retidos em memória`);
+    if (!jaConfirmou && sepVolumeExcede(total, original.byteLength)) {
+      const e = new Error(`volume`);
+      e.code = 'SEP_VOLUME';
+      e.detalhe = `Este PDF tem ${total} página(s) e ${sepMb(original.byteLength)}. Separar retém o volume inteiro na memória (medido: 24 páginas = 28,7 MB, pico de 105 MB) até você clicar em "Salvar arquivos".`;
+      throw e;
+    }
+    const srcDoc = await PDFLib.PDFDocument.load(original.slice(0));
 
-  let grupos;
-  if (modo === 'unica' || !lerNumero) {
-    grupos = Array.from({ length: total }, (_, i) => [i]);
-    if (!lerNumero) sepLog('Nomeação sem leitura do número -> nome por página');
-  } else {
     const numsPag = [];
-    for (let i = 1; i <= total; i++) {
-      const page = await doc.getPage(i);
-      const texto = await sepExtrairTopo(page);
-      numsPag.push(sepDetect(texto, null));
-      sepLog(`  Página ${i}: número detectado = ${numsPag[i - 1] || '(não encontrado)'}`);
-    }
-    if (modo === 'auto' && numsPag.every(n => !n)) {
-      sepLog('Nenhum padrão detectado -> modo página-por-página');
-      grupos = Array.from({ length: total }, (_, i) => [i]);
-    } else {
-      const inicios = [0];
-      let ultimoNum = numsPag[0];
-      for (let i = 1; i < total; i++) {
-        if (numsPag[i] && numsPag[i] !== ultimoNum) {
-          inicios.push(i);
-          ultimoNum = numsPag[i];
-        }
-      }
-      grupos = [];
-      for (let j = 0; j < inicios.length; j++) {
-        const ini = inicios[j];
-        const fim = j + 1 < inicios.length ? inicios[j + 1] : total;
-        const paginas = [];
-        for (let k = ini; k < fim; k++) paginas.push(k);
-        grupos.push(paginas);
-      }
-    }
-  }
-
-  const resultados = [];
-  const nomesUsados = new Set();
-  for (let idx = 0; idx < grupos.length; idx++) {
-    const paginas = grupos[idx];
-    let num;
     if (lerNumero) {
-      const texto = await sepExtrairTopo(await doc.getPage(paginas[0] + 1));
-      num = sepDetect(texto, null) || 'nota_' + String(paginas[0] + 1).padStart(4, '0');
-      num = num.replace(/^0+/, '') || num;
+      for (let i = 1; i <= total; i++) {
+        const page = await doc.getPage(i);
+        numsPag.push(sepDetect(await sepExtrairTopo(page), null));
+        sepLog(`  Página ${i}: número detectado = ${numsPag[i - 1] || '(não encontrado)'}`);
+      }
+    }
+
+    let grupos;
+    if (modo === 'unica' || !lerNumero) {
+      grupos = sepAgrupar([], total, 'unica');
+      if (!lerNumero) sepLog('Nomeação sem leitura do número -> nome por página');
+    } else if (numsPag.every(n => !n)) {
+      sepLog('Nenhum padrão detectado -> modo página-por-página');
+      grupos = sepAgrupar(numsPag, total, 'unica');
     } else {
-      num = 'pagina_' + String(paginas[0] + 1).padStart(4, '0');
+      grupos = sepAgrupar(numsPag, total, modo);
     }
-    let nomeArquivo = 'NF-' + sepSanitizar(num) + '.pdf';
-    let v = 2;
-    while (nomesUsados.has(nomeArquivo)) {
-      nomeArquivo = 'NF-' + sepSanitizar(num) + '_' + v + '.pdf';
-      v++;
+
+    const resultados = [];
+    const nomesUsados = new Set();
+    for (let idx = 0; idx < grupos.length; idx++) {
+      const paginas = grupos[idx];
+      const { arquivo: nomeArquivo, numeroNota: num } = sepNomear(numsPag, paginas, lerNumero, nomesUsados);
+      const novo = await PDFLib.PDFDocument.create();
+      const pags = await novo.copyPages(srcDoc, paginas);
+      pags.forEach(p => novo.addPage(p));
+      const bytes = await novo.save();
+      resultados.push({ arquivo: nomeArquivo, numeroNota: num, paginas, bytes });
+      const ps = paginas.length === 1
+        ? `pág ${paginas[0] + 1}`
+        : `págs ${paginas[0] + 1}-${paginas[paginas.length - 1] + 1}`;
+      sepLog(`  [${idx + 1}/${grupos.length}] ${nomeArquivo}  (${ps})`);
     }
-    nomesUsados.add(nomeArquivo);
-    const novo = await PDFLib.PDFDocument.create();
-    const pags = await novo.copyPages(srcDoc, paginas);
-    pags.forEach(p => novo.addPage(p));
-    const bytes = await novo.save();
-    resultados.push({ arquivo: nomeArquivo, numeroNota: num, paginas, bytes });
-    const ps = paginas.length === 1
-      ? `pág ${paginas[0] + 1}`
-      : `págs ${paginas[0] + 1}-${paginas[paginas.length - 1] + 1}`;
-    sepLog(`  [${idx + 1}/${grupos.length}] ${nomeArquivo}  (${ps})`);
+    return { arquivos: resultados, totalPaginas: total };
+  } finally {
+    /* o destroy ficava só no caminho feliz: um erro no meio do laço vazava
+       o documento do pdf.js e a aba ficava pesada ao repetir */
+    await doc.destroy();
   }
-  await doc.destroy();
-  return resultados;
 }
 
 document.getElementById('btnSelecionarPasta').addEventListener('click', async () => {
@@ -1894,10 +2014,16 @@ document.getElementById('btnSelecionarPasta').addEventListener('click', async ()
   }
 });
 
+/* Arquivo cujo volume já foi confirmado nesta sessão (ver SEP_MAX_PAGINAS). */
+let sepConfirmado = null;
 document.getElementById('btn-processar').addEventListener('click', async () => {
   const file = document.getElementById('pdfFile').files[0];
-  const modo = document.querySelector('input[name=modo]:checked').value;
-  const lerNumero = document.querySelector('input[name=lerNumero]:checked').value === 'sim';
+  /* querySelector(...).value em null lança TypeError antes de qualquer
+     try/catch: o botão não fazia nada e não aparecia mensagem nenhuma. */
+  const modoEl = document.querySelector('input[name=modo]:checked');
+  const lerEl = document.querySelector('input[name=lerNumero]:checked');
+  const modo = modoEl ? modoEl.value : 'auto';
+  const lerNumero = lerEl ? lerEl.value === 'sim' : true;
   if (!file) {
     sepStatus('Selecione um arquivo PDF.', 'err');
     return;
@@ -1909,21 +2035,48 @@ document.getElementById('btn-processar').addEventListener('click', async () => {
   const logEl = document.getElementById('log');
   btn.disabled = true;
   baixar.style.display = 'none';
+  baixar.disabled = true;
   barra.style.display = 'block';
   inner.style.width = '0%';
   logEl.textContent = '';
   sepStatus('Processando...', '');
   try {
-    const resultados = await sepSeparar(file, modo, lerNumero);
+    const saida = await sepSeparar(file, modo, lerNumero, sepConfirmado === file);
+    const resultados = saida.arquivos;
     inner.style.width = '100%';
     setTimeout(() => { barra.style.display = 'none'; }, 400);
     window.__resultados = resultados;
     baixar.dataset.nomeBase = file.name.replace(/\.pdf$/i, '');
     baixar.style.display = 'block';
-    sepStatus(`Concluído! ${resultados.length} nota(s) gerada(s).`);
+    baixar.disabled = false;
+    /* o agrupamento é invisível para quem não abre o log: conferir a soma
+       das páginas é a única forma de o próprio sistema dizer se alguma
+       página foi perdida ou repetida no caminho */
+    const paginasGeradas = resultados.reduce((s, r) => s + r.paginas.length, 0);
+    const msg = `Concluído! ${resultados.length} nota(s) gerada(s) a partir de ${saida.totalPaginas} página(s).`;
+    sepStatus(msg);
     sepLog('');
-    sepLog(`Concluído! ${resultados.length} nota(s) gerada(s).`);
+    sepLog(msg);
+    if (paginasGeradas !== saida.totalPaginas) {
+      const aviso = `Atenção: os arquivos gerados somam ${paginasGeradas} página(s) e o PDF tem ${saida.totalPaginas}. Confira o log.`;
+      sepStatus(msg + ' ' + aviso, 'err');
+      sepLog('ATENÇÃO: ' + aviso);
+    }
+    if (resultados.length === 1 && saida.totalPaginas > 1 && modo !== 'unica') {
+      sepLog('As páginas não foram divididas — nenhuma mudança de número de nota foi detectada no topo. Se este PDF tem várias notas, use o modo "Uma página = uma nota".');
+    }
   } catch (e) {
+    window.__resultados = null;
+    baixar.style.display = 'none';
+    if (e && e.code === 'SEP_VOLUME') {
+      /* Confirmação por segundo clique: sem alert() (regra do projeto) e sem
+         confirm() (bloqueia a aba inteira). O usuário precisa ver o volume
+         estimado e decidir. O guarda zera se ele trocar de arquivo. */
+      sepConfirmado = file;
+      sepStatus(e.detalhe + ' Clique em "Separar notas" de novo para continuar.', 'err');
+      sepLog('ATENÇÃO: ' + e.detalhe);
+      return;
+    }
     sepStatus('Erro: ' + e.message, 'err');
     sepLog('ERRO: ' + e.message);
   } finally {
@@ -1931,65 +2084,124 @@ document.getElementById('btn-processar').addEventListener('click', async () => {
   }
 });
 
+/* Escolher outro PDF invalidava o que estava pronto: o botão "Salvar
+   arquivos" continuava visível com os resultados do PDF anterior e salvava
+   os arquivos errados. */
+document.getElementById('pdfFile').addEventListener('change', () => {
+  window.__resultados = null;
+  sepConfirmado = null;   /* confirmar o volume de um arquivo não vale para outro */
+  const bx = document.getElementById('baixar');
+  bx.style.display = 'none';
+  bx.disabled = true;
+  document.getElementById('log').textContent = '';
+  sepStatus('', '');
+});
+
 document.getElementById('baixar').addEventListener('click', async () => {
   const resultados = window.__resultados;
   if (!resultados || !resultados.length) return;
-  const nomeBase = document.getElementById('baixar').dataset.nomeBase || 'notas_separadas';
-  const pastaHandle = window.__pastaHandle;
   const btnBaixar = document.getElementById('baixar');
-  if (pastaHandle) {
-    btnBaixar.disabled = true;
-    btnBaixar.dataset.orig = btnBaixar.textContent;
-    btnBaixar.textContent = 'Salvando...';
-    try {
-      let ok = 0;
-      const falhas = [];
-      for (let i = 0; i < resultados.length; i++) {
-        const r = resultados[i];
-        try {
-          const fh = await pastaHandle.getFileHandle(r.arquivo, { create: true });
-          const w = await fh.createWritable();
-          await w.write(r.bytes);
-          await w.close();
-          ok++;
-          sepLog(`  [${i + 1}/${resultados.length}] ✓ ${r.arquivo}`);
-        } catch (e2) {
-          falhas.push(`${r.arquivo} (${e2.message})`);
-          sepLog(`  [${i + 1}/${resultados.length}] ✗ ${r.arquivo} — ${e2.message}`);
-        }
-      }
-      if (falhas.length) {
-        sepStatus(`Salvos ${ok} de ${resultados.length} arquivo(s). Falhas: ${falhas.join('; ')}`, 'err');
-      } else {
-        sepStatus(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`, 'ok');
-        sepLog('');
-        sepLog(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`);
-      }
-    } catch (e) {
-      sepStatus('Erro ao salvar na pasta: ' + e.message, 'err');
-      sepLog('ERRO ao salvar: ' + e.message);
-    } finally {
-      btnBaixar.textContent = btnBaixar.dataset.orig;
-      btnBaixar.disabled = false;
-    }
+  /* Trava no PRIMEIRO await. O disabled só era posto depois de renovar a
+     permissão da pasta, e dois cliques nesse intervalo abriam dois laços de
+     gravação competindo pelos mesmos arquivos (o segundo createWritable falha)
+     e deixavam o rótulo do botão preso em "Salvando..." para sempre, porque o
+     segundo laço guardava "Salvando..." como rótulo de origem. */
+  if (btnBaixar.disabled) return;
+  btnBaixar.disabled = true;
+  const rotulo = btnBaixar.textContent;
+  const restaura = () => { btnBaixar.textContent = rotulo; btnBaixar.disabled = false; };
+  const nomeBase = btnBaixar.dataset.nomeBase || 'notas_separadas';
+
+  /* Gera o ZIP. É o caminho de reserva: sempre que a pasta falhar — permissão
+     expirada, pasta removida, navegador sem File System Access — os arquivos
+     saem pelo ZIP em vez de o usuário ficar sem nada. */
+  async function baixarZip(motivo){
+    sepLog('');
+    if(motivo)sepLog(motivo);
+    sepLog('Gerando ZIP...');
+    const zip = new JSZip();
+    const pasta = zip.folder('notas');
+    resultados.forEach(r => pasta.file(r.arquivo, r.bytes));
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nomeBase + '_separado.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }, 1000);
+    sepLog(`ZIP gerado: ${resultados.length} arquivo(s).`);
+  }
+
+  const pastaHandle = window.__pastaHandle;
+  if (!pastaHandle) {
+    try { await baixarZip(); } catch (e) { sepStatus('Erro ao gerar o ZIP: ' + e.message, 'err'); }
+    finally { restaura(); }
     return;
   }
-  const zip = new JSZip();
-  const pasta = zip.folder('notas');
-  resultados.forEach(r => pasta.file(r.arquivo, r.bytes));
-  sepLog('');
-  sepLog('Gerando ZIP...');
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nomeBase + '_separado.zip';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  }, 1000);
-  sepLog(`ZIP gerado: ${resultados.length} arquivo(s).`);
+  /* A permissão da pasta expira. Pedir de novo é barato e evita o tratamento
+     de erro arquivo por arquivo. */
+  if (pastaHandle.queryPermission) {
+    try {
+      let perm = await pastaHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') perm = await pastaHandle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        sepStatus('Permissão da pasta negada — os arquivos serão baixados em ZIP.', 'err');
+        await baixarZip();
+        return;
+      }
+    } catch (e) {
+      sepLog('Não foi possível renovar a permissão da pasta (' + e.message + ') — indo para o ZIP.');
+      await baixarZip();
+      return;
+    } finally {
+      restaura();
+    }
+  }
+  /* restaura() roda no finally do bloco da permissão; reasserta a trava. */
+  btnBaixar.disabled = true;
+  btnBaixar.textContent = 'Salvando...';
+  let ok = 0;
+  const falhas = [];
+  try {
+    for (let i = 0; i < resultados.length; i++) {
+      const r = resultados[i];
+      try {
+        const fh = await pastaHandle.getFileHandle(r.arquivo, { create: true });
+        const w = await fh.createWritable();
+        await w.write(r.bytes);
+        await w.close();
+        ok++;
+        sepLog(`  [${i + 1}/${resultados.length}] ✓ ${r.arquivo}`);
+      } catch (e2) {
+        falhas.push(`${r.arquivo} (${e2.message})`);
+        sepLog(`  [${i + 1}/${resultados.length}] ✗ ${r.arquivo} — ${e2.message}`);
+      }
+    }
+    if (falhas.length) {
+      /* O log mandava "baixe o ZIP" e não havia ZIP nem botão para obtê-lo:
+         quem perdesse um arquivo perdia de vez. A promessa agora é cumprida. */
+      sepStatus(`Salvos ${ok} de ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}". Falhas: ${falhas.join('; ')}`, 'err');
+      sepLog('');
+      sepLog(`Salvos ${ok} de ${resultados.length}. Gerando o ZIP com todos os ${resultados.length} para nenhum ficar de fora.`);
+      try { await baixarZip(); }
+      catch (e3) { sepLog('ERRO ao gerar o ZIP: ' + e3.message); }
+    } else {
+      sepStatus(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`, 'ok');
+      sepLog('');
+      sepLog(`Salvos ${resultados.length} arquivo(s) na pasta "${pastaHandle.name}".`);
+    }
+  } catch (e) {
+    sepStatus('Erro ao salvar na pasta: ' + e.message + ' — baixando ZIP.', 'err');
+    sepLog('ERRO ao salvar: ' + e.message);
+    try { await baixarZip('A pasta parou de responder; os mesmos arquivos seguem no ZIP.'); }
+    catch (e2) { sepStatus('Erro ao gerar o ZIP: ' + e2.message, 'err'); }
+    return;
+  } finally {
+    restaura();
+  }
 });
 
 // ═══ MÓDULO ISOLADO: LEITURA PDF (número/CNPJ/chave) — zero impacto no XML ═══
@@ -2026,7 +2238,21 @@ document.getElementById('baixar').addEventListener('click', async () => {
     const elV=document.getElementById('pdfiso-k-valor'); if(elV) elV.textContent=moeda(soma);
     const media=DBpdf.length?Math.round(DBpdf.reduce((s,r)=>s+r.confMedio,0)/DBpdf.length):0;
     const elC=document.getElementById('pdfiso-k-conf'); if(elC) elC.textContent=media?media+'%':'—';
-    const cnpjCell=(c)=>c?`<a href="#" onclick="consultarCNPJ('${c}');return false" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(c)}</a>`:`<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="CNPJ não localizado na leitura do PDF" title="CNPJ não localizado na leitura do PDF">✗ ausente</span>`;
+    /* CONTRATO ENTRE MÓDULOS: consultarCNPJ é publicado pela IIFE de CNPJ
+       (window.consultarCNPJ). Se aquela IIFE lançar antes de chegar ao fim —
+       por exemplo na ausência da CDN de planilhas — o link morre com
+       "consultarCNPJ is not defined" cru no onclick de quem importa PDF.
+       Aqui o link resolve por um intermediário que verifica o registro. */
+    window.abrirConsultaCNPJ=(cnpj)=>{
+      if(typeof window.consultarCNPJ!=='function'){
+        const w=document.getElementById('pdfiso-avisos');
+        if(w){w.textContent='A consulta de CNPJ não está disponível nesta página (a biblioteca de planilhas não carregou).';}
+        return false;
+      }
+      window.consultarCNPJ(cnpj);
+      return false;
+    };
+    const cnpjCell=(c)=>c?`<a href="#" onclick="return abrirConsultaCNPJ('${c}')" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(c)}</a>`:`<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="CNPJ não localizado na leitura do PDF" title="CNPJ não localizado na leitura do PDF">✗ ausente</span>`;
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
@@ -2119,34 +2345,110 @@ document.getElementById('baixar').addEventListener('click', async () => {
   /* Cache de CNPJ: TTL de 30 dias + try/catch dedicado (quota cheia não pode virar erro visível falso)
      + evicção por idade. Ver o aviso de privacidade em #cnpj-privacidade. */
   const CACHE_TTL=30*24*60*60*1000;
-  const CHAVE_CACHE='cnpj_';
+  /* Namespace versionado do cache. O build 627b8e0 gravou a resposta da API
+     CRUA (sem escapar) entre 22:05 e 22:17; TTL de 30 dias significa que
+     essas entradas ainda atravessam lerCache() e chegavam cruas no innerHTML
+     de render() — XSS armazenado, com CPF de sócios e e-mail no payload.
+     Trocar o prefixo invalida o envelope velho; o expurgo abaixo apaga de fato
+     o que sobrou no navegador (o botão "Limpar cache" só enxerga a chave nova,
+     então sem ele o PII ficaria órfão). */
+  const CHAVE_CACHE='cnpj_v2_';
+  const CHAVE_CACHE_LEGADO='cnpj_';
+  /* Acesso tolerante: qualquer método do Storage pode lançar (Tracking
+     Prevention, modo privado, iframe sem permissão). Nenhum destes acessos
+     deve escapar para a UI. */
+  const ARM={
+    bloq:false,
+    ler(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+    apagar(k){try{localStorage.removeItem(k);return true;}catch(e){return false;}},
+    gravar(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}},
+    n(){try{return localStorage.length||0;}catch(e){return 0;}},
+    chave(i){try{return localStorage.key(i);}catch(e){return null;}}
+  };
+  /* Expurgo one-shot do namespace legado. Roda no boot do módulo, uma vez por
+     carregamento de página, e é a única coisa que apaga o payload cruo do build
+     627b8e0: o botão "Limpar cache" (que usa cacheEntradas) só enxerga
+     CHAVE_CACHE, então sem este passo o CPF de sócios e o e-mail ficariam
+     parados no navegador por mais 30 dias, sem botão que os removesse. */
+  function expurgarCacheLegado(){
+    let n=0;
+    /* varredura em duas passadas: remover durante o for i<length pula chaves,
+       porque localStorage renumera os índices a cada remoção. */
+    for(let p=0;p<2;p++){
+      for(let i=0;i<ARM.n();i++){
+        const k=ARM.chave(i);
+        if(!k||k.indexOf(CHAVE_CACHE)===0)continue;
+        if(k.indexOf(CHAVE_CACHE_LEGADO)!==0)continue;
+        if(ARM.apagar(k))n++;
+      }
+    }
+    return n;
+  }
+  function cacheEntradas(){
+    const hoje=Date.now(),saida=[];
+    for(let i=0;i<ARM.n();i++){
+      const k=ARM.chave(i);
+      if(!k||k.indexOf(CHAVE_CACHE)!==0)continue;
+      let t=0,valido=true;
+      try{const e=JSON.parse(ARM.ler(k));if(e&&typeof e.t==='number'&&hoje-e.t>=-86400000)t=e.t;else valido=false;}
+      catch(x){valido=false;}
+      saida.push({k:k,t:t,vencido:(hoje-t)>CACHE_TTL||!valido});
+    }
+    return saida;
+  }
   function lerCache(k){
     try{
-      const bruto=localStorage.getItem(k);if(!bruto)return null;
+      const bruto=ARM.ler(k);if(!bruto)return null;
       const env=JSON.parse(bruto);
-      if(!env||typeof env.t!=='number'||(Date.now()-env.t)>CACHE_TTL){localStorage.removeItem(k);return null;}
+      const idade=Date.now()-env.t;
+      /* idade negativa = relógio do sistema andou para trás. Não é cache
+         válido para sempre: trata como expirado. */
+      if(!env||typeof env.t!=='number'||idade>CACHE_TTL||idade<-86400000){ARM.apagar(k);return null;}
       return env.d;
     }catch(e){return null;}
   }
+  /* Devolve true se gravou. A cota do navegador é o motivo nº1 de "o cache
+     parou de funcionar e voltou a funcionar em outro navegador": aqui a
+     escrita que estoura a cota não é engolida em silêncio — ela libera o que
+     já venceu o TTL, depois descarta do mais antigo para o mais novo até
+     caber, e só então registra a degradação para a UI avisar. */
   function gravarCache(k,dados){
-    try{localStorage.setItem(k,JSON.stringify({t:Date.now(),d:dados}));}
-    catch(e){
-      /* quota/segurança: apaga o cache expirado e tenta uma vez; se falhar, segue sem cache */
-      try{
-        const hoje=Date.now();let n=0;
-        for(let i=0;i<localStorage.length;i++){const kk=localStorage.key(i);if(kk&&kk.startsWith(CHAVE_CACHE)){try{const e2=JSON.parse(localStorage.getItem(kk));if(!e2||typeof e2.t!=='number'||(hoje-e2.t)>CACHE_TTL){localStorage.removeItem(kk);n++;}}catch(x){localStorage.removeItem(kk);n++;}}}
-        if(n)localStorage.setItem(k,JSON.stringify({t:hoje,d:dados}));
-      }catch(x2){}
+    const bruto=JSON.stringify({t:Date.now(),d:dados});
+    if(ARM.gravar(k,bruto)){ARM.bloq=false;return true;}
+    const lista=cacheEntradas();
+    /* 1) só o que já venceu o TTL */
+    for(const e of lista){
+      if(!e.vencido)continue;
+      ARM.apagar(e.k);
+      if(ARM.gravar(k,bruto)){ARM.bloq=false;return true;}
     }
+    /* 2) do mais antigo para o mais novo, até sobrar espaço */
+    lista.sort((a,b)=>a.t-b.t);
+    for(const e of lista){
+      ARM.apagar(e.k);
+      if(ARM.gravar(k,bruto)){ARM.bloq=false;return true;}
+    }
+    ARM.bloq=true;
+    return false;
   }
   function limparCache(){
     let n=0;
-    try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.startsWith(CHAVE_CACHE)){localStorage.removeItem(k);n++;}}}catch(e){}
+    const lista=cacheEntradas();
+    for(let i=lista.length-1;i>=0;i--){if(ARM.apagar(lista[i].k))n++;}
     return n;
+  }
+  function cacheResumo(){
+    const lista=cacheEntradas();
+    let kb=0,vencidos=0;
+    const hoje=Date.now();
+    for(const e of lista){try{kb+=(ARM.ler(e.k)||'').length/1024;}catch(x){}if(e.vencido)vencidos++;}
+    return{n:lista.length,kb:Math.round(kb),vencidos:vencidos,bloq:ARM.bloq,ttlDias:Math.round(CACHE_TTL/86400000)};
   }
   async function consultar(){
     const c=d(inp.value);
-    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">${esc(e.message)}Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
+    /* Não há `e` neste escopo: o ${esc(e.message)} que estava aqui ReferenceError
+       e tornava inalcançável a única mensagem que o usuário precisava. */
+    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
     const cacheKey=CHAVE_CACHE+c;
     const cached=lerCache(cacheKey);
     if(cached){try{render(cached,true);return;}catch(e){}}
@@ -2154,20 +2456,39 @@ document.getElementById('baixar').addEventListener('click', async () => {
     try{
       const r=await fetch(API+c, {headers:{'Accept':'application/json'}});
       if(!r.ok) throw new Error('HTTP '+r.status+' — CNPJ não encontrado');
-      const dados=escProfundo(await r.json());
-      gravarCache(cacheKey,dados);
-      render(dados,false);
-      st.textContent='✓ OK'; st.style.color='var(--success)';
+      /* Guarda o dado CRU: o cache é armazenamento, não apresentação. O escape
+         acontece no render (primeira linha de render()), para que o invariante
+         não dependa de qual versão do app gravou a entrada. */
+      const dados=await r.json();
+      if(gravarCache(cacheKey,dados)){
+        render(dados,false);
+        st.textContent='✓ OK'; st.style.color='var(--success)';
+        /* avisoCache vive na IIFE do lote; o evento é o contrato entre os dois
+           módulos. Sem isto o painel de cache continuava em display:none depois
+           de uma consulta bem-sucedida — omissão que faz o painel mentir. */
+        document.dispatchEvent(new CustomEvent('gcon:cache-limpo'));
+      }else{
+        /* a consulta foi bem-sucedida, mas o navegador não tem espaço para
+           guardar. Mostrar "OK" sem ressalva esconderia isso e o usuário
+           acharia que o cache estava funcionando. */
+        render(dados,false);
+        st.textContent='✓ OK (não salvo: armazenamento cheio)'; st.style.color='var(--warn-ink)';
+        document.dispatchEvent(new CustomEvent('gcon:cache-limpo'));
+      }
     }catch(e){
       res.style.display='block';
-      res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">${esc(e.message)}✗ ${e.message}</div>`;
+      /* A segunda interpolação da mensagem saía CRUA: qualquer <img onerror>
+         vindo do corpo da resposta virava HTML interpretado. Uma vez só, e
+         escapada — o marcador de erro vai antes do texto, não no meio. */
+      res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ ${esc(e.message)}</div>`;
       st.textContent='✗ erro'; st.style.color='var(--err)';
     }finally{btn.disabled=false; btn.textContent='Consultar';}
   }
-  /* Higiene de fronteira: a resposta de publica.cnpj.ws é dado de terceiro com PII (CPF de sócios,
-     e-mail, telefone) e entra no DOM via innerHTML. Em vez de escapar 40 interpolações — e
-     esquecer uma — a carga é escapada uma vez, em profundidade, logo após o fetch. Qualquer
-     campo novo herda a proteção; números/booleanos passam intactos. */
+  /* Higiene de apresentação: a resposta de publica.cnpj.ws é dado de terceiro
+     com PII (CPF de sócios, e-mail, telefone) e entra no DOM via innerHTML. Em
+     vez de escapar 40 interpolações — e esquecer uma — a carga inteira é
+     escapada uma vez, em profundidade, no RENDER (e no renderLote). Números e
+     booleanos passam intactos; qualquer campo novo herda a proteção. */
   function escProfundo(v,prof){
     if(prof>8)return '';
     if(v===null||v===undefined)return v;
@@ -2179,12 +2500,17 @@ document.getElementById('baixar').addEventListener('click', async () => {
     return out;
   }
   function render(dados,cached){
+    /* Escape no RENDER, não na fronteira de quem trouxe o dado. Assim o
+       invariante é garantido pelo código e não por "qual versão gravou isto" —
+       foi exatamente essa dependência que deixou o payload cruo do build
+       627b8e0 chegar ao innerHTML por 30 dias. */
+    dados=escProfundo(dados);
     const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
     const c=d(inp.value)||d(dados.estabelecimento?.cnpj)||d(dados.cnpj)||'';
     const texto=renderTexto(dados,c);
     res.style.display='block';
     res.innerHTML=`
-      <div class="nota-card"><div class="header"><span class="info"><strong>${dados.razao_social||'—'}</strong> <span class="badge">${fmtCnpj(c)}</span> ${cached?'<span class="badge" style="background:rgba(255,255,255,.2)">cache</span>':''}</span><span style="font-size:10px;opacity:.8">${porte.descricao||''}</span></div>
+      <div class="nota-card"><div class="header"><span class="info"><strong>${dados.razao_social||'—'}</strong> <span class="badge">${fmtCnpj(c)}</span> ${cached?'<span class="badge" style="background:var(--badge-on-cta)">cache</span>':''}</span><span style="font-size:10px;opacity:.8">${porte.descricao||''}</span></div>
       <div class="body-detail open" style="display:block;padding:0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
           <div style="padding:18px;border-right:1px solid var(--border-light)">
@@ -2211,81 +2537,280 @@ document.getElementById('baixar').addEventListener('click', async () => {
   }
   btn?.addEventListener('click',consultar);
   inp?.addEventListener('keydown',e=>{if(e.key==='Enter') consultar();});
-  clr?.addEventListener('click',()=>{inp.value='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';const n=limparCache();st.textContent=n?`${n} resultado(s) de CNPJ apagados do navegador`:'Nada em cache';st.style.color=n?'var(--success)':'var(--text3)';});
+  clr?.addEventListener('click',()=>{inp.value='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';const n=limparCache();st.textContent=n?`${n} resultado(s) de CNPJ apagados do navegador`:'Nada em cache';st.style.color=n?'var(--success)':'var(--text3)';document.dispatchEvent(new CustomEvent('gcon:cache-limpo'));});
+  /* CONTRATO ENTRE MÓDULOS: publica window.consultarCNPJ(cnpj). O consumidor
+     (leitura de PDF) chama por window.abrirConsultaCNPJ, que verifica a
+     existência deste registro antes de usá-lo. */
   window.consultarCNPJ=(cnpj)=>{inp.value=fmtCnpj(cnpj); document.querySelector('[data-tab=cnpj]')?.click(); setTimeout(consultar,200);};
+  /* Expurgo one-shot do namespace legado do cache (ver expurgarCacheLegado).
+     O painel de cache se atualiza sozinho: a IIFE do lote chama avisoCache()
+     no fim do boot, depois deste ponto. */
+  try{expurgarCacheLegado();}catch(x){}
   (() => {
-    const fileIn=document.getElementById('cnpj-lote-file'), start=document.getElementById('cnpj-lote-start'), stop=document.getElementById('cnpj-lote-stop'), exp=document.getElementById('cnpj-lote-export'), bar=document.getElementById('cnpj-lote-bar'), barIn=document.getElementById('cnpj-lote-bar-inner'), info=document.getElementById('cnpj-lote-info'), eta=document.getElementById('cnpj-lote-eta'), logEl=document.getElementById('cnpj-lote-log'), tbl=document.getElementById('cnpj-lote-table');
-    let lista=[], resultados=[], timer=null, idx=0, abort=false;
-    function loteLog(m,c){logEl.style.display='block';const d=document.createElement('div');d.textContent=m;d.style.color=c||'#cbd5e1';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+    const fileIn=document.getElementById('cnpj-lote-file'), start=document.getElementById('cnpj-lote-start'), stop=document.getElementById('cnpj-lote-stop'), exp=document.getElementById('cnpj-lote-export'), modelo=document.getElementById('cnpj-lote-modelo'), bar=document.getElementById('cnpj-lote-bar'), barIn=document.getElementById('cnpj-lote-bar-inner'), info=document.getElementById('cnpj-lote-info'), eta=document.getElementById('cnpj-lote-eta'), logEl=document.getElementById('cnpj-lote-log'), tbl=document.getElementById('cnpj-lote-table'), av=document.getElementById('cnpj-cache-aviso');
+    let lista=[], resultados=[], timer=null, idx=0, abort=false, rodando=false, naoGravados=0, ger=0;
+    /* Paleta do log medida contra --code-bg (não a da superfície clara) — ver
+       os tokens --log-* no :root. */
+    const TOM={neutro:'var(--log-neutro)',info:'var(--log-info)',ok:'var(--log-ok)',erro:'var(--log-err)',aviso:'var(--log-aviso)'};
+    function loteLog(m,c){logEl.style.display='block';const d=document.createElement('div');d.textContent=m;d.style.color=c||TOM.neutro;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+    const LIMITE_LINHAS=200;
     function renderLote(){
       if(!resultados.length){tbl.innerHTML='';return;}
-      const rows=resultados.map(r=>`<tr><td style="font-family:monospace">${fmtCnpj(r.cnpj)}</td><td>${r.razao||'—'}</td><td>${r.fantasia||'—'}</td><td>${r.uf||'—'}</td><td>${r.situacao||'—'}</td><td>${r.ie||'—'}</td><td><span class="pdfiso-badge ${r.ok?'ok':'err'}">${r.ok?'OK':'ERRO'}</span></td><td style="font-size:10px">${r.msg||''}</td></tr>`).join('');
-      tbl.innerHTML=`<div class="table-wrap"><table><thead><tr><th>CNPJ</th><th>Razão</th><th>Fantasia</th><th>UF</th><th>Situação</th><th>IE</th><th>Status</th><th>Obs</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      /* A tabela é reconstruída a cada passo. Com a lista inteira na tela o
+         DOM cresce sem limite e o lote trava; mostra só a cauda recente e
+         diz o que ficou de fora. */
+      const janela=resultados.slice(-LIMITE_LINHAS);
+      const fora=resultados.length-janela.length;
+      /* Escape no render, não no fetch: o cache guarda o dado cru e quem
+         escreve no DOM escapa. Vale para msg também, que hoje é local mas
+         pode ser a mensagem de erro vinda da API. */
+      const rows=janela.map(r=>`<tr><td style="font-family:var(--font-mono)">${esc(fmtCnpj(r.cnpj))}</td><td>${esc(r.razao)||'—'}</td><td>${esc(r.fantasia)||'—'}</td><td>${esc(r.uf)||'—'}</td><td>${esc(r.situacao)||'—'}</td><td>${esc(r.ie)||'—'}</td><td><span class="pdfiso-badge ${r.ok?'ok':'err'}">${r.ok?'OK':'ERRO'}</span></td><td style="font-size:10px">${esc(r.msg||'')}</td></tr>`).join('');
+      const aviso=fora>0?`<p style="font-size:11px;color:var(--text3);margin:0 0 8px">Mostrando os últimos ${janela.length} de ${resultados.length} resultados — a exportação traz todos.</p>`:'';
+      tbl.innerHTML=`<div class="table-wrap"><table><thead><tr><th scope="col">CNPJ</th><th scope="col">Razão</th><th scope="col">Fantasia</th><th scope="col">UF</th><th scope="col">Situação</th><th scope="col">IE</th><th scope="col">Status</th><th scope="col">Obs</th></tr></thead><tbody>${rows}</tbody></table></div>`.replace('<tbody>',aviso+'<tbody>');
     }
+    /* A cota do navegador é o motivo nº1 de "o cache só funciona em outro
+       navegador". O aviso fica visível na tela em vez de a falha sumir. */
+    function avisoCache(){
+      if(!av)return;
+      const r=cacheResumo();
+      if(r.bloq){
+        av.style.display='block';
+        av.innerHTML=`<strong style="color:var(--warn-ink)">Armazenamento do navegador cheio.</strong> As últimas consultas funcionaram, mas não estão sendo salvas — o cache antigo foi descartado para liberar espaço. ${r.n} registro(s) em ${r.kb} KB. Feche outras abas do site e use <strong>Limpar cache</strong> para recomeçar.`;
+        return;
+      }
+      if(r.n){
+        av.style.display='block';
+        av.innerHTML=`Cache: <strong>${r.n}</strong> consulta(s) salva(s) — ${r.kb} KB, validade de ${r.ttlDias} dias.`;
+      }else{
+        av.style.display='none';av.textContent='';
+      }
+    }
+    /* Aceita o CNPJ com ou sem máscara, e mesmo dentro de um texto maior
+       ("Cliente 12.345.678/0001-95 emite..."), e descarta o que não passar
+       no dígito verificador: assim número de cliente/produto que não é CNPJ
+       não entra no lote e não gasta uma das 3 requisições por minuto. */
+    const RE_CNPJ_CELULA=/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g;
+    function cnpjsDoTexto(txt){
+      const achados=new Set();
+      for(const m of String(txt).matchAll(RE_CNPJ_CELULA)){
+        const soDigitos=d(m[0]);
+        /* vC pertence à IIFE do módulo de PDF (window.ModPDFIsolado), não a esta.
+           Chamar vC() daqui era um ReferenceError em tempo de execução: o
+           arquivo caía no catch, o log dizia "erro ao ler planilha" e o botão
+           Iniciar nunca saía de disabled. */
+        if(soDigitos.length===14&&window.ModPDFIsolado.vC(soDigitos))achados.add(soDigitos);
+      }
+      return achados;
+    }
+    function baixarNome(nome,blob){
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);a.download=nome;
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(a.href);},1000);
+    }
+    const INSTRUCOES=[
+      ['Consulta em massa de CNPJ — GCON/SIAN'],
+      [''],
+      ['Como usar'],
+      ['1. Abra a aba Consultar CNPJ > Consulta em Lote.'],
+      ['2. Preencha a coluna CNPJ da aba "CNPJs" (uma linha por empresa).'],
+      ['3. Salve o arquivo e importe-o no campo "planilha" da mesma aba.'],
+      [''],
+      ['Regras da importação'],
+      ['- A coluna de cabeçalho deve se chamar CNPJ (qualquer posição da planilha serve).'],
+      ['- A máscara é opcional: 12345678000195 e 12.345.678/0001-95 funcionam igual.'],
+      ['- O cabeçalho e as linhas em branco são ignorados; repetidos são contados uma vez.'],
+      ['- Somente CNPJ com dígito verificador válido entra no lote.'],
+      ['- As outras colunas são ignoradas.'],
+      [''],
+      ['Limites'],
+      ['- 3 consultas por minuto (20s entre uma e outra). 1.000 CNPJs = cerca de 5,5 horas.'],
+      ['- O cache do navegador vale 30 dias e evita repetir consultas já feitas.'],
+      ['- Se a lista for maior que ~2.000 CNPJs, o armazenamento do navegador pode encher.'],
+      ['- Sem a biblioteca de planilhas (CDN fora) só dá para importar CSV. Exporte a planilha como CSV.'],
+      ['- Os dados ficam salvos apenas neste navegador. O único dado enviado a fora é o CNPJ consultado, que vai para publica.cnpj.ws; mais nada é transmitido.'],
+    ];
+    function gerarModelo(){
+      /* Os exemplos passam por vC() no importador: um exemplo com DV inválido
+         seria recusado pelo próprio sistema que o gerou, e o usuário concluiria
+         que a coluna está errada. */
+      const exemplos=[['CNPJ','Observacao (opcional)'],['12.345.678/0001-95','exemplo - apague esta linha'],['11.222.333/0001-81','exemplo - apague esta linha'],['00000000000191','exemplo numerico - apague esta linha']];
+      if(window.XLSX){
+        const wb=XLSX.utils.book_new();
+        const ws=XLSX.utils.aoa_to_sheet(exemplos);
+        ws['!cols']=[{wch:20},{wch:34}];
+        XLSX.utils.book_append_sheet(wb,ws,'CNPJs');
+        const wi=XLSX.utils.aoa_to_sheet(INSTRUCOES);
+        wi['!cols']=[{wch:96}];
+        XLSX.utils.book_append_sheet(wb,wi,'Instrucoes');
+        XLSX.writeFile(wb,'modelo_consulta_cnpj.xlsx');
+        loteLog('Modelo XLSX gerado: modelo_consulta_cnpj.xlsx (abas CNPJs + Instrucoes)',TOM.ok);
+      }else{
+        const csv='﻿CNPJ\r\n12.345.678/0001-95\r\n11.222.333/0001-81\r\n00000000000191\r\n';
+        baixarNome('modelo_consulta_cnpj.csv',new Blob([csv],{type:'text/csv;charset=utf-8'}));
+        loteLog('Planilha Excel indisponivel (CDN fora): modelo CSV gerado no lugar.',TOM.aviso);
+      }
+      modelo.disabled=true;setTimeout(()=>{modelo.disabled=false;},1200);
+    }
+
+    modelo?.addEventListener('click',gerarModelo);
+
+    document.addEventListener('gcon:cache-limpo',avisoCache);
     fileIn?.addEventListener('change',async()=>{
       const f=fileIn.files[0]; if(!f) return;
+      /* Importar outra planilha no meio de um lote NÃO parava o lote: o
+         setInterval continuava, o botão "Iniciar" voltava a ficar clicável e um
+         clique criava um segundo intervalo — 6 requisições por minuto, o dobro
+         do teto. Pular índice e misturar o resultado da lista antiga na nova era
+         a outra metade do mesmo bug. Aqui o lote morre e a geração sobe: a
+         resposta que ainda estiver no voo é descartada por não pertencer mais a
+         nada (ver step). */
+      ger++;
+      abort=true;
+      if(timer){clearInterval(timer);timer=null;}
+      stop.disabled=true;
+      start.disabled=true;
+      bar.style.display='none';
+      barIn.style.width='0%';
+      /* Zera o que era da lista anterior ANTES de qualquer caminho de erro: a
+         tabela antiga ficava na tela com o botão de exportar ativo, apontando
+         para resultados que já não eram da lista na tela. */
+      lista=[]; resultados=[]; naoGravados=0; idx=0;
+      exp.disabled=true; tbl.innerHTML=''; logEl.textContent=''; logEl.style.display='block';
       try{
+        if(!f.name.toLowerCase().endsWith('.csv')&&!window.XLSX){
+          info.textContent='Biblioteca de planilhas indisponível (CDN fora)';
+          eta.textContent='';
+          loteLog('✗ Sem a biblioteca de planilhas (CDN fora) não dá para ler .xlsx. Exporte a planilha como CSV e importe de novo.',TOM.erro);
+          return;
+        }
         const buf=await f.arrayBuffer();
-        let cnpjs=[];
-        if(f.name.endsWith('.csv')){
-          const txt=new TextDecoder().decode(buf);
-          cnpjs=[...txt.matchAll(/\d{14}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g)].map(m=>d(m[0])).filter(c=>c.length===14);
+        const achados=new Set();
+        if(f.name.toLowerCase().endsWith('.csv')){
+          for(const c of cnpjsDoTexto(new TextDecoder().decode(buf)))achados.add(c);
         }else{
           const wb=XLSX.read(buf,{type:'array'});
-          const ws=wb.Sheets[wb.SheetNames[0]];
-          const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-          const flat=rows.flat().map(v=>d(String(v))).filter(c=>c.length===14);
-          cnpjs=[...new Set(flat)];
-          if(!cnpjs.length){
-            outer: for(const r of rows){ for(const v of r){ const m=String(v).match(/\d{14}/); if(m){cnpjs.push(m[0]); break outer;}}}
+          for(const nome of wb.SheetNames){
+            for(const linha of XLSX.utils.sheet_to_json(wb.Sheets[nome],{header:1,defval:''})){
+              for(const celula of linha){
+                if(typeof celula!=='string'&&typeof celula!=='number')continue;
+                for(const c of cnpjsDoTexto(String(celula)))achados.add(c);
+              }
+            }
           }
         }
-        cnpjs=[...new Set(cnpjs)];
-        lista=cnpjs; resultados=[];
-        info.textContent=`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`;
-        eta.textContent=cnpjs.length?`ETA ~${Math.ceil(cnpjs.length/3)} min`:''; 
-        loteLog(`${cnpjs.length} CNPJ(s) — pronto para iniciar`,'#fbbf24');
-        start.disabled=cnpjs.length===0; exp.disabled=true; tbl.innerHTML=''; logEl.innerHTML='';
-      }catch(e){ loteLog('✗ Erro ao ler planilha: '+e.message,'#f87171');}
+        const cnpjs=[...achados];
+        lista=cnpjs; abort=false;
+        info.textContent=cnpjs.length?`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`:'Nenhum CNPJ válido encontrado';
+        eta.textContent=cnpjs.length?`ETA ~${Math.ceil(cnpjs.length/3)} min`:'';
+        if(cnpjs.length)loteLog(`${cnpjs.length} CNPJ(s) com DV válido — pronto para iniciar`,TOM.aviso);
+        else loteLog('Nenhum CNPJ com digito verificador válido foi encontrado. Confira a coluna CNPJ do modelo.',TOM.erro);
+        /* O log fica visível mesmo com 0 CNPJ: a mensagem que explica por quê
+           é justamente a que o usuário precisa ler. */
+        start.disabled=cnpjs.length===0;
+        avisoCache();
+      }catch(e){ loteLog('✗ Erro ao ler planilha: '+e.message,TOM.erro); start.disabled=true;}
     });
+    function registra(c,j,msg){
+      const est=j.estabelecimento||{};
+      resultados.push({cnpj:c,razao:j.razao_social||'',fantasia:est.nome_fantasia||'',uf:(est.estado||{}).sigla||'',situacao:est.situacao_cadastral||'',ie:(est.inscricoes_estaduais||[]).find(e=>e&&e.ativo)?.inscricao_estadual||'',ok:true,msg:msg||''});
+    }
+    function avanca(){
+      idx++;
+      barIn.style.width=Math.round(idx/lista.length*100)+'%';
+      info.textContent=`${idx}/${lista.length}`;
+      const rem=lista.length-idx;
+      eta.textContent=rem?`faltam ~${Math.ceil(rem/3)} min`:'';
+      renderLote();
+    }
     async function step(){
+      /* O intervalo de 20s dispara step() de novo mesmo que a requisição
+         anterior ainda esteja em voo. Sem esta trava o lote dispara duas
+         consultas ao mesmo tempo, quebra o teto de 3/min e devolve 429 —
+         e o mesmo índice é processado duas vezes. */
+      if(rodando)return;
+      /* Este caminho nunca entra no try/finally, então `rodando` não fica
+         preso em true e o lote não trava; e não há índice para pular. */
       if(abort||idx>=lista.length){
         clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true;
-        barIn.style.width='100%'; info.textContent=`Concluído — ${resultados.filter(r=>r.ok).length}/${lista.length} OK`;
-        eta.textContent=''; exp.disabled=resultados.length===0; loteLog(`Lote concluído`,'#2ecc71'); return;
+        bar.style.display='none';
+        barIn.style.width='100%';
+        const ok=resultados.filter(r=>r.ok).length;
+        info.textContent=`Concluído — ${ok}/${lista.length} OK`;
+        eta.textContent=''; exp.disabled=resultados.length===0;
+        loteLog(`Lote concluído — ${ok} de ${lista.length} consultado(s)`,TOM.ok);
+        if(naoGravados)loteLog(`${naoGravados} resultado(s) não foram salvos no cache: armazenamento do navegador cheio.`,TOM.aviso);
+        avisoCache();
+        return;
       }
-      const c=lista[idx];
-      const cached=lerCache(CHAVE_CACHE+c);
-      if(cached){
-        try{ const j=JSON.parse(cached); const est=j.estabelecimento||{}; resultados.push({cnpj:c, razao:j.razao_social||'', fantasia:est.nome_fantasia||'', uf:est.estado?.sigla||'', situacao:est.situacao_cadastral||'', ie:(est.inscricoes_estaduais||[]).find(e=>e.ativo)?.inscricao_estadual||'', ok:true, msg:'cache'}); loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} — cache`,'#94a3b8'); idx++; barIn.style.width=Math.round(idx/lista.length*100)+'%'; info.textContent=`${idx}/${lista.length} — cache`; renderLote(); return; }catch(e){}
-      }
+      rodando=true;
+      const meuGer=ger;
       try{
-        const r=await fetch(API+c); 
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const j=escProfundo(await r.json()); gravarCache(CHAVE_CACHE+c, j);
-        const est=j.estabelecimento||{};
-        resultados.push({cnpj:c, razao:j.razao_social||'', fantasia:est.nome_fantasia||'', uf:est.estado?.sigla||'', situacao:est.situacao_cadastral||'', ie:(est.inscricoes_estaduais||[]).find(e=>e.ativo)?.inscricao_estadual||'', ok:true, msg:''});
-        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,'#2ecc71');
-      }catch(e){
-        resultados.push({cnpj:c, razao:'', fantasia:'', uf:'', situacao:'', ie:'', ok:false, msg:e.message});
-        loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,'#f87171');
-      }
-      idx++; barIn.style.width=Math.round(idx/lista.length*100)+'%'; info.textContent=`${idx}/${lista.length}`; const rem=lista.length-idx; eta.textContent=rem?`faltam ~${Math.ceil(rem/3)} min`:''; renderLote();
+        const c=lista[idx];
+        const j=lerCache(CHAVE_CACHE+c);
+        if(j){
+          if(meuGer!==ger)return;
+          /* lerCache já devolve o objeto desserializado. Antes havia um
+             JSON.parse() sobre ele aqui, que lançava exceção e engolia no
+             catch — ou seja, todo CNPJ em cache era consultado de novo. */
+          registra(c,j,'cache');
+          loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} — cache`,TOM.info);
+          avanca();
+          return;
+        }
+        try{
+          const r=await fetch(API+c);
+          if(!r.ok)throw new Error('HTTP '+r.status);
+          /* dado cru no cache e no array de resultados; o escape é do
+             renderLote(). Ver o comentário de render() sobre o porquê. */
+          const dados=await r.json();
+          /* A lista mudou (ou o lote foi parado) enquanto esta consulta voava:
+             o resultado pertence à lista antiga e contaminaria a contagem. */
+          if(meuGer!==ger)return;
+          if(!gravarCache(CHAVE_CACHE+c,dados))naoGravados++;
+          registra(c,dados,'');
+          loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,TOM.ok);
+        }catch(e){
+          if(meuGer!==ger)return;
+          resultados.push({cnpj:c,razao:'',fantasia:'',uf:'',situacao:'',ie:'',ok:false,msg:e.message});
+          loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,TOM.erro);
+        }
+        avanca();
+      }finally{ rodando=false; }
     }
     start?.addEventListener('click',()=>{
-      if(!lista.length) return;
-      resultados=[]; idx=0; abort=false; logEl.innerHTML=''; bar.style.display='block'; barIn.style.width='0%';
+      if(!lista.length)return;
+      /* clearInterval defensivo: dois intervalos vivos = 6 requisições/min,
+         o dobro do teto. Só um único timer pode existir. */
+      if(timer){clearInterval(timer);timer=null;}
+      resultados=[]; idx=0; abort=false; naoGravados=0; logEl.textContent=''; bar.style.display='block'; barIn.style.width='0%';
       start.disabled=true; stop.disabled=false; exp.disabled=true;
-      loteLog(`Iniciando lote 3/min — ${lista.length} CNPJ(s)`,'#fbbf24');
+      loteLog(`Iniciando lote 3/min — ${lista.length} CNPJ(s)`,TOM.aviso);
       step(); timer=setInterval(step,20000);
     });
-    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('Parado pelo usuário','#f59e0b');});
+    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('Parado pelo usuário',TOM.aviso);});
+    /* Fechar a aba no meio do lote descarta tudo que já foi consultado. */
+    window.addEventListener('beforeunload',e=>{
+      if(timer&&!abort){e.preventDefault();e.returnValue='';}
+    });
     exp?.addEventListener('click',()=>{
-      if(!resultados.length) return;
+      if(!resultados.length)return;
       const header=['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs'];
       const rows=resultados.map(r=>[fmtCnpj(r.cnpj),r.razao,r.fantasia,r.uf,r.situacao,r.ie,r.ok?'OK':'ERRO',r.msg]);
-      const ws=XLSX.utils.aoa_to_sheet([header,...rows]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lote'); XLSX.writeFile(wb,`cnpj_lote_${Date.now()}.xlsx`);
+      if(window.XLSX){
+        const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+        ws['!cols']=[{wch:18},{wch:44},{wch:30},{wch:6},{wch:16},{wch:14},{wch:8},{wch:24}];
+        const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lote'); XLSX.writeFile(wb,`cnpj_lote_${Date.now()}.xlsx`);
+      }else{
+        /* Injeção de fórmula: duplicar aspas neutraliza o delimitador, não a
+           fórmula. Um campo de nome que comece com =, +, - ou @ é EXECUTADO
+           pelo Excel ao abrir o .csv. O prefixo ' é o escape padrão do CSV. */
+        const q=v=>{let s=String(v??'');if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+        const csv='\uFEFF'+[header,...rows].map(l=>l.map(q).join(';')).join('\r\n');
+        baixarNome(`cnpj_lote_${Date.now()}.csv`,new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      }
     });
+    avisoCache();
   })();
 })();
 </script>

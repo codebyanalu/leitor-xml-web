@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node regressao.mjs && node rodar.mjs",
-    "test:rapido": "node regressao.mjs",
+    "test": "node regressao.mjs && node painel-check.mjs && node rodar.mjs",
+    "test:rapido": "node regressao.mjs && node painel-check.mjs",
+    "regressao": "node regressao.mjs",
+    "painel": "node painel-check.mjs",
     "bancada": "node rodar.mjs",
     "ocr": "node rodar.mjs --ocr-somente"
   },

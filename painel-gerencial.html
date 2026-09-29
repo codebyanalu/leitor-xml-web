@@ -1,4 +1,13 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GCON/SIAN — Painel Gerencial</title>
+<meta name="description" content="Painel do projeto GCON/SIAN: o que foi entregue, o que a bancada e a regressão provam, o que ainda depende de decisão e onde o leitor de NF-e/NFS-e roda. Nenhum dado fiscal é exposto.">
+<!-- Favicon: o mesmo data URI inline do index.html (arquivo único, sem
+     requisição extra e sem arquivo de imagem no repositório). -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231a4b8c'/%3E%3Cpath d='M7 4h7l4 4v12H7z' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M9 12h6M9 15h4' stroke='%23f59e0b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -11,6 +20,7 @@
     --tx: #0f172a; --tx2: #5b6b7f; --tx3: #6b7280;
     --cinzabg: #f1f4f9;
     --mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    --branco: #fff;
     color-scheme: light;
   }
   * { box-sizing: border-box; }
@@ -19,7 +29,7 @@
   @media (max-width: 700px) { .wrap { padding-inline: 16px; } }
 
   header.pg { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-  .logo { width: 44px; height: 44px; border-radius: 10px; background: var(--azul); color: #fff; display: grid; place-items: center; flex: none; }
+  .logo { width: 44px; height: 44px; border-radius: 10px; background: var(--azul); color: var(--branco); display: grid; place-items: center; flex: none; }
   .logo svg { width: 24px; height: 24px; }
   .htxt { flex: 1; min-width: 240px; }
   h1 { font-size: 24px; font-weight: 600; margin: 0; }
@@ -84,17 +94,27 @@
   .barra-f { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
   .busca { position: relative; flex: 1; min-width: 210px; max-width: 340px; }
   .busca .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--tx3); pointer-events: none; }
-  .busca input { width: 100%; font: inherit; font-size: 13px; color: var(--tx); background: var(--card); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 30px 8px 33px; outline: none; }
+  /* padding-right de 48px: o bot�o de limpar tem 40-44px ancorado a right:6px e
+     com 30px o texto invadia o bot�o. */
+  .busca input { width: 100%; font: inherit; font-size: 13px; color: var(--tx); background: var(--card); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 48px 8px 33px; }
   .busca input::placeholder { color: var(--tx3); }
-  .busca input:focus { border-color: var(--azul3); box-shadow: 0 0 0 3px rgba(91,143,214,.18); }
-  .busca .limpa { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--tx3); cursor: pointer; padding: 4px; line-height: 0; border-radius: 6px; display: none; }
+  .busca input:focus { border-color: var(--azul3); outline: 2px solid var(--azul2); outline-offset: 2px; }
+  .busca .limpa { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--tx3); cursor: pointer; padding: 4px; line-height: 0; border-radius: 6px; display: none; min-width: 40px; min-height: 40px; }
   .busca .limpa:hover { color: var(--tx); background: var(--cinzabg); }
   .busca.on .limpa { display: block; }
   .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
-  .fb { appearance: none; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; background: var(--card); color: var(--tx2); border: 1px solid var(--borda); border-radius: 999px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 7px; }
+  .fb { appearance: none; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; background: var(--card); color: var(--tx2); border: 1px solid var(--borda); border-radius: 999px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 7px; min-height: 40px; }
   .fb:hover { color: var(--tx); background: var(--cinzabg); }
-  .fb[aria-pressed="true"] { background: var(--azul); border-color: var(--azul); color: #fff; }
-  .fb .n { font-variant-numeric: tabular-nums; font-weight: 600; opacity: .72; }
+  .fb[aria-pressed="true"] { background: var(--azul); border-color: var(--azul); color: var(--branco); }
+  .fb .n { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--tx); }
+  .fb[aria-pressed="true"] .n { color: var(--card); }
+  .fb[disabled] { opacity: .6; cursor: progress; }
+  /* Foco visível. O anel anterior (sombra azul-claro translúcida de 18% sobre o
+     azul3) dava 1,20:1 — contraste insuficiente e invisível na prática. Hoje é
+     contorno sólido de 2px no --azul2 (4,5:1 sobre --card e sobre --fundo).
+     :where() mantém especificidade 0 para não vencer as regras por elemento. */
+  :where(button, input, select, textarea, a):focus-visible { outline: 2px solid var(--azul2); outline-offset: 2px; }
+  .fb:focus-visible, .busca .limpa:focus-visible { outline: 2px solid var(--azul2); outline-offset: 2px; }
   .contador { margin-left: auto; font-size: 12px; color: var(--tx2); font-variant-numeric: tabular-nums; }
   .contador b { color: var(--tx); font-weight: 600; }
 
@@ -115,7 +135,14 @@
   .ln-t b { display: block; font-size: 13.5px; font-weight: 600; }
   .ln-t span { display: block; color: var(--tx2); font-size: 12.5px; line-height: 1.45; margin-top: 1px; }
   .ln-r { display: flex; align-items: center; gap: 10px; flex: none; }
-  .resp { font-size: 11.5px; color: var(--tx3); min-width: 104px; text-align: right; font-variant-numeric: tabular-nums; }
+  .resp { font-size: 11.5px; color: var(--tx2); min-width: 104px; text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 700px) {
+    .ln { grid-template-columns: 1fr; }
+    .ln-r { flex-wrap: wrap; justify-content: flex-start; }
+    .resp { min-width: 0; text-align: left; }
+    .fb { min-height: 44px; }
+    .busca .limpa { min-width: 44px; min-height: 44px; }
+  }
 
   .crit { background: var(--card); border: 1px solid var(--borda); border-left: 3px solid var(--laranja); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
   .crit-h { background: var(--laranjabg); color: var(--laranjatx); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
@@ -124,8 +151,55 @@
   .pill { font-size: 11.5px; color: var(--tx2); background: var(--cinzabg); border-radius: 6px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 6px; }
   .pill .ic { width: 13px; height: 13px; color: var(--laranjatx); }
 
+  /* ---- bloco "Estado do painel" ----
+     Fica antes dos KPIs de propósito: quem abre a página vê primeiro de onde
+     veio cada número. A borda esquerda é a semântica do estado; o chip é a
+     mesma informação em texto. */
+  .est { background: var(--card); border: 1px solid var(--borda); border-left: 3px solid var(--tx3); border-radius: 12px; padding: 12px 16px; margin-top: 18px; }
+  .est[data-est="arquivo"] { border-left-color: var(--verde); }
+  /* Os dois estados de schema usam o mesmo chip �mbar de "desatualizado", e a
+     borda precisa acompanhar: sem estas duas linhas a borda ca�a no neutro
+     (--tx3) e o texto dizia uma coisa enquanto a cor dizia outra. */
+  .est[data-est="desatualizado"] { border-left-color: var(--laranjatx); }
+  .est[data-est="antigo-schema"] { border-left-color: var(--laranjatx); }
+  .est[data-est="futuro-schema"] { border-left-color: var(--laranjatx); }
+  .est[data-est="antigo"] { border-left-color: var(--vermelho); }
+  .est[data-est="invalido"] { border-left-color: var(--vermelho); }
+  .est-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .est-t { font-size: 14px; font-weight: 600; margin: 0; }
+  .est-desc { color: var(--tx2); font-size: 12.5px; line-height: 1.45; margin: 4px 0 0; max-width: 78ch; }
+  .est-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .est-acoes .fb { min-width: 132px; justify-content: center; }
+  .est-msg, .est-alert { font-size: 12.5px; margin: 8px 0 0; min-height: 20px; }
+  .est-msg { color: var(--tx2); }
+  .est-alert { color: var(--vermelho); }
+  /* Escondido sem sair da tabulação: display:none tiraria o campo de arquivo
+     da ordem do teclado. clip-path é a técnica acessível. */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  /* O campo de arquivo é invisível, mas continua focável — logo precisa de um
+     alvo de foco visível. Quando ele recebe o foco, o anel aparece no botão
+     que o disparou ("Carregar estado"), que é o controle que o usuário enxerga. */
+  /* Foco do campo invisível aparece no botão que o dispara.
+     Duas camadas, de propósito:
+       1) .foco-arquivo — classe que o JS põe no botão no focus/blur. Funciona em
+          qualquer navegador, inclusive sem :has().
+       2) :has() com :focus — caminho sem JS. Usa :focus (e não :focus-visible)
+          porque o campo é aberto por click() programático, que não conta como
+          foco de teclado e portanto não acionaria :focus-visible. O anel é
+          desenhado só quando o campo de 1px realmente tem o foco, então não
+          existe anel espúrio. */
+  #est-carregar.foco-arquivo,
+  .est-acoes:has(.sr:focus) #est-carregar { outline: 2px solid var(--azul2); outline-offset: 2px; }
+
   .amb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 900px) { .amb { grid-template-columns: 1fr; } }
+  /* A faixa de 701-899px colapsa o layout (2 colunas de KPI, .duas em coluna,
+     .amb em coluna) mas mantinha o alvo de toque em 40px. O piso de 44px vale
+     para qualquer largura onde o layout já empilhou. */
+  @media (max-width: 900px) {
+    .fb { min-height: 44px; }
+    .busca .limpa { min-width: 44px; min-height: 44px; }
+  }
   .amb .a { background: var(--card); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 16px; }
   .amb .a .n { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
   .amb .a .d { color: var(--tx2); font-size: 12.5px; margin-top: 6px; line-height: 1.45; }
@@ -133,6 +207,8 @@
   footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--borda); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--tx3); font-size: 11.5px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
+</head>
+<body>
 
 <div class="wrap">
 
@@ -155,31 +231,47 @@
   <div class="logo"><svg class="ic" aria-hidden="true" style="width:24px;height:24px"><use href="#i-doc"></use></svg></div>
   <div class="htxt">
     <h1>Painel Gerencial — GCON/SIAN</h1>
-    <p class="sub">Leitor de NF-e e NFS-e 100% no navegador. paineis mostra o estado do <b>projeto</b>: o que foi entregue, o que a bancada prova, o que ainda depende de você e onde o sistema roda. Nenhum dado fiscal é exposto aqui.</p>
+    <p class="sub">Leitor de NF-e e NFS-e 100% no navegador. Este painel mostra o estado do <b>projeto</b>: o que foi entregue, o que a bancada prova, o que ainda depende de você e onde o sistema roda. Nenhum dado fiscal é exposto aqui.</p>
   </div>
   <div class="relogio">
     <div><b id="rel-h">—</b><br>hora de Brasília</div>
   </div>
 </header>
 
+<section class="est" id="est" data-est="padrao" aria-labelledby="est-t">
+  <div class="est-top">
+    <h2 class="est-t" id="est-t">Estado do painel</h2>
+    <span class="chip fil" id="est-chip">Padrão embutido</span>
+    <div class="est-acoes">
+      <button class="fb" type="button" id="est-salvar">Salvar estado</button>
+      <button class="fb" type="button" id="est-carregar">Carregar estado</button>
+      <button class="fb" type="button" id="est-atualizar">Atualizar</button>
+      <input type="file" accept=".json" class="sr" id="est-arq" aria-label="arquivo de estado do painel em JSON">
+    </div>
+  </div>
+  <p class="est-desc" id="est-desc">Procurando o arquivo de estado ao lado desta página.</p>
+  <p class="est-msg" id="est-msg" role="status" aria-live="polite"></p>
+  <p class="est-alert" id="est-alert" role="alert"></p>
+</section>
+
 <div class="kpis">
   <div class="kpi">
-    <div class="r"><span class="sw" style="background:var(--azul)"></span>Precisão da extração</div>
+          <div class="r"><span class="sw" style="background:var(--azul)"></span><span class="k">Precisão da extração</span></div>
     <div class="v">160/160</div>
     <div class="d">20 campos × 8 PDFs · 100%</div>
   </div>
   <div class="kpi">
-    <div class="r"><span class="sw" style="background:var(--verde)"></span>Regressão estrutural</div>
-    <div class="v">179/179</div>
+          <div class="r"><span class="sw" style="background:var(--verde)"></span><span class="k">Regressão estrutural</span></div>
+    <div class="v">374/374</div>
     <div class="d">~1 s · sem OCR, sem browser</div>
   </div>
   <div class="kpi">
-    <div class="r"><span class="sw" style="background:var(--laranja)"></span>Schema coberto</div>
+          <div class="r"><span class="sw" style="background:var(--laranja)"></span><span class="k">Schema coberto</span></div>
     <div class="v">93 + 56</div>
     <div class="d">campos NF-e + NFS-e</div>
   </div>
   <div class="kpi">
-    <div class="r"><span class="sw" style="background:var(--azul3)"></span>Esforço de OCR</div>
+          <div class="r"><span class="sw" style="background:var(--azul3)"></span><span class="k">Esforço de OCR</span></div>
     <div class="v">0 console</div>
     <div class="d">6 CDNs com SRI · 0 segredo</div>
   </div>
@@ -191,7 +283,7 @@
     <span class="rot">Destrava o quê:</span>
     <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-doc"></use></svg>1 PDF de NFS-e</span>
     <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-doc"></use></svg>1 NF-e com ST/FCP</span>
-    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg>passeio dos 7 agentes re-rodado</span>
+    <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg>passeio dos 7 agentes reexecutado</span>
     <span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg>liberação para a feature de paridade fiscal</span>
   </div>
 </div>
@@ -209,7 +301,7 @@
         <div class="gc-h">
           <svg class="ic ic18" aria-hidden="true"><use href="#i-lock"></use></svg>
           <div><h3>Bloqueado — precisa de você</h3><div class="sub">nenhum item avança sem insumo ou decisão sua</div></div>
-          <button class="fb" data-grupo-alvo="bloq" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="bloq">0</span></button>
+          <button class="fb" data-grupo-alvo="bloq" aria-pressed="false">vistos <span class="n" data-badge="bloq">0</span></button>
         </div>
         <div class="gc-b">
           <div class="vazio" data-so="bloq">Nada bloqueado.</div>
@@ -220,18 +312,18 @@
         <div class="gc-h">
           <svg class="ic ic18" aria-hidden="true"><use href="#i-play"></use></svg>
           <div><h3>Próximo lote</h3><div class="sub">a feature que dá paridade fiscal ao leitor de PDF</div></div>
-          <button class="fb" data-grupo-alvo="prox" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="prox">0</span></button>
+          <button class="fb" data-grupo-alvo="prox" aria-pressed="false">vistos <span class="n" data-badge="prox">0</span></button>
         </div>
         <div class="gc-b">
           <div class="vazio" data-so="prox">Nada na fila.</div>
         </div>
       </div>
 
-      <div class="gc" style="--g:var(--cinzabg)">
+      <div class="gc" style="--g:var(--tx3)">
         <div class="gc-h">
           <svg class="ic ic18" aria-hidden="true"><use href="#i-doc"></use></svg>
           <div><h3>Resolvido neste ciclo</h3><div class="sub">o que já está publicado e provado</div></div>
-          <button class="fb" data-grupo-alvo="feito" aria-pressed="false" style="pointer-events:auto">vistos <span class="n" data-badge="feito">0</span></button>
+          <button class="fb" data-grupo-alvo="feito" aria-pressed="false">vistos <span class="n" data-badge="feito">0</span></button>
         </div>
         <div class="gc-b">
           <div class="vazio" data-so="feito">Nada entregue ainda.</div>
@@ -242,7 +334,7 @@
     <div class="card">
       <div class="barra-f">
         <div class="busca" id="busca">
-          <svg class="ic" aria-hidden="true" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--tx3)"><use href="#i-search"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg>
           <input id="q" type="search" placeholder="filtrar por texto, código ou commit…" aria-label="filtrar itens">
           <button class="limpa" id="qLimpa" aria-label="limpar filtro"><svg class="ic" style="width:14px;height:14px"><use href="#i-x"></use></svg></button>
         </div>
@@ -261,7 +353,7 @@
         </div>
         <div class="gc-b" id="lista">
           <div class="ln" data-grupo="bloq" data-txt="nfs-e amostra precisa de voce">
-            <div class="ln-t"><b>Amostra de NFS-e em PDF</b><span>Não há nenhuma nota de serviço em todo o disco: 0 XML e 0 PDF. Sem ela, ISS/CSRF/IBS ficam validados só contra fixture sintética — e o relatório dirá isso com todas as letras.</span></div>
+            <div class="ln-t"><b>Amostra de NFS-e em PDF</b><span>Não há nenhuma nota de serviço em todo o disco: 0 XML e 0 PDF. Sem ela, ISS/CSRF/IBS ficam validados só contra um exemplo sintético — e o relatório dirá isso com todas as letras.</span></div>
             <div class="ln-r"><span class="chip atn">falta insumo</span><span class="resp">1 arquivo</span></div>
           </div>
           <div class="ln" data-grupo="bloq" data-txt="st fcp icms substituicao tributaria nf-e">
@@ -269,7 +361,7 @@
             <div class="ln-r"><span class="chip atn">falta insumo</span><span class="resp">1 arquivo</span></div>
           </div>
           <div class="ln" data-grupo="bloq" data-txt="passeio sete agentes checklist re-rodar">
-            <div class="ln-t"><b>Passeio dos 7 agentes</b><span>Os 4 bloqueios do ciclo foram corrigidos em 4 lotes, mas o checklist precisa ser re-rodado para fechar a regra do projeto.</span></div>
+            <div class="ln-t"><b>Passeio dos 7 agentes</b><span>Os 4 bloqueios do ciclo foram corrigidos em 4 lotes, mas a lista de verificação precisa ser reexecutada para fechar a regra do projeto.</span></div>
             <div class="ln-r"><span class="chip and">ação sua</span><span class="resp">1 comando</span></div>
           </div>
 
@@ -282,29 +374,29 @@
             <div class="ln-r"><span class="chip and">planejado</span><span class="resp">5 níveis</span></div>
           </div>
           <div class="ln" data-grupo="prox" data-txt="corpus 84 pdfs bancada scanner digital boleto">
-            <div class="ln-t"><b>Corpus de 84 PDFs na bancada</b><span>Hoje são 8, todos DANFE da mesma emitente e todos sem camada de texto. O corpus dos Downloads tem 84, de 4 origens: digital com texto, print-to-PDF imagem, scanner de verdade e não-nota (boleto).</span></div>
+            <div class="ln-t"><b>Corpus de 84 PDFs na bancada</b><span>Hoje são 8, todos DANFE da mesma emitente e todos sem camada de texto. O corpus dos Downloads tem 84, de 4 origens: digital com texto, imagem gerada por impressão em PDF, scanner de verdade e não-nota (boleto).</span></div>
             <div class="ln-r"><span class="chip and">planejado</span><span class="resp">8 → 84</span></div>
           </div>
 
           <div class="ln" data-grupo="feito" data-txt="contraste acessibilidade teclado 627b8e0">
-            <div class="ln-t"><b>Contraste e acessibilidade</b><span>tokens de hover, badge sólido no dark, borda de aviso, foco, teclado nos alvos clicáveis e live region permanente. Dashboard em dark saiu de 3,56:1 no primeiro render.</span></div>
-            <div class="ln-r"><span class="chip ok">627b8e0</span><span class="resp">22:05</span></div>
+            <div class="ln-t"><b>Contraste e acessibilidade</b><span>tokens de hover, badge sólido no tema escuro, borda de aviso, foco, teclado nos alvos clicáveis e região viva permanente. O painel no tema escuro saiu de 3,56:1 na primeira renderização.</span></div>
+            <div class="ln-r"><span class="chip fil">627b8e0</span><span class="resp">22:05</span></div>
           </div>
           <div class="ln" data-grupo="feito" data-txt="seguranca xss redos lgpd 138af48">
-            <div class="ln-t"><b>Segurança</b><span>6 sinks XSS fechados (o do <code>publica.cnpj.ws</code> levava CPF de sócios), ReDoS eliminado (200 espaços levavam 70,6 s), 10 <code>console.*</code> removidas, aviso de LGPD e cache com TTL.</span></div>
-            <div class="ln-r"><span class="chip ok">138af48</span><span class="resp">22:17</span></div>
+            <div class="ln-t"><b>Segurança</b><span>6 pontos de injeção XSS fechados (o do <code>publica.cnpj.ws</code> levava CPF de sócios), ReDoS eliminado (200 espaços levavam 70,6 s), 10 ocorrências de <code>console.*</code> removidas, aviso de LGPD e cache com TTL.</span></div>
+            <div class="ln-r"><span class="chip fil">138af48</span><span class="resp">22:17</span></div>
           </div>
           <div class="ln" data-grupo="feito" data-txt="infraestrutura sri cdn tesseract 11 mb c81933c">
-            <div class="ln-t"><b>Infraestrutura</b><span>SRI nas 6 CDNs conferida byte a byte, tesseract pinado em 4.1.4, origens do OCR declaradas (11 MB que eram invisíveis no HTML), teto de páginas e aviso visível de CDN fora.</span></div>
-            <div class="ln-r"><span class="chip ok">c81933c</span><span class="resp">22:42</span></div>
+            <div class="ln-t"><b>Infraestrutura</b><span>SRI das 6 CDNs conferida byte a byte, tesseract fixado em 4.1.4, atributos de origem do OCR declarados (11 MB que eram invisíveis no HTML), teto de páginas e aviso visível quando a CDN está fora.</span></div>
+            <div class="ln-r"><span class="chip fil">c81933c</span><span class="resp">22:42</span></div>
           </div>
-          <div class="ln" data-grupo="feito" data-txt="testes regressao 179 casos gate f736ac3">
-            <div class="ln-t"><b>Regressão e gate</b><span>179 casos estruturais em ~1 s, cobrindo o que a bancada de OCR nunca viu. E a bancada virou gate de verdade: antes um 0% de acurácia saía com exit 0.</span></div>
-            <div class="ln-r"><span class="chip ok">f736ac3</span><span class="resp">23:03</span></div>
+          <div class="ln" data-grupo="feito" data-txt="testes regressao estrutural casos gate f736ac3">
+            <div class="ln-t"><b>Regressão e gate</b><span>A regressão estrutural roda em ~1 s cobrindo o que a bancada de OCR nunca viu — a contagem exata está no KPI acima, que é conferido contra o gate a cada execução. E a bancada virou o portão de entrada de verdade: antes uma acurácia de 0% saía com código de saída 0.</span></div>
+            <div class="ln-r"><span class="chip fil">f736ac3</span><span class="resp">23:03</span></div>
           </div>
           <div class="ln" data-grupo="feito" data-txt="obsidian vault hook agente 11d2665">
             <div class="ln-t"><b>Vault do Obsidian com dono</b><span>Agente com escrita restrita ao vault e hook que reescreve o estado do MOC sozinho, sem LLM. 31 notas, 0 links quebrados.</span></div>
-            <div class="ln-r"><span class="chip ok">11d2665</span><span class="resp">23:12</span></div>
+            <div class="ln-r"><span class="chip fil">11d2665</span><span class="resp">23:12</span></div>
           </div>
         </div>
       </div>
@@ -319,13 +411,13 @@
   <div class="gh"><h2>Detalhe das entregas</h2><span class="onde">o que cada lote provou, e como</span></div>
   <div class="card tw">
     <table>
-      <thead><tr><th>Lote</th><th>O que mudou</th><th>Como foi provado</th><th>Achado surprise</th><th>Commit</th></tr></thead>
+      <thead><tr><th scope="col">Lote</th><th scope="col">O que mudou</th><th scope="col">Como foi provado</th><th scope="col">Achado da revisão</th><th scope="col">Commit</th></tr></thead>
       <tbody>
-        <tr><td><b>Contraste e acessibilidade</b></td><td class="dim">tokens de hover, badge sólido no dark, borda de aviso, foco, teclado, live region</td><td class="dim">179 casos + cálculo WCAG próprio nos 2 temas</td><td><span class="chip and">dashboard em dark a 3,56:1 no primeiro render</span></td><td><code>627b8e0</code></td></tr>
-        <tr><td><b>Segurança</b></td><td class="dim">escape na fronteira, console, globais, LGPD, ReDoS</td><td class="dim">varredura + medição do ReDoS</td><td><span class="chip err">200 espaços = 70,6 s</span></td><td><code>138af48</code></td></tr>
-        <tr><td><b>Infraestrutura</b></td><td class="dim">SRI, pin, corePath, teto de OCR, aviso de CDN</td><td class="dim">6/6 SRI conferidos + OCR real no browser</td><td><span class="chip err">tesseract.js-core 4.1.4 não existe</span></td><td><code>c81933c</code></td></tr>
-        <tr><td><b>Testes</b></td><td class="dim">179 casos, gate com exit 1, npm test de verdade</td><td class="dim">npm test + prova de que reprova</td><td><span class="chip err">#cnpj-status não existia no HTML</span></td><td><code>f736ac3</code></td></tr>
-        <tr><td><b>Vault</b></td><td class="dim">agente restrito + hook sem LLM</td><td class="dim">hook executado contra o MOC real, com git real</td><td><span class="chip atn">ahead/behind invertidos no hook</span></td><td><code>11d2665</code></td></tr>
+        <tr><td><b>Contraste e acessibilidade</b></td><td class="dim">tokens de hover, badge sólido no tema escuro, borda de aviso, foco, teclado, região viva</td><td class="dim">179 casos + contraste WCAG próprio nos 2 temas</td><td><span class="chip atn">painel no tema escuro a 3,56:1 na primeira renderização</span></td><td><code>627b8e0</code></td></tr>
+        <tr><td><b>Segurança</b></td><td class="dim">escaping na fronteira, console, globais, LGPD, ReDoS</td><td class="dim">varredura + medição do ReDoS</td><td><span class="chip atn">200 espaços = 70,6 s</span></td><td><code>138af48</code></td></tr>
+        <tr><td><b>Infraestrutura</b></td><td class="dim">SRI, versão fixada, corePath, teto de OCR, aviso de CDN</td><td class="dim">6/6 SRI conferidos + OCR real no navegador</td><td><span class="chip atn">tesseract.js-core 4.1.4 não existe</span></td><td><code>c81933c</code></td></tr>
+        <tr><td><b>Testes</b></td><td class="dim">regressão estrutural sem browser, portão de entrada com código de saída 1, npm test rodando as duas suítes</td><td class="dim">npm test + prova de que reprova</td><td><span class="chip atn">#cnpj-status não existia no HTML</span></td><td><code>f736ac3</code></td></tr>
+        <tr><td><b>Vault</b></td><td class="dim">agente restrito + hook sem LLM</td><td class="dim">hook executado contra o MOC real, com git real</td><td><span class="chip atn">indicadores de ahead/behind invertidos no hook</span></td><td><code>11d2665</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -337,16 +429,16 @@
     <div class="card">
       <div class="agora">
         <div class="it"><b>Leitor de PDF lê 20 campos; o XML lê 93</b><span>É a maior lacuna funcional do projeto. A nota 742197 não imprime ST, FCP, PIS nem COFINS: o sistema precisa dizer “não consta no documento” em vez de chutar valor.</span><span class="t">alvo: 9 ondas · 1 linha por nota + aba de itens</span></div>
-        <div class="it"><b>Bancada cega para a UI, até ontem</b><span>Ela fatia o <code>index.html</code> antes da linha 355, então tema, sprite, acessibilidade e CDNs nunca foram testados. Agora são 179 casos em 1 s.</span><span class="t">resolvido em f736ac3</span></div>
-        <div class="it"><b>OCR é o teto do produto</b><span>As amostras são JPEG a ~201 dpi sem fonte, fatiadas em faixas. Nenhuma regex conserta glyph borrado; o que move a precisão é o pipeline de imagem e a escada de convergência.</span><span class="t">4–12 s por página</span></div>
+        <div class="it"><b>Bancada cega para a interface, até ontem</b><span>Ela fatia o <code>index.html</code> antes da linha 355, então tema, sprite, acessibilidade e CDNs nunca foram testados. Agora são 249 casos em 1 s.</span><span class="t">resolvido em f736ac3</span></div>
+        <div class="it"><b>OCR é o teto do produto</b><span>As amostras são JPEG a ~201 dpi sem fonte, fatiadas em faixas. Nenhuma expressão regular conserta glifo borrado; o que move a precisão é o processamento de imagem e a escada de convergência.</span><span class="t">4–12 s por página</span></div>
         <div class="it"><b>Dados reais fora do git</b><span>1.564 XMLs e 84 PDFs da cliente vivem nos Downloads, nunca no repositório. O vault recebe só agregados e formatos.</span><span class="t">regra mantida desde 27/09</span></div>
       </div>
     </div>
     <div class="card">
       <ol class="evt">
-        <li><span class="h">18:09</span><span>Painel gerencial do projeto de referência lido estruturado<small>mesma linguagem visual, dados reais deste projeto</small></span></li>
-        <li><span class="h">17:44</span><span>Redesign de interface mergeado<small>tema claro/escuro, breadcrumb, sprite SVG, responsivo</small></span></li>
-        <li><span class="h">17:31</span><span>Passeio dos 7 agentes rodado pela primeira vez<small>4 de 7 bloquearam — o número 160/160 não cobria nada do redesign</small></span></li>
+        <li><span class="h">18:09</span><span>Painel gerencial do projeto de referência lido de forma estruturada<small>mesma linguagem visual, dados reais deste projeto</small></span></li>
+        <li><span class="h">17:44</span><span>Reformulação da interface publicada<small>tema claro/escuro, caminho de navegação, biblioteca de ícones SVG, responsivo</small></span></li>
+        <li><span class="h">17:31</span><span>Passeio dos 7 agentes executado pela primeira vez<small>4 de 7 bloquearam — o número 160/160 não cobria nada da reformulação visual</small></span></li>
         <li><span class="h">23:12</span><span>5 lotes publicados<small>contraste, segurança, infraestrutura, testes e vault</small></span></li>
       </ol>
     </div>
@@ -354,15 +446,15 @@
 </section>
 
 <section>
-  <div class="gh"><h2>Ambientes</h2><span class="onde">single-file, sem build, sem servidor</span></div>
+  <div class="gh"><h2>Ambientes</h2><span class="onde">arquivo único, sem etapa de build, sem servidor</span></div>
   <div class="amb">
     <div class="a">
       <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--azul)"><use href="#i-monitor"></use></svg>Local</div>
-      <div class="d">Abrir o <code>index.html</code> direto no navegador. Tudo funciona, inclusive as CDNs. Único lugar onde o OCR roda de verdade (o harness usa worker próprio).</div>
+      <div class="d">Abrir o <code>index.html</code> direto no navegador. Tudo funciona, inclusive as CDNs. Único lugar onde o OCR roda de verdade (o executor de testes usa worker próprio).</div>
     </div>
     <div class="a">
       <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--verde)"><use href="#i-globe"></use></svg>GitHub Pages</div>
-      <div class="d"><code>codebyanalu/leitor-xml-web</code> · branch <code>main</code>. Push de 27/09: <code>d072771..11d2665</code>, 7 commits, 0 atrás.</div>
+      <div class="d"><code>codebyanalu/leitor-xml-web</code> · branch <code>main</code>. Publicação de 27/09: <code>d072771..11d2665</code>, 7 commits, 0 atrás do remoto.</div>
     </div>
     <div class="a">
       <div class="n"><svg class="ic" aria-hidden="true" style="color:var(--laranjatx)"><use href="#i-shield"></use></svg>Privacidade</div>
@@ -372,13 +464,22 @@
 </section>
 
 <footer>
-  <span>Painel do projeto GCON/SIAN · ciclo de 27/09/2026 · horários de Brasília (UTC-3). Nenhum dado fiscal é exposto neste arquivo.</span>
+  <span><span id="est-projeto">Painel do projeto GCON/SIAN</span> · ciclo de 27/09/2026 · horários de Brasília (UTC-3). Nenhum dado fiscal é exposto neste arquivo.</span>
   <span id="pub" style="font-variant-numeric:tabular-nums"></span>
 </footer>
 </div>
 
 <script>
 (function () {
+  var TZ = 'America/Sao_Paulo';
+  var ARQ_ESTADO = 'painel-estado.json';
+  var SCHEMA_ATUAL = 1;
+  var DIAS_DESATUALIZADO = 14;
+  var DIAS_ANTIGO = 30;
+  var GRUPOS = ['bloq', 'prox', 'feito'];
+  var CHIP_CLASSES = ['ok', 'and', 'atn', 'err', 'fil'];
+  var CORES_BARRA = ['var(--verde)', 'var(--laranja)', 'var(--azul)', 'var(--azul2)', 'var(--azul3)', 'var(--vermelho)', 'var(--laranjatx)'];
+
   var ROTULOS = {
     bloq: 'Bloqueado — precisa de você',
     prox: 'Próximo lote',
@@ -387,18 +488,45 @@
   };
 
   // ---- barras de situação ----
-  var st = [
-    ['Corrigido e publicado', 5, 'var(--verde)'],
-    ['Pendente de insumo seu', 3, 'var(--laranja)'],
-    ['Próximo lote', 3, 'var(--azul)']
+  var ST = [
+    { rotulo: 'Corrigido e publicado', total: 5, cor: 'var(--verde)' },
+    { rotulo: 'Pendente de insumo seu', total: 3, cor: 'var(--laranja)' },
+    { rotulo: 'Próximo lote', total: 3, cor: 'var(--azul)' }
   ];
-  var total = st.reduce(function (a, r) { return a + r[1]; }, 0);
-  document.getElementById('barras').innerHTML = st.map(function (r) {
-    var pct = Math.round(r[1] / total * 100);
-    return '<div class="barra" title="' + r[1] + ' de ' + total + ' — ' + pct + '%">'
-      + '<div class="lin"><b>' + r[0] + '</b><span class="n">' + r[1] + ' · ' + pct + '%</span></div>'
-      + '<div class="tr"><div class="fl" style="width:' + (r[1] / total * 100).toFixed(1) + '%;background:' + r[2] + '"></div></div></div>';
-  }).join('');
+
+  // Render por nós de nó, não por innerHTML: depois que o estado vem do
+  // arquivo, rótulo e total deixam de ser literais do código.
+  function renderBarras() {
+    var alvo = document.getElementById('barras');
+    var soma = ST.reduce(function (a, r) { return a + r.total; }, 0);
+    while (alvo.firstChild) alvo.removeChild(alvo.firstChild);
+    ST.forEach(function (r) {
+      var pct = soma ? Math.round(r.total / soma * 100) : 0;
+      var caixa = document.createElement('div');
+      caixa.className = 'barra';
+      caixa.title = r.total + ' de ' + soma + ' — ' + pct + '%';
+      var topo = document.createElement('div');
+      topo.className = 'lin';
+      var nome = document.createElement('b');
+      nome.textContent = r.rotulo;
+      var num = document.createElement('span');
+      num.className = 'n';
+      num.textContent = r.total + ' · ' + pct + '%';
+      topo.appendChild(nome);
+      topo.appendChild(num);
+      var trilho = document.createElement('div');
+      trilho.className = 'tr';
+      var cheio = document.createElement('div');
+      cheio.className = 'fl';
+      cheio.style.width = (soma ? r.total / soma * 100 : 0).toFixed(1) + '%';
+      cheio.style.background = r.cor;
+      trilho.appendChild(cheio);
+      caixa.appendChild(topo);
+      caixa.appendChild(trilho);
+      alvo.appendChild(caixa);
+    });
+  }
+  renderBarras();
 
   /* FONTE ÚNICA: os .ln vivem em #lista e não são copiados para lugar nenhum.
      Os grupos da esquerda são só cabeçalho + contador, derivados daqui. */
@@ -450,7 +578,12 @@
     });
   }
 
-  function marcar(alvo) {
+  /* Nomeada `marcarFiltro`, não `marcar`: existia OUTRA função `marcar` neste
+     mesmo escopo (a de estado, mais abaixo). Em script sloppy a última
+     declaração ganha, então os botões de filtro chamavam a de estado — com
+     `alvo` undefined: grupo nunca era atribuído, aplicar() não rodava, o chip
+     virava "chip undefined" e os <p> escreviam a palavra undefined. */
+  function marcarFiltro(alvo) {
     document.querySelectorAll('.fb[data-grupo]').forEach(function (x) {
       x.setAttribute('aria-pressed', x.getAttribute('data-grupo') === alvo ? 'true' : 'false');
     });
@@ -462,12 +595,12 @@
   }
 
   document.querySelectorAll('.fb[data-grupo]').forEach(function (b) {
-    b.addEventListener('click', function () { marcar(b.getAttribute('data-grupo')); });
+    b.addEventListener('click', function () { marcarFiltro(b.getAttribute('data-grupo')); });
   });
   document.querySelectorAll('[data-grupo-alvo]').forEach(function (b) {
     b.addEventListener('click', function () {
       var g = b.getAttribute('data-grupo-alvo');
-      marcar(grupo === g ? 'todos' : g);
+      marcarFiltro(grupo === g ? 'todos' : g);
     });
   });
   q.addEventListener('input', aplicar);
@@ -479,10 +612,411 @@
   // ---- relógio e data de publicação ----
   var rel = document.getElementById('rel-h');
   function tick() {
-    rel.textContent = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    rel.textContent = new Date().toLocaleTimeString('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
   tick();
   setInterval(tick, 1000);
-  document.getElementById('pub').textContent = 'gerado em ' + new Date().toLocaleDateString('pt-BR');
+  document.getElementById('pub').textContent = 'gerado em ' + new Date().toLocaleDateString('pt-BR', { timeZone: TZ });
+
+  // ============================================================
+  //  ESTADO DO PAINEL — leitura e escrita de painel-estado.json
+  //  Não há servidor: o painel tenta ler o arquivo que está ao lado
+  //  da página e, quando não consegue (file://), o botão "Carregar
+  //  estado" cobre o caso. Nada é gravado sozinho.
+  // ============================================================
+  var estEl = document.getElementById('est');
+  var estChip = document.getElementById('est-chip');
+  var estDesc = document.getElementById('est-desc');
+  var estMsg = document.getElementById('est-msg');
+  var estAlert = document.getElementById('est-alert');
+  var btnSalvar = document.getElementById('est-salvar');
+  var btnCarregar = document.getElementById('est-carregar');
+  var btnAtualizar = document.getElementById('est-atualizar');
+  var inpArq = document.getElementById('est-arq');
+
+  var NOME_SECAO = {
+    kpis: 'os indicadores',
+    situacao: 'o gráfico de situação',
+    projeto: 'a identificação do projeto',
+    fila: 'a fila'
+  };
+  var CHIP_ESTADO = {
+    padrao: 'fil', arquivo: 'ok', desatualizado: 'atn', antigo: 'err',
+    invalido: 'err', 'antigo-schema': 'atn', 'futuro-schema': 'atn', 'sem-io': 'fil'
+  };
+
+  function juntar(v) { return v.length ? v.join(', ') : 'nenhuma'; }
+  function rotuloEstado(est, dias, schema) {
+    if (est === 'padrao') return 'Padrão embutido';
+    if (est === 'arquivo') return 'Arquivo: ' + ARQ_ESTADO;
+    if (est === 'desatualizado') return 'Desatualizado (' + dias + ' dias)';
+    if (est === 'antigo') return 'Muito antigo (' + dias + ' dias)';
+    if (est === 'invalido') return 'Arquivo inválido';
+    if (est === 'antigo-schema') return 'Schema antigo (v' + schema + ')';
+    if (est === 'futuro-schema') return 'Schema futuro (v' + schema + ')';
+    return 'Sem leitura automática';
+  }
+
+  /* Valida o painel-estado.json inteiro antes de tocar em qualquer nó.
+     Só schema e geradoEm são obrigatórios: sem eles o arquivo é recusado
+     (estado "invalido"); qualquer outra seção ausente ou com tipo errado
+     simplesmente fica no padrão embutido e é dita na descrição. */
+  function validarEstado(d, agoraMs) {
+    var r = { ok: false, estado: 'invalido', motivo: '', schema: 0, geradoEm: '', dias: 0, aplicados: [], fora: [], motivos: {}, dados: {} };
+    function obj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+    function txt(v, max) { return typeof v === 'string' && v.length > 0 && v.length <= max; }
+    /* motivo(nome): por que a seção ficou no padrão. Sem isto o usuário recebia
+       "Aplicados 3 de 4 campos" sem saber qual campo e por quê. */
+    function motivo(nome, texto) { r.motivos[nome] = texto; return false; }
+    function validarCampo(nome, v) {
+      if (nome === 'projeto') return txt(v, 120);
+      if (nome === 'kpis') {
+        /* Exatamente N_KPIS, e não "até 12": com menos indicadores os cartões
+           restantes ficam na tela com o texto antigo (aplicarKpis só
+           sobrescreve os primeiros N) e o "Salvar estado" seguinte grava o
+           conjunto misturado — o round-trip corrompia em silêncio. Com mais, o
+           excedente não caberia em nenhum cartão. */
+        if (!Array.isArray(v)) return motivo('kpis', '"kpis" precisa ser uma lista');
+        if (v.length !== N_KPIS) {
+          return motivo('kpis', '"kpis" tem ' + v.length + ' indicador(es) e esta página tem ' + N_KPIS
+            + ' cartões — um número diferente deixaria parte dos cartões com o texto antigo na tela');
+        }
+        if (!v.every(function (k) { return obj(k) && txt(k.rotulo, 60) && txt(k.valor, 40) && txt(k.detalhe, 140); })) {
+          return motivo('kpis', 'cada indicador precisa de rotulo, valor e detalhe como texto');
+        }
+        return true;
+      }
+      if (nome === 'situacao') {
+        /* Aqui o tamanho é livre de propósito: o gráfico é redesenhado do
+           zero, então mudar a quantidade de barras é seguro. O problema seria
+           só se o gráfico fosse atualizado por posição. */
+        if (!Array.isArray(v)) return motivo('situacao', '"situacao" precisa ser uma lista');
+        if (v.length < 1 || v.length > 12) return motivo('situacao', '"situacao" precisa ter de 1 a 12 barras');
+        if (!v.every(function (s) { return obj(s) && txt(s.rotulo, 60) && typeof s.total === 'number' && isFinite(s.total) && s.total >= 0; })) {
+          return motivo('situacao', 'cada barra precisa de rotulo e total numérico maior ou igual a zero');
+        }
+        return true;
+      }
+      if (nome === 'fila') {
+        if (!Array.isArray(v) || v.length > 200) return false;
+        return v.every(function (f) {
+          return obj(f) && GRUPOS.indexOf(f.grupo) !== -1 && txt(f.titulo, 140) && txt(f.texto, 900)
+            && txt(f.chip, 40) && txt(f.resp, 40) && CHIP_CLASSES.indexOf(f.chipClasse) !== -1;
+        });
+      }
+      return false;
+    }
+    if (!obj(d)) { r.motivo = 'o conteúdo não é um objeto JSON'; return r; }
+    if (typeof d.schema !== 'number' || !isFinite(d.schema) || Math.floor(d.schema) !== d.schema || d.schema < 0) {
+      r.motivo = 'o campo "schema" precisa ser um inteiro maior ou igual a zero';
+      return r;
+    }
+    if (!txt(d.geradoEm, 40) || isNaN(Date.parse(d.geradoEm))) {
+      r.motivo = 'o campo "geradoEm" precisa ser uma data ISO 8601 válida';
+      return r;
+    }
+    r.schema = d.schema;
+    r.geradoEm = d.geradoEm;
+    var quando = Date.parse(d.geradoEm);
+    if (quando > agoraMs) { r.motivo = 'data futura: o campo "geradoEm" é posterior ao agora'; return r; }
+    r.dias = Math.floor((agoraMs - quando) / 86400000);
+    // [nome do campo, versão do schema a partir da qual ele existe]
+    var CAMPOS = [['kpis', 0], ['situacao', 0], ['projeto', 1], ['fila', 1]];
+    if (d.schema > SCHEMA_ATUAL) {
+      r.estado = 'futuro-schema';
+      r.motivo = 'o arquivo é da versão ' + d.schema + ' e este painel lê até a versão ' + SCHEMA_ATUAL;
+      CAMPOS.forEach(function (c) { r.fora.push(c[0]); });
+      return r;
+    }
+    CAMPOS.forEach(function (c) {
+      var nome = c[0];
+      if (c[1] > d.schema) { r.fora.push(nome); return; }
+      if (validarCampo(nome, d[nome])) { r.aplicados.push(nome); r.dados[nome] = d[nome]; }
+      else { r.fora.push(nome); }
+    });
+    r.ok = true;
+    r.estado = r.dias > DIAS_ANTIGO ? 'antigo'
+      : r.dias > DIAS_DESATUALIZADO ? 'desatualizado'
+      : d.schema < SCHEMA_ATUAL ? 'antigo-schema' : 'arquivo';
+    return r;
+  }
+
+  function dataHoraBR(iso) {
+    var partes = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }).formatToParts(new Date(iso));
+    var g = {};
+    partes.forEach(function (p) { if (p.type !== 'literal') g[p.type] = p.value; });
+    return g.day + '/' + g.month + '/' + g.year + ' ' + g.hour + ':' + g.minute;
+  }
+
+  function idadeHumana(dias) {
+    if (dias <= 0) return 'hoje';
+    if (dias === 1) return 'ontem';
+    return 'há ' + dias + ' dias';
+  }
+
+  /* Quantos cartões de KPI existem na página. Um arquivo com MENOS indicadores
+     deixaria os cartões restantes com o texto antigo na tela (aplicarKpis só
+     sobrescreve os primeiros N) e o "Salvar estado" seguinte gravaria o
+     conjunto misturado — o round-trip corrompia em silêncio. Por isso
+     validarEstado recusa kpis.length !== N_KPIS. */
+  var N_KPIS = document.querySelectorAll('.kpis .kpi').length;
+
+  // ---- aplicar: todo texto do arquivo entra por textContent ----
+  function aplicarKpis(l) {
+    var cartoes = document.querySelectorAll('.kpis .kpi');
+    l.forEach(function (k, i) {
+      var c = cartoes[i];
+      if (!c) return;
+      c.querySelector('.k').textContent = k.rotulo;
+      c.querySelector('.v').textContent = k.valor;
+      c.querySelector('.d').textContent = k.detalhe;
+    });
+  }
+
+  function aplicarSituacao(l) {
+    ST = l.map(function (r, i) {
+      return { rotulo: r.rotulo, total: r.total, cor: (ST[i] && ST[i].cor) || CORES_BARRA[i % CORES_BARRA.length] };
+    });
+    renderBarras();
+  }
+
+  function aplicarFila(l) {
+    var alvo = document.getElementById('lista');
+    while (alvo.firstChild) alvo.removeChild(alvo.firstChild);
+    l.forEach(function (f) {
+      var ln = document.createElement('div');
+      ln.className = 'ln';
+      ln.setAttribute('data-grupo', f.grupo);
+      ln.setAttribute('data-txt', norm(f.titulo + ' ' + f.texto + ' ' + f.chip + ' ' + f.resp));
+      var t = document.createElement('div');
+      t.className = 'ln-t';
+      var b = document.createElement('b');
+      b.textContent = f.titulo;
+      var s = document.createElement('span');
+      s.textContent = f.texto;
+      t.appendChild(b);
+      t.appendChild(s);
+      var r = document.createElement('div');
+      r.className = 'ln-r';
+      var chip = document.createElement('span');
+      chip.className = 'chip ' + f.chipClasse;
+      chip.textContent = f.chip;
+      var resp = document.createElement('span');
+      resp.className = 'resp';
+      resp.textContent = f.resp;
+      r.appendChild(chip);
+      r.appendChild(resp);
+      ln.appendChild(t);
+      ln.appendChild(r);
+      alvo.appendChild(ln);
+    });
+    ITENS = Array.prototype.slice.call(alvo.querySelectorAll('.ln[data-grupo]'));
+    contadores();
+    aplicar();
+  }
+
+  function aplicarCampos(dados, nomes) {
+    nomes.forEach(function (nome) {
+      if (nome === 'kpis') aplicarKpis(dados.kpis);
+      else if (nome === 'situacao') aplicarSituacao(dados.situacao);
+      else if (nome === 'projeto') document.getElementById('est-projeto').textContent = dados.projeto;
+      else if (nome === 'fila') aplicarFila(dados.fila);
+    });
+  }
+
+  // ---- coletar: o JSON salvo é o que está na tela agora ----
+  function coletarKpis() {
+    return Array.prototype.map.call(document.querySelectorAll('.kpis .kpi'), function (c) {
+      return { rotulo: c.querySelector('.k').textContent, valor: c.querySelector('.v').textContent, detalhe: c.querySelector('.d').textContent };
+    });
+  }
+  function coletarSituacao() {
+    return ST.map(function (r) { return { rotulo: r.rotulo, total: r.total }; });
+  }
+  function coletarFila() {
+    return Array.prototype.map.call(document.querySelectorAll('#lista .ln'), function (ln) {
+      var t = ln.querySelector('.ln-t');
+      var c = ln.querySelector('.chip');
+      var p = ln.querySelector('.resp');
+      var classe = c ? c.className.match(/\b(ok|and|atn|err|fil)\b/) : null;
+      return {
+        grupo: ln.getAttribute('data-grupo'),
+        titulo: t && t.querySelector('b') ? t.querySelector('b').textContent : '',
+        texto: t && t.querySelector('span') ? t.querySelector('span').textContent : '',
+        chip: c ? c.textContent : '',
+        chipClasse: classe ? classe[1] : 'fil',
+        resp: p ? p.textContent : ''
+      };
+    });
+  }
+
+  // ---- as quatro entradas possíveis ----
+  // Nomeada `marcarEstado` (e não `marcar`): ver marcarFiltro acima.
+  function marcarEstado(est, chip, desc, msg, alerta) {
+    estEl.setAttribute('data-est', est);
+    estChip.className = 'chip ' + CHIP_ESTADO[est];
+    estChip.textContent = chip;
+    estDesc.textContent = desc;
+    estMsg.textContent = msg;
+    estAlert.textContent = alerta || '';
+  }
+
+  function mostrarPadrao(origem) {
+    marcarEstado('padrao', rotuloEstado('padrao'),
+      'Nenhum ' + ARQ_ESTADO + ' ao lado desta página: os números acima são o padrão embutido no arquivo. '
+      + 'Use "Salvar estado" para gerar um e deixe o download ao lado do painel para que ele seja aplicado sozinho na próxima abertura.',
+      origem ? 'Estado atual: padrão embutido. ' + origem : 'Estado atual: padrão embutido.');
+  }
+
+  function mostrarSemIO(motivo) {
+    marcarEstado('sem-io', rotuloEstado('sem-io'),
+      'O navegador não lê ' + ARQ_ESTADO + ' sozinho nesta origem: a leitura automática está indisponível. '
+      + 'Use "Carregar estado" para aplicar o arquivo baixado.',
+      motivo);
+  }
+
+  function mostrarInvalido(motivo) {
+    var m = motivo.charAt(0).toUpperCase() + motivo.slice(1);
+    marcarEstado('invalido', rotuloEstado('invalido'),
+      'O painel não foi atualizado: ' + m + '.',
+      'O painel continua com os valores que já estavam na tela.',
+      m + '. Nada foi alterado.');
+  }
+
+  function receber(d, origem) {
+    var r = validarEstado(d, Date.now());
+    if (!r.ok) { mostrarInvalido(r.motivo); return; }
+    var carimbo = dataHoraBR(r.geradoEm) + ' · ' + idadeHumana(r.dias);
+    if (r.estado === 'futuro-schema') {
+      marcarEstado('futuro-schema', rotuloEstado(r.estado, r.dias, r.schema),
+        'O arquivo é de ' + carimbo + ' e usa o schema ' + r.schema + ', mais novo que o ' + SCHEMA_ATUAL
+        + ' deste painel: não apliquei nada e mantive o padrão embutido.',
+        'Schema ' + r.schema + ' não aplicável. Mantive o padrão embutido; nada foi alterado.');
+      return;
+    }
+    aplicarCampos(r.dados, r.aplicados);
+    var veio = r.aplicados.map(function (n) { return NOME_SECAO[n]; });
+    var ficou = r.fora.map(function (n) { return NOME_SECAO[n]; });
+    /* O motivo de cada seção recusada entra na descrição: sem ele o usuário
+       lia "Aplicados 3 de 4 campos" e não descobria que o problema era a
+       quantidade de indicadores, nem o que fazer a respeito. */
+    var porque = r.fora.filter(function (n) { return r.motivos[n]; })
+      .map(function (n) { return NOME_SECAO[n] + ' ficou no padrão porque ' + r.motivos[n]; })
+      .join(' ');
+    marcarEstado(r.estado, rotuloEstado(r.estado, r.dias, r.schema),
+      'Estado aplicado de ' + origem + ', ' + carimbo + ' (schema ' + r.schema + '). Do arquivo vieram '
+      + juntar(veio) + '. No padrão embutido ficaram ' + juntar(ficou) + '.'
+      + (porque ? ' Motivo: ' + porque + '.' : ''),
+      'Aplicados ' + r.aplicados.length + ' de 4 campos de ' + origem + '.'
+      + (porque ? ' Algo não foi aplicado: ' + porque + '.' : ''),
+      porque ? porque.charAt(0).toUpperCase() + porque.slice(1) + '. Nada foi alterado nessa seção.' : '');
+  }
+
+  // ---- Salvar estado: Blob + <a download>, sem servidor ----
+  btnSalvar.addEventListener('click', function () {
+    var dados = {
+      schema: SCHEMA_ATUAL,
+      geradoEm: new Date().toISOString(),
+      projeto: document.getElementById('est-projeto').textContent,
+      kpis: coletarKpis(),
+      situacao: coletarSituacao(),
+      fila: coletarFila()
+    };
+    var texto = JSON.stringify(dados, null, 2) + '\n';
+    var blob = new Blob([texto], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = ARQ_ESTADO;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    estMsg.textContent = 'Baixado ' + ARQ_ESTADO + ' (' + dados.kpis.length + ' indicadores, '
+      + dados.situacao.length + ' barras, ' + dados.fila.length + ' itens).';
+    estAlert.textContent = '';
+  });
+
+  // ---- Carregar estado: campo de arquivo fora da tela, mas no teclado ----
+  btnCarregar.addEventListener('click', function () { inpArq.click(); });
+  /* O campo é invisível: sem isto o teclado entra nele e não há nenhum anel
+     visível. A classe no botão é o caminho que não depende de :has(). */
+  inpArq.addEventListener('focus', function () { btnCarregar.classList.add('foco-arquivo'); });
+  inpArq.addEventListener('blur', function () { btnCarregar.classList.remove('foco-arquivo'); });
+  inpArq.addEventListener('change', function () {
+    var arq = inpArq.files && inpArq.files[0];
+    if (!arq) return;
+    var leitor = new FileReader();
+    leitor.onload = function () {
+      var d = null;
+      try { d = JSON.parse(String(leitor.result || '')); }
+      catch (e) { mostrarInvalido('o arquivo escolhido não é um JSON válido'); }
+      if (d !== null) receber(d, arq.name);
+      inpArq.value = '';
+    };
+    leitor.onerror = function () { mostrarInvalido('não foi possível ler o arquivo escolhido'); inpArq.value = ''; };
+    leitor.readAsText(arq, 'utf-8');
+  });
+
+  // ---- Atualizar: refaz a leitura do arquivo ao lado da página ----
+  btnAtualizar.addEventListener('click', function () { buscarArquivo(); });
+
+  /* Onde o arquivo NÃO é alcançável, o botão "Atualizar" é um botão morto:
+     fetch() relativo em 404 (GitHub Pages não publica o painel-estado.json,
+     que é gitignored) ou bloqueado em file://. Desabilitar e rotular é melhor
+     que deixar o botão clicável fingindo que faz alguma coisa. O caminho real
+     é o seletor de arquivo ("Carregar estado"), que já é o fallback. */
+  function desativarAtualizar(motivo) {
+    btnAtualizar.disabled = true;
+    btnAtualizar.textContent = 'Atualizar (indisponível)';
+    btnAtualizar.title = motivo;
+    btnAtualizar.setAttribute('aria-disabled', 'true');
+  }
+
+  function buscarArquivo() {
+    btnAtualizar.disabled = true;
+    btnAtualizar.setAttribute('aria-busy', 'true');
+    estMsg.textContent = 'Procurando ' + ARQ_ESTADO + '…';
+    estAlert.textContent = '';
+    fetch(ARQ_ESTADO, { cache: 'no-store' })
+      .then(function (res) {
+        if (res.status === 404) return { tipo: 'ausente' };
+        if (!res.ok) return { tipo: 'ruim', erro: 'a leitura respondeu ' + res.status };
+        return res.text().then(function (t) {
+          try { return { tipo: 'json', dados: JSON.parse(t) }; }
+          catch (e) { return { tipo: 'ruim', erro: 'o arquivo não é um JSON válido' }; }
+        });
+      })
+      .then(function (s) {
+        if (s.tipo === 'ausente') {
+          mostrarPadrao('Ainda não existe ' + ARQ_ESTADO + ' ao lado da página.');
+          desativarAtualizar('Não há ' + ARQ_ESTADO + ' ao alcance desta origem. Baixe o arquivo e use "Carregar estado".');
+        } else if (s.tipo === 'json') {
+          btnAtualizar.disabled = false;
+          btnAtualizar.textContent = 'Atualizar';
+          btnAtualizar.removeAttribute('title');
+          btnAtualizar.removeAttribute('aria-disabled');
+          receber(s.dados, ARQ_ESTADO);
+        } else mostrarInvalido(s.erro);
+      })
+      .catch(function () {
+        mostrarSemIO('a leitura de ' + ARQ_ESTADO + ' falhou (sem rede ou sem permissão).');
+        desativarAtualizar('Esta origem não deixa ler um arquivo ao lado. Use "Carregar estado" para escolher o arquivo.');
+      })
+      .then(function () {
+        btnAtualizar.removeAttribute('aria-busy');
+      });
+  }
+
+  if (location.protocol === 'file:') {
+    mostrarSemIO('A página foi aberta por file://, onde a leitura de um arquivo ao lado é bloqueada pelo navegador.');
+    desativarAtualizar('Em file:// a leitura de um arquivo ao lado é bloqueada pelo navegador. Use "Carregar estado".');
+  } else {
+    buscarArquivo();
+  }
 })();
 </script>
+</body>
+</html>

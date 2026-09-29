@@ -50,7 +50,13 @@ function carregarModulo() {
   if (ini < 0) throw new Error('módulo ModPDFIsolado não encontrado em index.html');
   const fim = html.indexOf('</script>', ini);
   let src = html.slice(ini, fim);
-  src = src.replace(/return\s*\{[^}]*extrair[^}]*\}\s*;/, 'return{extrair,parseFull,mergeExtracao,finalizar,tC};');
+  /* Este rewrite precisa acompanhar o contrato real do index.html: vC/vH são
+     parte da superfície pública (o importador da Consulta em Lote, que é outra
+     IIFE, valida o DV com vC()). Reescrever para uma lista menor aqui fazia a
+     bancada passar enquanto o app real estourava "vC is not defined". */
+  const mRet = src.match(/return\s*\{[^}]*extrair[^}]*\}\s*;/);
+  if (!mRet) throw new Error('return do ModPDFIsolado não encontrado (contrato mudou?)');
+  src = src.replace(mRet[0], 'return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};');
   const sandbox = {
     window: {}, console: { log() {}, warn() {}, error() {} },
     localStorage: { getItem: () => null, setItem() {}, removeItem() {}, clear() {} },
