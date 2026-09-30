@@ -9,6 +9,8 @@
     "regressao": "node regressao.mjs",
     "painel": "node painel-check.mjs",
     "bancada": "node rodar.mjs",
+    "smoke": "node smoke.cjs",
+    "test:tudo": "node regressao.mjs && node painel-check.mjs && node rodar.mjs && node smoke.cjs",
     "ocr": "node rodar.mjs --ocr-somente"
   },
   "keywords": [],
@@ -20,5 +22,8 @@
     "mupdf": "^1.28.1",
     "pdfjs-dist": "^4.10.38",
     "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.47.0"
   }
 }

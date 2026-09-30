@@ -650,8 +650,13 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
      cinco passam de 7,7:1 a 10,2:1 tanto no --code-bg claro quanto no escuro. */
   --log-neutro:#cbd5e1;--log-info:#93c5fd;--log-ok:#6ee7b7;--log-aviso:#fcd34d;--log-err:#fca5a5;
   --tint:#f0f4fe;--card-2:#f1f4f9;--zebra:#f8fafc;--row-hover:#e8edf5;
-  --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
-  --font-mono:'Cascadia Code','Fira Code',Consolas,monospace;
+--sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
+ /* Texto do menu. As regras antigas escreviam rgba(255,255,255,.5) e #fff à
+    mão, e cor literal escapa da medição de contraste por construção: o gate
+    lê token por getComputedStyle, então um hex nasce sem ser auditado. Com
+    token, o anel, o rótulo e o nome flutuante entram na conta. */
+--sidebar-fg:#fff;--sidebar-fg-dim:rgba(255,255,255,.55);--sidebar-fg-mute:rgba(255,255,255,.5);
+--font-mono:'Cascadia Code','Fira Code',Consolas,monospace;
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
@@ -676,7 +681,10 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
      herdado do claro ficaria sem par próprio para medir. */
   --log-neutro:#cbd5e1;--log-info:#93c5fd;--log-ok:#6ee7b7;--log-aviso:#fcd34d;--log-err:#fca5a5;
   --tint:#17233a;--card-2:#1c2537;--zebra:#131b2b;--row-hover:#22304a;
-  --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
+   --sidebar-active:#1d3560;--sidebar-accent:#4d8ff0;
+   /* Mesmo par do claro, declarado de novo: o gate de contraste mede token por
+      tema, e um herdado do :root ficaria sem par próprio para comparar. */
+   --sidebar-fg:#fff;--sidebar-fg-dim:rgba(255,255,255,.55);--sidebar-fg-mute:rgba(255,255,255,.5);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -698,10 +706,24 @@ svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-l
    ═══════════════════════════════════════════════════════════ */
 #sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;height:100dvh;z-index:10}
 #logo{padding:22px 18px 18px;text-align:center}
-#logo h1{color:#fff;font-size:20px;font-weight:800;letter-spacing:-.3px}
+#logo h1{color:var(--sidebar-fg);font-size:20px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
 #logo h1 span{color:var(--accent)}
-#logo p{color:rgba(255,255,255,.6);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
+#logo p{color:var(--sidebar-fg-dim);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
 .nav-section{padding:16px 18px 4px;color:rgba(255,255,255,.55);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+/* Botão de recolher/expandir. Fica ACIMA da lista, no topo da sidebar, e não é
+   .nav-btn de propósito: dois listeners fazem querySelectorAll('.nav-btn') (a
+   troca de aba e o breadcrumb, que ainda lê b.lastElementChild.textContent), e o
+   toggle entraria na rotação do crumb como se fosse uma aba.
+   O foco entra no seletor do index.html:667 — o --focus global dá 2,96:1 sobre
+   --sidebar no tema claro (reprova 3:1) e --sidebar-accent dá 5,53:1 / 5,91:1. */
+#btn-rail{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:16px;background:none;border:none;cursor:pointer;font-family:inherit;min-height:44px;width:100%;color:var(--sidebar-fg-dim)}
+#btn-rail:hover{color:var(--sidebar-fg)}
+#btn-rail:focus-visible{outline-color:var(--sidebar-accent)}
+#btn-rail svg.i{width:18px;height:18px;flex:0 0 auto}
+/* Só o glifo: o nome do botão vem do aria-label e do title, escritos pelo JS a
+   cada troca de estado. Um rótulo visível aqui viraria a nona linha da sidebar
+   e não caberia em 64px. */
+#sidebar[data-rail="on"] #btn-rail{justify-content:center;padding:16px 0 0}
 .nav-btn{display:flex;align-items:center;gap:10px;padding:10px 18px;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;border-right:3px solid transparent}
 .nav-btn:hover{background:var(--sidebar-hover);color:#fff}
 .nav-btn.active{background:var(--sidebar-active);color:#fff;font-weight:600;border-right-color:var(--accent)}
@@ -732,6 +754,14 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 :root[data-theme="dark"] .icon-btn .sun{display:inline}
 :root[data-theme="dark"] .icon-btn .moon{display:none}
 #accent-bar{height:3px;background:var(--accent)}
+/* Utilitário: some da tela sem sair da árvore de acessibilidade. Diferente de
+   `display:none` (tira do leitor de tela) e de `aria-hidden` em elemento
+   focável (viola 4.1.2). As duas listas de declarações idênticas do
+   `#sidebar[data-rail="on"] .nav-btn>span` e da media query de ≤768px são o
+   fallback pré-JS do rail — a origem do item depende do layout, então o
+   fallback precisa bater com o atributo, e é o gate 14.1 que garante isso.
+   Fora desses dois pontos, quem encolhe rótulo usa esta classe. */
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #content{flex:1;overflow-y:auto;padding:20px 24px}
 #content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}#content::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 
@@ -845,8 +875,35 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    10 · STATUS, ESTADOS VAZIOS, LOGS E OVERLAY
    ═══════════════════════════════════════════════════════════ */
 #status-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:18px;font-size:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
+/* O atributo hidden sozinho não esconde nada aqui: display:flex do autor vence o
+   display:none da folha do navegador. Sem este par, a barra continuava na tela
+   com os três contadores zerados. Vale para todo bloco que some por atributo
+   e tem display explícito no CSS. */
+#status-bar[hidden]{display:none}
 #status-bar .stat{display:flex;align-items:center;gap:6px}
+#status-bar .stat[hidden]{display:none}
 #status-bar .stat .num{font-weight:700;color:var(--primary-ink);font-size:14px}
+/* Rodapé do lote de CNPJ: contador de progresso e ETA. Some sozinho enquanto
+   não há nada a mostrar (foi um inline style de 4 propriedades). */
+.lote-rodape{display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap}
+.lote-rodape[hidden]{display:none}
+/* Aviso de privacidade recolhido. As quatro linhas de texto viravam a coisa
+   mais alta da tela do CNPJ, entre o formulário e o lote — e é uma nota de
+   rodapé, não uma etapa. <details> nativo: teclado, leitor de tela e
+   estado-aberto já resolvidos, sem uma linha de JS. O sumário continua
+   carregando o consentimento exigido (LGPD): o que fica no navegador está
+   escrito na linha fechada. */
+.privacidade{margin-top:12px;border:1px solid var(--border);border-left:3px solid var(--info);border-radius:var(--radius-sm);background:var(--tint)}
+.privacidade>summary{display:flex;align-items:center;gap:8px;padding:12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;list-style:none;min-height:44px;border-radius:var(--radius-sm)}
+.privacidade>summary::-webkit-details-marker{display:none}
+.privacidade>summary:hover{color:var(--text);background:var(--sidebar-hover)}
+.privacidade>summary:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.privacidade>summary .i{width:14px;height:14px;flex:0 0 auto;transition:transform .15s;color:var(--info)}
+.privacidade[open]>summary .i{transform:rotate(90deg)}
+.privacidade[open]>summary{border-bottom:1px solid var(--border)}
+.privacidade>p{margin:0;padding:12px;font-size:12px;color:var(--text2);line-height:1.6}
+.privacidade>p code{font-size:11px}
+@media (prefers-reduced-motion:reduce){.privacidade>summary .i{transition:none}}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
 .empty-state p{font-size:14px;color:var(--text2)}
 #import-log{background:var(--code-bg);color:var(--code-fg);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;max-height:280px;overflow-y:auto;white-space:pre-wrap;border:1px solid var(--code-line);line-height:1.6}
@@ -889,9 +946,53 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    largas empilham sozinhas no mobile, sem centralizar o conteúdo no meio. */
 #tab-separar .grade{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
 #tab-separar .grade>.campo{margin-bottom:14px}
-#tab-separar .acoes-sep{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+/* Linha de ação do separador. Era uma grade 1fr 1fr com o botão "Salvar
+   arquivos" em display:none até a divisão existir: a metade direita ficava
+   reservada e vazia, e o botão principal ocupava só metade da tela. Em flex com
+   base de 260px, o principal ocupa a linha inteira enquanto o secundário não
+   existe e os dois se dividem quando ele aparece — sem JS e sem :has(). */
+#tab-separar .acoes-sep{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+#tab-separar .acoes-sep>.btn{flex:1 1 260px}
+/* GEOMETRIA DO RAIL — fonte única. Este bloco vale para os DOIS gatilhos: o
+   atributo #sidebar[data-rail="on"] (escolha do usuário, no desktop) e a media
+   query de ≤768px (escolha de layout, no celular). Estavam como duas cópias e
+   já divergiram uma vez: o min-height:44px do alvo de toque entrou na media
+   query mas o atributo não tinha, e o botão novo nasceria com 42px.
+   O piso de 44px do Designer também vale para o toggle (rail: 42px medido). */
+#sidebar[data-rail="on"]{width:64px;min-width:64px;transition:width .18s,min-width .18s}
+/* 56px = 64px da barra menos 4 de cada lado. max-width + overflow:hidden no
+   #logo e no h1: sem o limite, um texto mais largo que a barra estoura e invade
+   o conteúdo (aconteceu — o "N" do GCON/SIAN ficou pendurado no canto superior
+   direito da tela). O h1 é centralizado e tem largura limitada, então o texto
+   é cortado no meio em vez de vazar para fora da barra. */
+#sidebar[data-rail="on"] #logo{padding:16px 4px 12px;max-width:64px;overflow:hidden}
+/* No rail a marca não cabe em 11px dentro de 56px: "GCON/SIAN" quebrava no
+   meio e o "N" caía numa segunda linha, deixando um quadrinho solto no topo
+   da barra. Aqui vira a sigla e o nome completo vai para o title do logo,
+   que o mouse já mostra. */
+#sidebar[data-rail="on"] #logo h1{font-size:12px;line-height:1.25;letter-spacing:0;white-space:nowrap;max-width:56px;overflow:hidden}
+/* O "GCON/" some no rail: sobra só "SIAN", que cabe em 56px, e o nome inteiro
+   quebrava no meio deixando um quadrinho solto no topo da barra. Não é
+   display:none: vira visually-hidden, que tira da tela e deixa no texto — o
+   leitor de tela continua anunciando "GCON/SIAN". O title do #logo repete o
+   nome para o mouse. */
+#sidebar[data-rail="on"] .lbl-cheio{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#sidebar[data-rail="on"] #logo p,#sidebar[data-rail="on"] .nav-section{display:none}
+#sidebar[data-rail="on"] .nav-btn{justify-content:center;padding:12px 0;gap:0;min-height:44px}
+#sidebar[data-rail="on"] .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#sidebar[data-rail="on"] .nav-btn .icon{width:auto}
+#sidebar[data-rail="on"] .nav-btn .icon svg.i{width:20px;height:20px}
+#sidebar[data-rail="on"] #btn-fechar{justify-content:center;padding:12px 0;gap:0;font-size:0}
+#sidebar[data-rail="on"] #btn-fechar span{font-size:16px}
+/* Havia aqui um balão com o nome do item, que aparecia ao lado da barra sempre
+   que algo era aberto (o item fica .active ao trocar de aba). Retirei a pedido:
+   o card ao lado da barra é conteúdo que invade a tela sem ser pedido. O nome
+   continua em dois lugares, ambos nativos: o title (mouse) e o rótulo
+   visually-hidden (leitor de tela e busca do browser), então nada se perde. */
+#sidebar{transition:width .18s,min-width .18s}
+@media (prefers-reduced-motion:reduce){#sidebar,#sidebar[data-rail="on"]{transition:none}}
 @media (max-width:900px){
-  #tab-separar .grade,#tab-separar .acoes-sep{grid-template-columns:1fr}
+  #tab-separar .grade{grid-template-columns:1fr}
 }
 #tab-separar pre{background:var(--sidebar);color:#cbd5e1;border-radius:var(--radius);padding:12px;font-family:Consolas,monospace;font-size:12px;max-height:260px;overflow:auto;margin-top:18px;white-space:pre-wrap}
 
@@ -912,11 +1013,20 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 @media (max-width:768px){
   /* alvo de toque de 44px no celular */
   .btn{min-height:44px}
+  /* ≤768px: rail por DECISÃO DE LAYOUT, não do usuário. Estas regras são o
+     FALLBACK PRÉ-JS — o script do fim do body seta data-rail="on" antes do
+     primeiro paint, mas uma folha com display:none em #content deixaria 240px
+     de sidebar pintados até lá, então o layout do celular não pode depender
+     de JS. Por isso as declarações reaparecem aqui.
+     Elas NÃO podem divergir do bloco de geometria acima: o gate 14.1 compara
+     as duas listas propriedade a propriedade. Se alguém mexer em uma e não na
+     outra, a regressão quebra. */
+  #btn-rail{display:none}
   #sidebar{width:64px;min-width:64px}
-  #logo{padding:16px 4px 12px}
-  #logo h1{font-size:11px;line-height:1.25;overflow-wrap:anywhere}
+  #logo{padding:16px 4px 12px;max-width:64px;overflow:hidden}
+  #logo h1{font-size:12px;line-height:1.25;letter-spacing:0;white-space:nowrap;max-width:56px;overflow:hidden}
   #logo p,.nav-section{display:none}
-  .nav-btn{justify-content:center;padding:11px 0;gap:0;min-height:44px}
+  .nav-btn{justify-content:center;padding:12px 0;gap:0;min-height:44px}
   .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .nav-btn .icon{width:auto}
   .nav-btn .icon svg.i{width:20px;height:20px}
@@ -951,28 +1061,34 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 </style>
 </head>
 <body>
-<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
+<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-panel-close" viewBox="0 0 24 24"><path d="M15 3l-6 9 6 9M9 3l-6 9 6 9"/></symbol><symbol id="i-panel-open" viewBox="0 0 24 24"><path d="M9 3l6 9-6 9M15 3l6 9-6 9"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
 
 
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
 
 <nav id="sidebar">
-  <div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
+  <!-- title no logo: na barra recolhida o h1 mostra só a sigla (o nome inteiro
+     não cabe em 56px e quebrava), e o title é quem devolve o nome completo. -->
+<div id="logo" title="GCON/SIAN — NF-e | NFS-e"><h1><b class="lbl-cheio">GCON/</b><span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
+  <button id="btn-rail" type="button" aria-expanded="true" aria-controls="sidebar" title="Recolher menu"><svg class="i" aria-hidden="true"><use href="#i-panel-close"></use></svg></button>
   <div class="nav-section">IMPORTAR</div>
-  <button class="nav-btn active" data-tab="importar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg></span><span>Importar XMLs</span></button>
+  <button class="nav-btn active" data-tab="importar" title="Importar XMLs"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg></span><span>Importar XMLs</span></button>
   <div class="nav-section">FERRAMENTAS</div>
-  <button class="nav-btn" data-tab="separar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-split"></use></svg></span><span>Separar PDF</span></button>
-  <button class="nav-btn" data-tab="pdfleitura"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"></use></svg></span><span>Leitura PDF</span></button>
-  <button class="nav-btn" data-tab="cnpj"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-building"></use></svg></span><span>Consultar CNPJ</span></button>
+  <button class="nav-btn" data-tab="separar" title="Separar PDF"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-split"></use></svg></span><span>Separar PDF</span></button>
+  <button class="nav-btn" data-tab="pdfleitura" title="Leitura PDF"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"></use></svg></span><span>Leitura PDF</span></button>
+  <button class="nav-btn" data-tab="cnpj" title="Consultar CNPJ"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-building"></use></svg></span><span>Consultar CNPJ</span></button>
   <div class="nav-section">VISUALIZAR</div>
-  <button class="nav-btn" data-tab="nfe"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg></span><span>NF-e (Peças)</span></button>
-  <button class="nav-btn" data-tab="nfse"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg></span><span>NFS-e (Serviços)</span></button>
-  <button class="nav-btn" data-tab="dashboard"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg></span><span>Dashboard</span></button>
+  <button class="nav-btn" data-tab="nfe" title="NF-e (Peças)"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg></span><span>NF-e (Peças)</span></button>
+  <button class="nav-btn" data-tab="nfse" title="NFS-e (Serviços)"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg></span><span>NFS-e (Serviços)</span></button>
+  <button class="nav-btn" data-tab="dashboard" title="Dashboard"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg></span><span>Dashboard</span></button>
   <div class="nav-section">EXPORTAR</div>
-  <button class="nav-btn" data-tab="exportar"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg></span><span>Exportar Dados</span></button>
+  <button class="nav-btn" data-tab="exportar" title="Exportar Dados"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg></span><span>Exportar Dados</span></button>
   <div class="spacer"></div>
-  <button id="btn-fechar"><span>×</span> FECHAR SISTEMA</button>
+  <button id="btn-fechar" title="Fechar o sistema"><span>×</span> FECHAR SISTEMA</button>
 </nav>
+<!-- Confirmação falada do toggle: sem live region no DOM antes da primeira
+     escrita, um leitor de tela não anuncia nada quando o rail expande. -->
+<p id="rail-status" role="status" aria-live="polite" class="visually-hidden"></p>
 
 <div id="main">
   <div id="topbar"><div id="crumb"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg><span class="c-brand">GCON·SIAN</span><span class="c-sep">/</span><span class="c-cur" id="crumb-cur">Importar XMLs</span></div><div class="tools"><span class="hora" id="hora"></span><button id="theme-btn" class="icon-btn" type="button" aria-label="Tema escuro" aria-pressed="false" title="Alternar tema"><svg class="i sun" aria-hidden="true"><use href="#i-sun"></use></svg><svg class="i moon" aria-hidden="true"><use href="#i-moon"></use></svg></button></div></div>
@@ -1084,8 +1200,30 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
         .pdfiso-kpi .kpi-card .value{font-size:22px;letter-spacing:-.5px}
         #tab-pdfleitura .table-wrap{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
         #tab-pdfleitura .table-wrap table th{position:sticky;top:0;z-index:1}
-        #tab-pdfleitura .table-wrap tbody tr:hover td{background:var(--row-hover)}
-      </style>
+#tab-pdfleitura .table-wrap tbody tr:hover td{background:var(--row-hover)}
+/* A barra de busca e o filtro de confiança só existem depois do primeiro PDF.
+   Antes disso aparecia uma linha com campo de texto e seletor soltos embaixo
+   da área de drop, filtrando uma lista vazia — a forma mais visível de
+   "conteúdo jogado no meio" que a tela tinha. Aparece junto com os KPIs, na
+   mesma função, para os dois nunca discordarem sobre o que existe. */
+.pdfiso-filtros{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pdfiso-filtros[hidden]{display:none}
+/* Sem nenhum PDF lido, a área de drop ficava presa no topo com ~700px de
+   vazio embaixo — a sensação de "conteúdo jogado". Ela sobe para o meio da
+   tela enquanto não há resultado, e volta para o topo no primeiro PDF (o
+   gatilho é o mesmo #pdfiso-filtros[hidden], então os dois nunca discordam).
+   Só no desktop: no celular a coluna já preenche a altura e centralizar
+   empurraria o drop para fora da dobra. */
+@media (min-width:769px){
+  /* O 132 é a altura que sobra antes de a área de drop sair da dobra: barra de
+     acento (3) + topbar (48) + padding do #content em cima e embaixo (24×2) +
+     uma folga de 32. Medido no smoke (o drop centrado tem que ficar acima de
+     25% da altura da janela). Se o #status-bar voltar a aparecer sempre, este
+     número é o primeiro a revisar. */
+  #tab-pdfleitura.active:has(#pdfiso-filtros[hidden]){display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 132px);min-height:calc(100dvh - 132px)}
+  #tab-pdfleitura.active:has(#pdfiso-filtros[hidden])>div{width:100%;max-width:900px}
+}
+</style>
       <div style="width:100%">
         <div id="pdfiso-upload" role="button" tabindex="0" aria-describedby="pdfiso-upload-hint">
           <div class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"></use></svg></div>
@@ -1106,7 +1244,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <div class="kpi-card"><div class="bar" style="background:var(--primary)"></div><div class="body"><div class="label">Valor total</div><div class="value" id="pdfiso-k-valor" style="font-size:18px">R$ 0,00</div><div class="sub" style="font-size:10px;color:var(--text3)">soma PDFs</div></div></div>
           <div class="kpi-card"><div class="bar" style="background:var(--accent)"></div><div class="body"><div class="label">Conf. média</div><div class="value" id="pdfiso-k-conf" style="font-size:18px">—</div><div class="sub" style="font-size:10px;color:var(--text3)">média geral</div></div></div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="pdfiso-filtros" id="pdfiso-filtros" hidden>
           <input type="text" id="pdfiso-busca" placeholder="Filtrar por arquivo, CNPJ, número ou chave..." style="flex:1;min-width:220px;padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit">
           <select id="pdfiso-filtro-conf" style="padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card)"><option value="">Todas confianças</option><option value="70">Alta ≥70%</option><option value="45">Média 45-69%</option><option value="0">Baixa &lt;45%</option></select>
         </div>
@@ -1132,9 +1270,10 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
             <span style="font-size:10px;color:var(--text3)">Enter para consultar • cache local automático</span>
           </div>
           <div id="cnpj-status" role="status" aria-live="polite" style="margin-top:6px;font-size:12px;font-weight:600;color:var(--text3)"></div>
-          <div id="cnpj-privacidade" role="note" style="margin-top:10px;padding:10px 12px;background:var(--tint);border:1px solid var(--border);border-left:3px solid var(--info);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.5">
-            <strong style="color:var(--primary-ink)">Privacidade:</strong> todo o processamento acontece <strong>no seu navegador</strong>. Os resultados de CNPJ ficam salvos apenas no <code>localStorage</code> deste navegador, com validade de 30 dias, e <strong>não são enviados a nenhum servidor</strong> por este sistema. A única requisição externa é a consulta ao <code>publica.cnpj.ws</code>. Nada sai do seu computador além do CNPJ digitado. Você pode apagar tudo a qualquer momento com o botão "Limpar cache".
-          </div>
+          <details id="cnpj-privacidade" class="privacidade">
+            <summary><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg> Privacidade: os dados ficam só neste navegador</summary>
+            <p>Todo o processamento acontece <strong>no seu navegador</strong>. Os resultados de CNPJ ficam salvos apenas no <code>localStorage</code> deste navegador, com validade de 30 dias, e <strong>não são enviados a nenhum servidor</strong> por este sistema. A única requisição externa é a consulta ao <code>publica.cnpj.ws</code>. Nada sai do seu computador além do CNPJ digitado. Você pode apagar tudo a qualquer momento com o botão "Limpar cache".</p>
+          </details>
         </div>
         <div id="cnpj-result" style="display:none"></div>
         <pre id="cnpj-raw" class="code" style="display:none;max-height:300px;margin-top:12px"></pre>
@@ -1150,7 +1289,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           </div>
           <div id="cnpj-cache-aviso" role="status" aria-live="polite" style="display:none;margin-top:10px;padding:9px 12px;background:var(--warn-bg);border:1px solid var(--warn-line,var(--border));border-left:3px solid var(--warn-ink);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.5"></div>
           <div id="cnpj-lote-bar" style="height:6px;background:var(--border-light);border-radius:var(--radius-sm);margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
-          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap"><span id="cnpj-lote-info">—</span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
+          <div class="lote-rodape"><span id="cnpj-lote-info"></span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
           <div id="cnpj-lote-log" class="code" style="margin-top:10px;font-size:10px;max-height:160px;display:none"></div>
           <div id="cnpj-lote-table" style="margin-top:12px"></div>
         </div>
@@ -1520,10 +1659,25 @@ async function handleFiles(files){
 }
 
 function updateStatus(){
-  document.getElementById('s-nfe').textContent=DB.nfe.length;
-  document.getElementById('s-nfse').textContent=DB.nfse.length;
-  document.getElementById('s-arqs').textContent=DB.arquivos;
+  /* A faixa é um inventário da sessão, não um placar: três contadores zerados
+     empurram o conteúdo real para baixo e não informam nada — "0 produtos"
+     antes de importar é o estado esperado de qualquer tela. Cada contador só
+     aparece quando tem valor, e some de novo quando volta a zero. */
+  const conta=(id,n)=>{
+    const el=document.getElementById(id);
+    el.textContent=n;
+    el.parentElement.hidden=!(n>0);
+  };
+  conta('s-nfe',DB.nfe.length);
+  conta('s-nfse',DB.nfse.length);
+  conta('s-arqs',DB.arquivos);
   document.getElementById('s-sessao').textContent=`Sessão: ${DB.sessaoId}`;
+  /* Sem nenhuma contagem, a barra inteira sai — inclusive o id da sessão, que
+     fica dentro dela (mexer no id com barra vazia exigiria tirá-lo dali, e ele
+     é tão dependente do layout quanto os contadores). Menos ruído numa tela
+     vazia; o id volta no primeiro arquivo e é o que nomeia o export. */
+  const barra=document.getElementById('status-bar');
+  if(barra)barra.hidden=!(DB.nfe.length+DB.nfse.length+DB.arquivos>0);
 }
 
 function populateFilters(){
@@ -1867,6 +2021,15 @@ function renderDashboard(){
   const vN=nfse.reduce((s,n)=>s+f(n.Valor_Bruto),0),vF=nfe.reduce((s,p)=>s+f(p.vProd),0);
   const ti=nfse.reduce((s,n)=>s+f(n.Valor_ISS),0);
   const qp=[...new Set(nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].length;
+  if(!qt){
+    /* Sem documento nenhum, os três KPIs são zeros e os seis gráficos são
+       molduras vazias: 20% de tela ocupada por nada. Some com os dois e deixa
+       um estado vazio que diz o que fazer — como já fazem as abas NF-e e
+       NFS-e, com a mesma frase. */
+    kpis.innerHTML='';
+    charts.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>Nenhum documento para exibir. Importe XMLs.</p></div>';
+    return;
+  }
   kpis.innerHTML=`
     <div class="kpi-card"><div class="bar" style="background:var(--primary)"></div><div class="body">
       <div class="label">Total Documentos</div><div class="value">${qt}</div><div class="sub">NFS-e: ${qN} | NF-e: ${qF}</div></div></div>
@@ -1875,7 +2038,6 @@ function renderDashboard(){
     <div class="kpi-card"><div class="bar" style="background:var(--info)"></div><div class="body">
       <div class="label">Valor Produtos</div><div class="value">${moeda(vF)}</div><div class="sub">Prestadores: ${qp}</div></div></div>
   `;
-  if(!qt){charts.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>Sem dados para exibir.</p></div>';return;}
   charts.innerHTML=`
     <div class="dash-card"><h4>Documentos por Tipo</h4><div class="chart-wrap"><canvas id="c1"></canvas></div></div>
     <div class="dash-card"><h4>ISS — Retenção</h4><div class="chart-wrap"><canvas id="c2"></canvas></div></div>
@@ -1964,6 +2126,93 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
   });
 });
 document.getElementById('btn-fechar').addEventListener('click',()=>{if(confirm('Fechar sistema?'))window.close();});
+/* ── SIDEBAR: recolher / expandir ──────────────────────────────────────────
+   Um estado só (o atributo #sidebar[data-rail="on"]) e uma geometria só (o bloco
+   CSS que esse atributo compartilha com a media query de ≤768px). A chave é
+   versionada e guarda só "rail" ou "full" — nenhum dado fiscal.
+
+   DIFERENÇA EM RELAÇÃO AO TEMA, e é proposital: o tema é aplicado por um script
+   no <head>, que roda antes do <body> existir, então não há como ver o tema
+   errado. Aqui o script fica no fim do body (é onde a IIFE precisa do botão e
+   do <use>), então quem salva "rail" no desktop vê 240px por um instante antes
+   de virar 64px. Aceito: é um quadro, some sozinho, e a alternativa — repetir a
+   IIFE no <head> sem botão para atualizar — trocaria um flash cosmético por duas
+   fontes de estado. No celular não existe flash: a media query já força 64px
+   desde o primeiro paint, e é por isso que ela carrega uma cópia das regras. */
+(function(){
+  const CHAVE='gcon-sidebar-v1';
+  const RAIL='rail',FULL='full';   /* os dois únicos valores que a chave aceita */
+  const sb=document.getElementById('sidebar');
+  const btn=document.getElementById('btn-rail');
+  const status=document.getElementById('rail-status');
+  const icone=btn.querySelector('use');
+  /* Dois MediaQueryList vivos para a mesma consulta (ehCelular e mq, abaixo) —
+     parece duplicata e não é: o primeiro aplicar() roda no boot, antes de mq
+     existir, então reusar mq ali cairia em TDZ. ehCelular() é a versão "só a
+     resposta", para usar em qualquer lugar; mq é a que também escuta mudança. */
+  const ehCelular=()=>window.matchMedia('(max-width:768px)').matches;
+  /* status é #rail-status, que está no HTML estático logo acima da <nav> —
+     o guard if(status) é só para o sandbox de teste não explodir. */
+  const falar=(t)=>{if(status)status.textContent=t;};
+  let guardado=FULL;
+  /* O storage é a fonte da verdade da preferência, não a variável em memória:
+     com duas abas abertas, a que ainda tem 'rail' em memória voltaria ao rail
+     numa mudança de largura e ignoraria o que a outra aba escolheu. O catch
+     devolve a última preferência boa — já normalizada, porque só guardamos
+     RAIL ou FULL. */
+  const ler=()=>{try{const v=localStorage.getItem(CHAVE);return v===RAIL?RAIL:FULL;}catch(e){return guardado;}};
+  const guardar=(v)=>{
+    guardado=v;
+    try{localStorage.setItem(CHAVE,v);}catch(e){}
+  };
+  const aplicar=(rail,anunciar)=>{
+    const on=!!rail;
+    sb.setAttribute('data-rail',on?'on':'off');
+    btn.setAttribute('aria-expanded',on?'false':'true');
+    const txt=on?'Expandir menu':'Recolher menu';
+    btn.setAttribute('aria-label',txt);btn.setAttribute('title',txt);
+    if(icone)icone.setAttribute('href',on?'#i-panel-open':'#i-panel-close');
+    if(anunciar)falar(on?'Menu expandido':'Menu recolhido');
+  };
+  guardado=ler();
+  /* Estado inicial: no celular o rail é obrigatório, então o atributo nasce
+     ligado e o estado do usuário só é consultado acima de 768px. */
+  aplicar(ehCelular()||guardado===RAIL,false);
+  /* Trocar a largura da janela entre rail e full: em ≤768px o rail manda; ao
+     voltar para desktop, o que o usuário escolheu volta a valer. */
+  const mq=window.matchMedia('(max-width:768px)');
+  const aoMudar=()=>{guardado=ler();aplicar(mq.matches||guardado===RAIL,false);};
+  if(mq.addEventListener)mq.addEventListener('change',aoMudar);
+  else if(mq.addListener)mq.addListener(aoMudar); /* Safari antigo */
+  /* Outra aba mexeu na preferência: acompanha sem recarregar. Sem anúncio,
+     porque não foi uma ação desta aba. */
+  window.addEventListener('storage',(e)=>{
+    if(e.key!==CHAVE)return;
+    guardado=ler();
+    if(!ehCelular())aplicar(guardado===RAIL,false);
+  });
+  btn.addEventListener('click',()=>{
+    const on=sb.getAttribute('data-rail')==='on';
+    guardar(on?FULL:RAIL);
+    aplicar(!on,true);
+  });
+  /* Esc expande o rail recolhido. Não rouba a tecla quando o foco está num campo
+     de texto: quem escreve não deve ver o menu abrir no meio do serviço.
+     O guard do celular não é redundante com o de cima: em ≤768px o atributo
+     está 'on' por LAYOUT, não por escolha. Sem este return, o Esc gravava
+     "full" por conta própria, apagando a preferência de desktop — que ainda
+     valeria quando a janela crescesse de volta — e anunciava "Menu expandido"
+     sem ter expandido nada, porque a media query manteria os 64px. */
+  document.addEventListener('keydown',(e)=>{
+    if(e.key!=='Escape')return;
+    if(ehCelular())return;
+    if(sb.getAttribute('data-rail')!=='on')return;
+    const t=e.target;
+    const digitando=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+    if(digitando)return;
+    guardar(FULL);aplicar(false,true);
+  });
+})();
 
 // ═══ UPLOAD SETUP ═══
 const fileInput=document.createElement('input');
@@ -2412,8 +2661,12 @@ const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
   function pfiltro(){return{txt:(document.getElementById('pdfiso-busca')?.value||'').toLowerCase(),conf:document.getElementById('pdfiso-filtro-conf')?.value||''};}
   function isoRender(){
     const kpis=document.getElementById('pdfiso-kpis');
-    if(!DBpdf.length){resEl.innerHTML='';kpis.style.display='none';return;}
+    /* KPIs e a barra de filtro têm a mesma existência: um filtra o outro
+       mostra. Decididos no mesmo lugar para nunca discordarem. */
+    const filtros=document.getElementById('pdfiso-filtros');
+    if(!DBpdf.length){resEl.innerHTML='';kpis.style.display='none';filtros.hidden=true;return;}
     kpis.style.display='grid';
+    filtros.hidden=false;
     const fTxt=pfiltro();
     let lista=DBpdf;
     if(fTxt.txt) lista=lista.filter(r=>[r.arquivo,r.numero,r.cnpjPrestador,r.cnpjTomador,r.chave].join(' ').toLowerCase().includes(fTxt.txt));
@@ -2464,9 +2717,12 @@ const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
    mudança conserta era exatamente emitente trocado por tomador. Então o verde
    passa a exigir um segundo sinal: o nome colado no mesmo CNPJ. Sem ele o estado
    é "não confirmado" e aparece em warn, com a contagem no banner. */
-const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" title="CNPJ encontrado mas com dígito verificador inválido - confira no debug">✗ CNPJ+Nº · DV ✗</span>`:(emitenteConfirmado(r)?`<span class="pdfiso-badge ok" title="CNPJ e número garantidos${r.cnpjFonte?' · CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' · nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`:`<span class="pdfiso-badge warn" title="CNPJ com DV válido e número localizados, mas o emitente NÃO foi confirmado: o nome do emitente não pôde ser lido sem ambiguidade neste PDF, então o CNPJ veio do texto e não da chave">~ CNPJ+Nº · emissor não confirmado</span>`));
+/* data-para separa a garantia (chave/DV/emitente) da confiança (percentual do
+   OCR). Sem ele, quem medisse pegava o primeiro badge da linha — a confiança —
+   e conferia a asserção de garantia com um "99%", medindo a coisa errada. */
+const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" data-para="garantia" title="CNPJ encontrado mas com dígito verificador inválido - confira no debug">✗ CNPJ+Nº · DV ✗</span>`:(emitenteConfirmado(r)?`<span class="pdfiso-badge ok" data-para="garantia" title="CNPJ e número garantidos${r.cnpjFonte?' · CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' · nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`:`<span class="pdfiso-badge warn" data-para="garantia" title="CNPJ com DV válido e número localizados, mas o emitente NÃO foi confirmado: o nome do emitente não pôde ser lido sem ambiguidade neste PDF, então o CNPJ veio do texto e não da chave">~ CNPJ+Nº · emissor não confirmado</span>`));
       return `<tr>
-        <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" style="margin-left:4px">${r.confMedio}%</span></td>
+        <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" data-para="confianca" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>
         <td style="font-family:monospace;font-size:11px">${celVazia(r.serie)}</td>
         <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
@@ -2758,6 +3014,11 @@ const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'
   try{expurgarCacheLegado();}catch(x){}
   (() => {
     const fileIn=document.getElementById('cnpj-lote-file'), start=document.getElementById('cnpj-lote-start'), stop=document.getElementById('cnpj-lote-stop'), exp=document.getElementById('cnpj-lote-export'), modelo=document.getElementById('cnpj-lote-modelo'), bar=document.getElementById('cnpj-lote-bar'), barIn=document.getElementById('cnpj-lote-bar-inner'), info=document.getElementById('cnpj-lote-info'), eta=document.getElementById('cnpj-lote-eta'), logEl=document.getElementById('cnpj-lote-log'), tbl=document.getElementById('cnpj-lote-table'), av=document.getElementById('cnpj-cache-aviso');
+/* O rodapé do lote (contador + ETA) só existe quando há algo a contar. Antes ele
+   nascia com um "—" e ocupava uma linha inteira de espaço morto embaixo do
+   seletor de arquivo, com a tela ainda em branco. Toda escrita passa por aqui
+   e o rodapé some junto com o texto. */
+const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
     let lista=[], resultados=[], timer=null, idx=0, abort=false, rodando=false, naoGravados=0, ger=0;
     /* Paleta do log medida contra --code-bg (não a da superfície clara) — ver
        os tokens --log-* no :root. */
@@ -2889,7 +3150,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'
       exp.disabled=true; tbl.innerHTML=''; logEl.textContent=''; logEl.style.display='block';
       try{
         if(!f.name.toLowerCase().endsWith('.csv')&&!window.XLSX){
-          info.textContent='Biblioteca de planilhas indisponível (CDN fora)';
+          infoSet('Biblioteca de planilhas indisponível (CDN fora)');
           eta.textContent='';
           loteLog('✗ Sem a biblioteca de planilhas (CDN fora) não dá para ler .xlsx. Exporte a planilha como CSV e importe de novo.',TOM.erro);
           return;
@@ -2911,7 +3172,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'
         }
         const cnpjs=[...achados];
         lista=cnpjs; abort=false;
-        info.textContent=cnpjs.length?`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`:'Nenhum CNPJ válido encontrado';
+        infoSet(cnpjs.length?`${cnpjs.length} CNPJ(s) carregados — ${Math.ceil(cnpjs.length/3)} min estimados (3/min)`:'Nenhum CNPJ válido encontrado');
         eta.textContent=cnpjs.length?`ETA ~${Math.ceil(cnpjs.length/3)} min`:'';
         if(cnpjs.length)loteLog(`${cnpjs.length} CNPJ(s) com DV válido — pronto para iniciar`,TOM.aviso);
         else loteLog('Nenhum CNPJ com digito verificador válido foi encontrado. Confira a coluna CNPJ do modelo.',TOM.erro);
@@ -2928,7 +3189,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'
     function avanca(){
       idx++;
       barIn.style.width=Math.round(idx/lista.length*100)+'%';
-      info.textContent=`${idx}/${lista.length}`;
+        infoSet(`${idx}/${lista.length}`);
       const rem=lista.length-idx;
       eta.textContent=rem?`faltam ~${Math.ceil(rem/3)} min`:'';
       renderLote();
@@ -2946,7 +3207,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" title="${esc(r.garantia||'
         bar.style.display='none';
         barIn.style.width='100%';
         const ok=resultados.filter(r=>r.ok).length;
-        info.textContent=`Concluído — ${ok}/${lista.length} OK`;
+        infoSet(`Concluído — ${ok}/${lista.length} OK`);
         eta.textContent=''; exp.disabled=resultados.length===0;
         loteLog(`Lote concluído — ${ok} de ${lista.length} consultado(s)`,TOM.ok);
         if(naoGravados)loteLog(`${naoGravados} resultado(s) não foram salvos no cache: armazenamento do navegador cheio.`,TOM.aviso);

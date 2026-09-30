@@ -123,13 +123,20 @@ ok('renderDashboard tem guard de Chart', /typeof Chart==='undefined'/.test(html)
 grupo('4 · SPRITE DE ÍCONES');
 // ══════════════════════════════════════════════════════════════
 const simbolos = new Set([...html.matchAll(/<symbol id="([^"]+)"/g)].map(m => m[1]));
+/* Uso literal no HTML + uso dinâmico por JS (o toggle da sidebar troca o `href`
+   com setAttribute conforme o estado, então o par de ícones não aparece em
+   nenhum markup estático — sem esta segunda fonte, o gate acusaria órfão). */
 const usos = new Set([...html.matchAll(/<use href="#([^"]+)"/g)].map(m => m[1]));
-ok('sprite tem 20 símbolos', simbolos.size === 20, 'achou ' + simbolos.size);
+for (const m of html.matchAll(/['"]#(i-[a-z-]+)['"]/g)) usos.add(m[1]);
+ok('sprite tem 22 símbolos', simbolos.size === 22, 'achou ' + simbolos.size);
 ok('todo use aponta para um símbolo existente', [...usos].every(u => simbolos.has(u)),
   [...usos].filter(u => !simbolos.has(u)).join(','));
 ok('nenhum símbolo órfão (definido e nunca usado)', [...simbolos].every(s => usos.has(s)),
   [...simbolos].filter(s => !usos.has(s)).join(','));
 ok('ícones de ação usam o sprite, não glifo', !/<span class="toggle">(?!<svg)/.test(html));
+ok('o toggle da sidebar tem os DOIS glifos do sprite e troca por JS',
+  simbolos.has('i-panel-open') && simbolos.has('i-panel-close') &&
+  /setAttribute\('href',\s*on\s*\?\s*'#i-panel-open'\s*:\s*'#i-panel-close'\)/.test(html));
 
 // ══════════════════════════════════════════════════════════════
 grupo('5 · IDs E LABELS');
@@ -955,10 +962,70 @@ await (async () => {
           !/nenhum servidor|não são enviados a nenhum servidor/i.test(t), t);
       });
     }
-    /* O aviso da tela (#cnpj-privacidade) e o do arquivo precisam concordar. */
-    const tela = /id="cnpj-privacidade"[\s\S]*?<\/div>/.exec(html);
+    /* O aviso da tela (#cnpj-privacidade) e o do arquivo precisam concordar.
+       O bloco é um <details> desde a rodada de design, então o fechamento
+       pode ser </details> e não só </div>. */
+    const tela = /id="cnpj-privacidade"[\s\S]*?<\/(?:div|details)>/.exec(html);
     ok('o aviso da tela também cita publica.cnpj.ws e o CNPJ digitado',
       !!tela && /publica\.cnpj\.ws/.test(tela[0]) && /CNPJ digitado/.test(tela[0]));
+    ok('o sumário do avisocollapsed já diz que os dados ficam no navegador (LGPD sem abrir)',
+      /<summary>[\s\S]{0,200}?os dados ficam só neste navegador<\/summary>/.test(html));
+  ok('o sumário do aviso tem 44px de alvo e foco próprio',
+    /\.privacidade>summary\{[^}]*min-height:\s*44px/.test(html)
+    && /\.privacidade>summary:focus-visible\{/.test(html));
+  /* ── O bug do `hidden` silencioso ────────────────────────────────────────
+     display:flex do autor vence o display:none da folha do navegador, então
+     `el.hidden = true` não esconde nada em elemento com display explícito. Foi
+     o que aconteceu com a faixa de estatísticas e com os contadores: o
+     atributo era escrito, o texto sumia, a caixa continuava na tela com
+     "0 produtos NF-e". O gate exige o par [hidden]{display:none} para todo
+     seletor que o JS apaga por atributo. */
+  const somePorAtributo = [...new Set([...html.matchAll(/([.#][\w-]+)\[hidden\]\{display:none\}/g)].map((m) => m[1]))];
+  ok('todo bloco que o JS esconde por atributo tem o par [hidden]{display:none}',
+    somePorAtributo.length >= 4, 'pares: ' + somePorAtributo.join(', '));
+  ok('a faixa de estatísticas some inteira quando não há contagem',
+    /#status-bar\[hidden\]\{display:none\}/.test(html)
+    && /barra\.hidden=!\(DB\.nfe\.length\+DB\.nfse\.length\+DB\.arquivos>0\)/.test(html));
+  ok('cada contador some quando volta a zero (a faixa não fica com "0 produtos")',
+    /el\.parentElement\.hidden=!\(n>0\)/.test(html) && /#status-bar \.stat\[hidden\]\{display:none\}/.test(html));
+  ok('a barra de filtro do leitor de PDF só existe depois do primeiro PDF',
+    /id="pdfiso-filtros" hidden/.test(html) && /filtros\.hidden=false;/.test(html)
+    && /filtros\.hidden=true;return;/.test(html) && /\.pdfiso-filtros\[hidden\]\{display:none\}/.test(html));
+  /* KPIs e a barra de filtro têm a mesma existência, e essa é a razão do gate:
+     tirar um dos dois do mesmo ramo faria a tela discordar de si mesma (filtro
+     sobre lista vazia, ou KPIs sem lista). As duas escritas precisam ficar
+     presas ao mesmo `if`, não basta cada uma existir no arquivo. */
+  ok('KPIs e barra de filtro somem juntos, no mesmo ramo (nunca discordam)',
+    /if\(!DBpdf\.length\)\{resEl\.innerHTML='';kpis\.style\.display='none';filtros\.hidden=true;return;\}\s*kpis\.style\.display='grid';\s*filtros\.hidden=false;/.test(html));
+  /* O :has() é o que centraliza a drop area no estado vazio. O que importa não
+     é a regra existir: é ela estar dentro de min-width:769px. Fora da media
+     query, a centralização valeria no celular e jogaria a área de drop para
+     fora da dobra. */
+  /* Atenção: o index.html tem VÁRIOS <style> — o doLeitor de PDF é um bloco
+     próprio, dentro da aba, e fica DEPOIS do primeiro </style>. Por isso o
+     gate do :has() olha `html` inteiro, e não `css` (que é só o primeiro
+     bloco). Errar esse corte faz o gate passar sem ver nada: foi o que
+     aconteceu na primeira versão deste caso. */
+  const blocoHas = /@media \(min-width:769px\)\{([\s\S]*?)\n\s*\}/.exec(html);
+  const cssAqui = html;
+  ok('a centralização da drop area está dentro de min-width:769px (nunca no celular)',
+    !!blocoHas && /#tab-pdfleitura\.active:has\(#pdfiso-filtros\[hidden\]\)\{[^}]*display:flex/.test(blocoHas[1])
+    && /#tab-pdfleitura\.active:has\(#pdfiso-filtros\[hidden\]\)>div\{[^}]*max-width:900px/.test(blocoHas[1]),
+    blocoHas ? blocoHas[1].slice(0, 90) : 'media query nao achada');
+  /* Fronteira: o JS corta em 768 e o CSS de celular também em 768, então
+     desktop e celular não dividem faixa nenhuma. Se um lado virar 800 e o outro
+     ficar em 768, nasce uma faixa em que o JS acha que é desktop e o CSS
+     trata como celular. */
+  ok('a fronteira do JS e a do CSS de celular são a mesma (768, sem faixa morta)',
+    /matchMedia\('\(max-width:768px\)'\)/.test(html) && /@media \(max-width:768px\)\{/.test(cssAqui)
+    && !/@media \(max-width:800px\)|@media \(min-width:769px\)[\s\S]{0,400}#sidebar/.test(cssAqui));
+  ok('o rodapé do lote de CNPJ não nasce com um travessão solto',
+    /<span id="cnpj-lote-info"><\/span>/.test(html)
+    && /const infoSet=\(t\)=>\{info\.textContent=t;info\.parentElement\.hidden=!t;\};/.test(html)
+    && /\.lote-rodape\[hidden\]\{display:none\}/.test(html));
+  ok('o dashboard não mostra 3 KPIs zerados nem 6 gráficos vazios sem documento',
+    /if\(!qt\)\{[\s\S]{0,400}?kpis\.innerHTML='';[\s\S]{0,300}?Nenhum documento para exibir\. Importe XMLs\.[\s\S]{0,120}?return;/.test(html)
+    && !/kpis\.innerHTML=`[\s\S]{0,80}?Total Documentos[\s\S]{0,2000}?if\(!qt\)/.test(html));
   }
 })();
 
@@ -1106,8 +1173,16 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   /* Só as regras que a rodada tocou: .btn e .campo mantêm espaçamento antigo
      (18px no padding, 6px no gap, 14px no margin-bottom) que já é o padrão do
      arquivo inteiro — mudá-las seria troca de aperto visual fora do escopo. */
+  /* A lista precisa ser atualizada a cada rodada que escreve CSS novo, senão o
+     gate envelhece calado: a mensagem diz "código novo" e a lista só cobre a
+     rodada anterior. Os dois lados (atributo e media query) entram juntos, e a
+     paridade do rail garante que corrigir um corrige o outro. */
   const novosComEspaco = ['#tab-separar .grade', '#tab-separar .acoes-sep', '#tab-separar .radio-group',
-    '#tab-separar .radio-group label', '#cnpj-lote-log'];
+    '#tab-separar .radio-group label', '#cnpj-lote-log',
+    /* rodada da sidebar e das telas vazias */
+    '.privacidade', '.privacidade>summary', '.privacidade>p', '#btn-rail', '.lote-rodape',
+    '.pdfiso-filtros', '#sidebar[data-rail="on"] .nav-btn', '#sidebar[data-rail="on"] #btn-rail',
+    '#tab-separar .acoes-sep>.btn'];
   const furos = novosComEspaco.flatMap((s) => {
     const corpo = escala4(s);
     return [...corpo.matchAll(/(?:margin|gap|padding)[a-z-]*\s*:\s*([^;]+)/g)]
@@ -1122,6 +1197,14 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
     /#tab-separar \.grade\{[^}]*gap:\s*0 16px/.test(html));
   ok('o gap das ações do separador é 12px e a margem 8px',
     /#tab-separar \.acoes-sep\{[^}]*gap:\s*12px;[^}]*margin-top:\s*8px/.test(html));
+  /* A grade 1fr 1fr reservava a metade direita para o botão "Salvar arquivos",
+     que só existe depois da divisão: botão principal em meia largura e metade
+     morta. Em flex, um só item ocupa a linha e os dois se dividem quando o
+     segundo aparece. */
+  ok('a linha de ação do separador é flex, não grade com coluna reservada',
+    /#tab-separar \.acoes-sep\{display:flex;flex-wrap:wrap;/.test(html)
+    && /#tab-separar \.acoes-sep>\.btn\{flex:1 1 260px\}/.test(html)
+    && !/#tab-separar \.acoes-sep\{[^}]*grid-template-columns/.test(html));
   ok('o gap do grupo de radios é 24px (não 18) e a margem 8px (não 6)',
     /#tab-separar \.radio-group\{[^}]*gap:\s*24px;[^}]*margin-top:\s*8px/.test(html));
   /* Nenhum rgba escrito à mão em style="" (fora dos tokens). */
@@ -1165,6 +1248,424 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
     && (html.match(/exportAviso\('Nada para exportar/g) || []).length === 2);
   ok('a faixa de status some sozinha (não fica sempre na tela)',
     /exportAvisoTimer=setTimeout\([\s\S]{0,120}?b\.style\.display='none'/.test(html));
+}
+
+// ══════════════════════════════════════════════════════════════
+grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
+// ══════════════════════════════════════════════════════════════
+{
+  /* ── Geometria ──────────────────────────────────────────────────────────
+     A regra de ouro: as regras do rail existem em UM lugar só, o seletor
+     #sidebar[data-rail="on"], e a media query de ≤768px liga o MESMO atributo.
+     Antes eram duas cópias e já divergiram: o min-height:44px entrou só na
+     media query, então um rail ligado por atributo nasceria com 42px. */
+  const css = html.slice(0, html.indexOf('</style>'));
+  const corpo = (sel, texto) => {
+    const r = new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}', 'g');
+    return [...texto.matchAll(r)].map((m) => m[1]);
+  };
+  const mqRail = /@media \(max-width:768px\)\{([\s\S]*?)\n\}/.exec(css);
+  /* As regras de rail existem em DOIS lugares, por escolha: o atributo
+     (escolha do usuário, desktop) e a media query (fallback pré-JS do celular —
+     o script do fim do body seta o atributo, mas o layout do celular não pode
+     depender de JS para não piscar 240px). O que NÃO pode existir é divergência:
+     cada par abaixo tem que declarar as mesmas coisas, propriedade a
+     propriedade. É esta comparação que pegaria a divergência real que já
+     aconteceu uma vez (min-height:44px só na media query). */
+  /* Os DEZ blocos duplicados, um a um. A primeira versão deste gate comparava
+     só quatro e o comentário do index.html já prometia "propriedade a
+     propriedade": um gate que cobre parte da duplicação é amostra, não fonte
+     única. Se um par for acrescentado aqui, confere que existe nos dois lados
+     — um par sem equivalente na media query reprova com "sem <prop>", que é o
+     sinal de que o array ficou defasado. */
+  const pares = [
+    ['#sidebar[data-rail="on"]', '#sidebar', ['width', 'min-width']],
+    ['#sidebar[data-rail="on"] #logo', '#logo', ['padding', 'max-width', 'overflow']],
+    ['#sidebar[data-rail="on"] #logo h1', '#logo h1', ['font-size', 'line-height', 'letter-spacing', 'white-space', 'max-width', 'overflow']],
+    ['#sidebar[data-rail="on"] .nav-btn', '.nav-btn', ['justify-content', 'padding', 'gap', 'min-height']],
+    ['#sidebar[data-rail="on"] .nav-btn .icon', '.nav-btn .icon', ['width']],
+    ['#sidebar[data-rail="on"] .nav-btn .icon svg.i', '.nav-btn .icon svg.i', ['width', 'height']],
+    ['#sidebar[data-rail="on"] #btn-fechar', '#btn-fechar', ['justify-content', 'padding', 'gap', 'font-size']],
+    ['#sidebar[data-rail="on"] #btn-fechar span', '#btn-fechar span', ['font-size']],
+  ];
+  /* Estas duas não batem por seletor: na media query o #logo p e o .nav-section
+     são agrupados numa regra só, e o rótulo do .nav-btn fica solto. A
+     comparação é feita pelo conteúdo, procurando a regra que declara a
+     propriedade, em vez de pelo seletor exato. */
+  const paresPorDeclaracao = [
+    ['oculta o subtítulo do logo e as seções', /#logo p,\s*\.nav-section\{[^}]*display:none/, 'display', 'none'],
+    ['esconde o rótulo do item de menu', /\.nav-btn>span:not\(\.icon\)\{[^}]*position:absolute/, 'position', 'absolute'],
+  ];
+  const divergencias = [];
+  for (const [selA, selB, props] of pares) {
+    const a = corpo(selA, css)[0] || '';
+    const b = (corpo(selB, mqRail ? mqRail[1] : '')[0]) || '';
+    for (const p of props) {
+      const va = (new RegExp('(?:^|;)\\s*' + p + ':([^;]*)')).exec(a);
+      const vb = (new RegExp('(?:^|;)\\s*' + p + ':([^;]*)')).exec(b);
+      if (!va || !vb) { divergencias.push(selB + ' sem ' + p); continue; }
+      if (va[1].replace(/\s+/g, '') !== vb[1].replace(/\s+/g, '')) {
+        divergencias.push(selA + ' ' + p + '=' + va[1].trim() + ' vs media ' + vb[1].trim());
+      }
+    }
+  }
+  ok('o rail do atributo e o da media query declaram as mesmas propriedades (paridade)',
+    divergencias.length === 0, divergencias.join(' | '));
+  for (const [nome, reA, prop, val] of paresPorDeclaracao) {
+    const a = reA.test(css);
+    const b = reA.test(mqRail ? mqRail[1] : '');
+    ok('paridade do bloco que ' + nome + ' (atributo e media query)',
+      a && b, 'atributo=' + a + ' media=' + b);
+  }
+  /* O número de blocos duplicados é fixo por escolha, não por acaso. A
+     verificação é por CONJUNTO DE DECLARAÇÕES, não por contagem de seletores
+     (contagem quebra na hora em que alguém acrescenta um tooltip). Tudo que o
+     bloco do rail declara tem de existir também na media query. As regras de
+     tooltip (seletor com ::after) ficam de fora: elas não têm contrapartida
+     porque não descrevem largura, e sim o nome flutuante do item ativo. */
+  const declRail = [];
+  for (const m of css.matchAll(/(#sidebar\[data-rail="on"\][^{}]*)\{([^}]*)\}/g)) {
+    if (m[1].includes('::after')) continue;
+    /* Duas exceções, ambas deliberadas: (a) as regras do #btn-rail, porque no
+       celular o botão sai da tela (display:none) e a geometria dele vira
+       irrelevante; (b) transition, porque a animação do rail é decisão de UX do
+       desktop e a media query não repete animação. */
+    if (m[1].includes('#btn-rail')) continue;
+    for (const d of m[2].split(';').map((x) => x.trim()).filter(Boolean)) {
+      if (d.startsWith('transition')) continue;
+      declRail.push(d.replace(/\s+/g, ''));
+    }
+  }
+  const mqTexto = (mqRail ? mqRail[1] : '').replace(/\s+/g, '');
+  const faltando = [...new Set(declRail)].filter((d) => !mqTexto.includes(d));
+  ok('toda declaração de geometria do rail existe também na media query (nada órfão)',
+    declRail.length > 0 && faltando.length === 0,
+    'declaracoes=' + declRail.length + ' faltando=' + (faltando.join(' | ') || 'nenhuma'));
+  ok('o rail do atributo tem o mesmo piso de toque de 44px do rail do celular',
+    /min-height:\s*44px/.test(corpo('#sidebar[data-rail="on"] .nav-btn', css)[0] || ''));
+  ok('o toggle também tem alvo de 44px (o Designer mediu 42px nos botões do rail)',
+    /#btn-rail\{[^}]*min-height:\s*44px/.test(css));
+  ok('no celular o toggle some por display:none (nunca aria-hidden em focável)',
+    !!mqRail && /#btn-rail\{display:none\}/.test(mqRail[1]));
+  /* Pedido explícito: nada de card ao lado da barra. O balão com o nome do item
+     ativo (:hover e :focus-visible) foi retirado — ele abria sempre que algo
+     era aberto, porque trocar de aba deixa o item .active. O nome continua no
+     title (mouse) e no rótulo visually-hidden (leitor de tela), então a remoção
+     não tira informação de ninguém. */
+  ok('a barra recolhida não desenha nenhum balão ao lado',
+    !/::after\{content:attr\(title\)/.test(css) && !/\.nav-btn:hover::after/.test(css)
+    && !/#sidebar\[data-rail="on"\][^{]*::after\{/.test(css));
+  ok('o item ativo continua marcado no rail (cor e borda, sem balão)',
+    /\.nav-btn\.active\{[^}]*background:var\(--sidebar-active\)[^}]*border-right-color:var\(--accent\)/.test(css));
+  /* A marca no rail: o h1 inteiro é mais largo que os 56px úteis, então sem
+     max-width + overflow:hidden o texto vazava para a área do conteúdo (o "N"
+     do GCON/SIAN aparecia pendurado no canto da tela). O "GCON/" vira
+     visually-hidden — não display:none — para o h1 continuar inteiro no texto. */
+  ok('a marca do rail tem max-width e overflow:hidden (o texto não vaza)',
+    /#sidebar\[data-rail="on"\] #logo\{[^}]*max-width:64px;[^}]*overflow:hidden/.test(css)
+    && /#sidebar\[data-rail="on"\] #logo h1\{[^}]*max-width:56px;[^}]*overflow:hidden/.test(css));
+  ok('a marca do rail não usa overflow-wrap:anywhere (quebrava o N numa linha solta)',
+    !/#sidebar\[data-rail="on"\] #logo h1\{[^}]*overflow-wrap/.test(css));
+  ok('o "GCON/" some da tela sem sumir do texto (visually-hidden, não display:none)',
+    /<h1><b class="lbl-cheio">GCON\/<\/b><span>SIAN<\/span><\/h1>/.test(html)
+    && /#sidebar\[data-rail="on"\] \.lbl-cheio\{[^}]*position:absolute;[^}]*width:1px;[^}]*clip:rect/.test(css)
+    && !/#sidebar\[data-rail="on"\] \.lbl-cheio\{[^}]*display:none/.test(css));
+  ok('o logo tem title com o nome completo (a sigla sozinha não identifica o sistema)',
+    /<div id="logo" title="GCON\/SIAN — NF-e \| NFS-e">/.test(html));
+  ok('o rail do celular tem o mesmo fallback de largura do atributo',
+    /#sidebar\{width:64px;min-width:64px\}/.test(mqRail ? mqRail[1] : '')
+    && /#sidebar\[data-rail="on"\]\{width:64px;min-width:64px/.test(css));
+  ok('o rail respeita prefers-reduced-motion (largura e tooltip sem transição)',
+    /@media \(prefers-reduced-motion:reduce\)\{#sidebar[^{]*\{transition:none\}/.test(css.replace(/\s+/g, ' ')));
+  ok('o foco do toggle usa --sidebar-accent (--focus dá 2,96:1 no claro, reprova 3:1)',
+    /#btn-rail:focus-visible\{outline-color:\s*var\(--sidebar-accent\)\}/.test(html));
+
+  /* ── Markup ──────────────────────────────────────────────────────────────*/
+  ok('o botão do toggle tem type, aria-expanded e aria-controls',
+    /<button id="btn-rail" type="button" aria-expanded="true" aria-controls="sidebar"/.test(html));
+  /* O botão não tem <span> visível: o nome vem do aria-label/title que o JS
+     reescreve a cada estado. Um span morto aqui era uma nona linha que não
+     cabia em 64px, além de uma regra CSS sem efeito. */
+  ok('o toggle não tem span nem regra morta: o nome vem do aria-label do JS',
+    !/id="btn-rail"[^>]*>[\s\S]{0,200}?<span/.test(html)
+    && /btn\.setAttribute\('aria-label',txt\);btn\.setAttribute\('title',txt\);/.test(html)
+    && !/#btn-rail>span\{/.test(css) && !/#sidebar\[data-rail="on"\] #btn-rail>span\{/.test(css));
+  const titulosRail = [...html.matchAll(/class="nav-btn[^"]*" data-tab="[^"]+" title="([^"]+)"/g)].map((m) => m[1]);
+  ok('os 8 itens do menu têm title (nome no rail, onde o rótulo é visually-hidden)',
+    titulosRail.length === 8, 'achou ' + titulosRail.length + ': ' + titulosRail.join(', '));
+  ok('a live region do toggle existe ANTES da primeira escrita',
+    /<p id="rail-status" role="status" aria-live="polite" class="visually-hidden">/.test(html));
+  ok('existe a utilitária .visually-hidden (o rail escondia o rótulo só na media query)',
+    /\.visually-hidden\{position:absolute;width:1px/.test(css));
+  ok('o toggle não é .nav-btn (entraria na rotação do breadcrumb e na troca de aba)',
+    !/class="nav-btn[^"]*"[^>]*id="btn-rail"/.test(html) && !/id="btn-rail"[^>]*class="nav-btn/.test(html));
+
+  /* ── Comportamento: a IIFE do toggle rodada de verdade num vm ───────────
+     Confere persistência, aria, o par de ícones, Esc e a regra "no celular o
+     rail manda" — as cinco coisas que o código faz e que ninguém lê no teste
+     estático. O DOM é stubado, mas o código executado é o do index.html. */
+  const src = /\(function\(\)\{\s*const CHAVE='gcon-sidebar-v1';[\s\S]*?\n\}\)\(\);/.exec(html);
+  ok('a IIFE do toggle existe e é extraível', !!src);
+  if (src) {
+    /* O 3º parâmetro existe por causa do Tester: sem ele, o stub de
+       localStorage nunca lança e os caminhos de modo privado / quota cheia
+       (onde o catch engole o erro e a UI funciona sem persistir nada) ficavam
+       sem nenhum caso. `lanceEm` diz qual operação falha. */
+    const rodar = (celular, semeado, lanceEm) => {
+      const els = {};
+      ['sidebar', 'btn-rail', 'rail-status'].forEach((i) => {
+        const el = stubEl(i);
+        el._attrs = {};
+        el._ls = {};
+        el.setAttribute = (k, v) => { el._attrs[k] = String(v); if (k === 'href') el._href = String(v); };
+        el.getAttribute = (k) => {
+          if (k === 'href') return el._href === undefined ? null : el._href;
+          return Object.prototype.hasOwnProperty.call(el._attrs, k) ? el._attrs[k] : null;
+        };
+        el.addEventListener = (t, f) => { (el._ls[t] = el._ls[t] || []).push(f); };
+        els[i] = el;
+      });
+      const use = stubEl('use');use.setAttribute = (k, v) => { use[k] = String(v); };
+      /* O botão não tem <span> (o nome vem de aria-label/title), então o stub
+         só resolve o <use> — se o código voltar a pedir um span, recebe null e
+         o teste do aria-label reprova. */
+      els['btn-rail'].querySelector = (s) => (s === 'use' ? use : null);
+      const doc = { getElementById: (i) => els[i] || null, addEventListener(t, f) { (doc._ls = doc._ls || {})[t] = f; } };
+      /* O MediaQueryList GUARDA o handler. A primeira versão do stub fazia
+         addEventListener(){} e a asserção era um OR de literais no fonte — o
+         mutante que trocava addEventListener por addListener passava 479/0
+         verde. Um stub que engole o handler é indistinguível de um handler
+         inexistente; o teste precisa poder chamá-lo. */
+      const mql = {
+        matches: /max-width:768px/.test('(max-width:768px)') ? celular : false,
+        _ls: {},
+        addEventListener(t, f) { (mql._ls[t] = mql._ls[t] || []).push(f); },
+        addListener(f) { (mql._ls.change = mql._ls.change || []).push(f); },
+        /* Simula a janela mudando de largura: dispara o que o browser dispara. */
+        largura(nova) { mql.matches = nova; (mql._ls.change || []).forEach((f) => f({ matches: nova })); },
+      };
+      const janela = {
+        matchMedia: (q) => (/max-width:768px/.test(q) ? mql : { matches: false, addEventListener() { }, addListener() { } }),
+        addEventListener(t, f) { (janela._ls = janela._ls || {})[t] = f; },
+      };
+      const st = storageReal(semeado);
+      if (lanceEm === 'getItem') st.getItem = () => { throw new Error('SecurityError'); };
+      if (lanceEm === 'setItem') st.setItem = () => { throw new Error('QuotaExceededError'); };
+      const sandbox = {
+        document: doc, localStorage: st, window: janela,
+        console: { log() { }, warn() { }, error() { } },
+      };
+      sandbox.globalThis = sandbox;
+      vm.createContext(sandbox);
+      vm.runInContext(src[0], sandbox, { filename: 'index.html#sidebar' });
+      /* O `href` do ícone vive no <use> dentro do botão, não no botão. */
+      return { els, use, sandbox, doc, janela, mql, st };
+    };
+
+    const cel = rodar(true, null);
+    ok('em 375px o rail nasce ligado, com aria-expanded=false e o ícone de expandir',
+      cel.els.sidebar.getAttribute('data-rail') === 'on'
+      && cel.els['btn-rail'].getAttribute('aria-expanded') === 'false'
+      && cel.use.href === '#i-panel-open',
+      [cel.els.sidebar.getAttribute('data-rail'), cel.els['btn-rail'].getAttribute('aria-expanded'),
+        cel.use.href].join(' / '));
+
+    const desk = rodar(false, { 'gcon-sidebar-v1': 'rail' });
+    ok('no desktop o estado guardado é respeitado (rail salvo volta rail)',
+      desk.els.sidebar.getAttribute('data-rail') === 'on');
+
+    const cheio = rodar(false, { 'gcon-sidebar-v1': 'full' });
+    ok('no desktop sem estado salvo o menu vem expandido',
+      cheio.els.sidebar.getAttribute('data-rail') === 'off'
+      && cheio.els['btn-rail'].getAttribute('aria-expanded') === 'true'
+      && cheio.use.href === '#i-panel-close',
+      [cheio.els.sidebar.getAttribute('data-rail'), cheio.use.href].join(' / '));
+
+    /* Clique de verdade: dispara o handler que a IIFE registrou no stub, e
+       confere estado, aria, ícone, persistência e o texto da live region.
+       O ponto de partida é o menu CHEIO (data-rail="off"), então o primeiro
+       clique recolhe. */
+    const s = cheio.sandbox;
+    const st = cheio.els;
+    const clicar = () => st['btn-rail']._ls.click.forEach((f) => f({}));
+    clicar();
+    ok('o clique recolhe: atributo on, aria-expanded=false, ícone de expandir, salvo como "rail"',
+      st.sidebar.getAttribute('data-rail') === 'on'
+      && st['btn-rail'].getAttribute('aria-expanded') === 'false'
+      && cheio.use.href === '#i-panel-open'
+      && s.localStorage.getItem('gcon-sidebar-v1') === 'rail',
+      [st.sidebar.getAttribute('data-rail'), st['btn-rail'].getAttribute('aria-expanded'),
+        cheio.use.href, s.localStorage.getItem('gcon-sidebar-v1')].join(' / '));
+    ok('o clique anuncia na live region (leitor de tela ouve "Menu expandido")',
+      st['rail-status'].textContent === 'Menu expandido', st['rail-status'].textContent);
+    clicar();
+    ok('o segundo clique expande e devolve "full" ao storage',
+      st.sidebar.getAttribute('data-rail') === 'off'
+      && st['btn-rail'].getAttribute('aria-expanded') === 'true'
+      && cheio.use.href === '#i-panel-close'
+      && s.localStorage.getItem('gcon-sidebar-v1') === 'full'
+      && st['rail-status'].textContent === 'Menu recolhido',
+      [st.sidebar.getAttribute('data-rail'), s.localStorage.getItem('gcon-sidebar-v1')].join(' / '));
+
+    /* O que entra no storage tem que ser layout e nada mais. Checagem no
+       código (uma única escrita, por uma função que só recebe 'rail'/'full') e
+       no runtime (depois dos dois cliques só existem essas duas strings). */
+    const naFuncao = /guardar=\(v\)=>\{[\s\S]{0,80}?guardado=v;[\s\S]{0,80}?setItem\(CHAVE,v\)/.test(src[0]);
+    const soLayout = Object.values(s.localStorage._d).every((x) => x === 'rail' || x === 'full');
+    ok('a chave é versionada e a IIFE só escreve layout, nunca dado de nota',
+      /CHAVE='gcon-sidebar-v1'/.test(src[0])
+      && /const RAIL='rail',FULL='full';/.test(src[0])
+      && /return v===RAIL\?RAIL:FULL;/.test(src[0])
+      && (src[0].match(/setItem\(/g) || []).length === 1 && naFuncao && soLayout,
+      'setItem x' + (src[0].match(/setItem\(/g) || []).length + ' func=' + naFuncao
+      + ' layout=' + soLayout + ' ' + JSON.stringify(s.localStorage._d));
+    ok('Esc expande o rail, mas não quando o foco está num campo de texto',
+      /e\.key!=='Escape'/.test(src[0]) && /digitando\)return;/.test(src[0])
+      && /guardar\(FULL\);aplicar\(false,true\);/.test(src[0]));
+    ok('trocar de largura reavalia (rail do celular tem prioridade sobre o estado)',
+      /mq\.addEventListener\('change',aoMudar\)|mq\.addListener\(aoMudar\)/.test(src[0])
+      && /aplicar\(mq\.matches\|\|guardado===RAIL,false\)/.test(src[0]));
+    /* Bug encontrado pelo smoke: a mudança de largura usava a variável em
+       memória. Com duas abas abertas, a que tinha 'rail' em memória ignorava o
+       'full' que a outra acabara de gravar e voltava ao rail. O storage é a
+       fonte da verdade da preferência, em todas as leituras. */
+    ok('a mudança de largura relê o storage (duas abas não desincronizam)',
+      /const aoMudar=\(\)=>\{guardado=ler\(\);/.test(src[0])
+      && /const ler=\(\)=>\{try\{const v=localStorage\.getItem\(CHAVE\);return v===RAIL\?RAIL:FULL;/.test(src[0]));
+    ok('existe escuta de "storage": a preferência acompanha entre abas sem recarregar',
+      /window\.addEventListener\('storage'/.test(src[0]) && /e\.key!==CHAVE\)return;/.test(src[0])
+      && /if\(!ehCelular\(\)\)aplicar\(guardado===RAIL,false\)/.test(src[0]));
+    /* guardar é usada no clique e no Esc, e é declarada ANTES dos dois (o
+       inverso só funciona porque as chamadas são em listener — armadilha de
+       leitura que o QA apontou nesta rodada). */
+    ok('guardar é declarada antes de ser usada (sem TDZ por adiamento)',
+      /const guardar=\(v\)=>\{[\s\S]{0,120}?\};\s*\n\s*const aplicar=[\s\S]*?btn\.addEventListener/.test(src[0])
+      && src[0].indexOf('const guardar=') < src[0].indexOf('btn.addEventListener'));
+    ok('o clique alterna rail/full e persiste',
+      /guardar\(on\?FULL:RAIL\)/.test(src[0]) && /aplicar\(!on,true\)/.test(src[0]));
+    ok('a troca de ícone é por setAttribute no use (não innerHTML)',
+      /icone\.setAttribute\('href',/.test(src[0]) && !/icone\.innerHTML/.test(src[0]));
+    ok('o announce vai para a live region, não para alert() nem console',
+      /status\.textContent=t/.test(src[0]));
+
+    /* ── Mudança de largura: o handler de verdade, chamado de verdade ────── */
+    const r1 = rodar(false, { 'gcon-sidebar-v1': 'rail' });
+    r1.mql.largura(true);
+    ok('desktop com "rail" salvo + janela estreita: o rail do celular assume',
+      r1.els.sidebar.getAttribute('data-rail') === 'on');
+    r1.mql.largura(false);
+    ok('ao voltar para desktop, a preferência "rail" reassume',
+      r1.els.sidebar.getAttribute('data-rail') === 'on');
+    const r2 = rodar(false, { 'gcon-sidebar-v1': 'full' });
+    r2.mql.largura(true);
+    ok('celular não grava nada ao mudar de largura (o storage fica "full")',
+      r2.els.sidebar.getAttribute('data-rail') === 'on'
+      && r2.st.getItem('gcon-sidebar-v1') === 'full');
+    r2.mql.largura(false);
+    ok('celular→desktop com "full" salvo: volta expandido, semtravar no rail',
+      r2.els.sidebar.getAttribute('data-rail') === 'off');
+    const r3 = rodar(false, null);
+    r3.mql.largura(true);
+    r3.mql.largura(false);
+    ok('sem preferência salva, o rail não prende ao voltar para desktop',
+      r3.els.sidebar.getAttribute('data-rail') === 'off');
+
+    /* ── Storage que lança: modo privado e quota cheia ─────────────────────
+       O caminho mais caro e silencioso do produto: o catch engole o erro, a UI
+       funciona e nada persiste. Nada na tela denuncia isso. */
+    const p1 = rodar(false, null, 'getItem');
+    ok('localStorage que lança no getItem: o app abre com o menu expandido',
+      p1.els.sidebar.getAttribute('data-rail') === 'off'
+      && p1.els['btn-rail'].getAttribute('aria-expanded') === 'true');
+    const p2 = rodar(false, { 'gcon-sidebar-v1': 'full' }, 'setItem');
+    p2.els['btn-rail']._ls.click.forEach((f) => f({}));
+    ok('localStorage que lança no setItem: o clique ainda recolhe na tela',
+      p2.els.sidebar.getAttribute('data-rail') === 'on'
+      && p2.use.href === '#i-panel-open');
+    p2.els['btn-rail']._ls.click.forEach((f) => f({}));
+    ok('…e volta a expandir: sem storage, o estado vive só na sessão',
+      p2.els.sidebar.getAttribute('data-rail') === 'off' && p2.use.href === '#i-panel-close');
+
+    /* ── Valor corrompido no storage ──────────────────────────────────────
+       ler() mapeia qualquer coisa diferente de 'rail' para 'full'. Um refactor
+       com toLowerCase() mudaria isso sem o gate gritar. */
+    for (const sujo of ['', 'RAIL', 'rail ', ' rail', 'rail\n', 'xyz', 'null', '"rail"', 'true', '1']) {
+      const c = rodar(false, { 'gcon-sidebar-v1': sujo });
+      ok('storage corrompido (' + JSON.stringify(sujo) + ') abre expandido, sem travar',
+        c.els.sidebar.getAttribute('data-rail') === 'off',
+        'veio ' + c.els.sidebar.getAttribute('data-rail'));
+    }
+    const cl = rodar(false, { 'gcon-sidebar-v1': 'rail' });
+    ok('storage com "rail" limpo é aceito (o único valor válido)',
+      cl.els.sidebar.getAttribute('data-rail') === 'on');
+
+    /* ── Duas abas: uma grava, a outra acompanha ───────────────────────────
+       Cenário mounted: a aba de referência é o DOM real (o elemento existe,
+       então `ehCelular` responde 375, o celular manda) e o stub só intercepta
+       a mudança de largura. Assim a volta de 375 para desktop usa a MESMA
+       linha de código do boot, e não um caminho de boot separado que o teste
+       nunca exercita — o que foi exatamente o buraco que o smoke achou. */
+    /* No Node não existe window; o ponto do cenário é ser mounted, e a
+       largura de referência é a do próprio navegador de teste. Se algum dia
+       rodar num ambiente com window, o valor real é usado. */
+    const refCelular = typeof window !== 'undefined'
+      ? window.matchMedia('(max-width:768px)').matches : true;
+    const a = rodar(refCelular, { 'gcon-sidebar-v1': 'full' });
+    ok('a aba de referência nasce no celular, com o rail do layout (não do storage)',
+      a.els.sidebar.getAttribute('data-rail') === 'on',
+      'largura de referência = celular?' + refCelular);
+    a.sandbox.localStorage.setItem('gcon-sidebar-v1', 'rail');
+    const outra = a.janela._ls && a.janela._ls.storage;
+    ok('a IIFE registra a escuta de storage na janela', typeof outra === 'function');
+    if (outra) {
+      outra({ key: 'gcon-sidebar-v1' });
+      ok('no celular, a escuta ignora a gravação de outra aba (o rail é layout)',
+        a.els.sidebar.getAttribute('data-rail') === 'on'
+        && a.sandbox.localStorage.getItem('gcon-sidebar-v1') === 'rail');
+      /* Só a mudança de largura faz o storage mandar de novo. */
+      a.mql.largura(false);
+      ok('ao crescer para desktop, a preferência "rail" da outra aba reassume',
+        a.els.sidebar.getAttribute('data-rail') === 'on');
+    }
+    /* E a mesma linha de código, agora no desktop: o storage passa a mandar. */
+    const d = rodar(false, { 'gcon-sidebar-v1': 'full' });
+    d.sandbox.localStorage.setItem('gcon-sidebar-v1', 'rail');
+    (d.janela._ls.storage)({ key: 'gcon-sidebar-v1' });
+    ok('no desktop, a aba que estava "full" recolhe quando a outra grava "rail"',
+      d.els.sidebar.getAttribute('data-rail') === 'on');
+    (d.janela._ls.storage)({ key: 'outra-chave' });
+    ok('storage de outra chave é ignorado (não mexe no menu)',
+      d.els.sidebar.getAttribute('data-rail') === 'on');
+
+    /* ── Esc de verdade: o handler registrado no document ────────────────── */
+    const ev = (alvo, key) => ({ key, target: alvo || { tagName: 'BODY' } });
+    const bEsc = rodar(false, { 'gcon-sidebar-v1': 'rail' });
+    bEsc.doc._ls.keydown(ev(null, 'Escape'));
+    ok('Esc com o rail recolhido expande e persiste "full"',
+      bEsc.els.sidebar.getAttribute('data-rail') === 'off'
+      && bEsc.sandbox.localStorage.getItem('gcon-sidebar-v1') === 'full');
+    bEsc.doc._ls.keydown(ev({ tagName: 'INPUT' }, 'Escape'));
+    ok('Esc com foco num campo de texto não mexe no menu',
+      bEsc.els.sidebar.getAttribute('data-rail') === 'off');
+    bEsc.doc._ls.keydown(ev(null, 'a'));
+    ok('outra tecla não faz nada', bEsc.els.sidebar.getAttribute('data-rail') === 'off');
+    bEsc.doc._ls.keydown(ev(null, 'Escape'));
+    ok('Esc com o rail já expandido é no-op (não alterna sozinho)',
+      bEsc.els.sidebar.getAttribute('data-rail') === 'off');
+    /* Bloqueio do Arquiteto: em ≤768px o atributo está 'on' por LAYOUT, não por
+       escolha. Sem o guard, o Esc gravava "full" por conta própria (apagando a
+       preferência de desktop) e anunciava "Menu expandido" sem expandir, porque
+       a media query manteria os 64px. */
+    const cEsc = rodar(true, { 'gcon-sidebar-v1': 'rail' });
+    cEsc.doc._ls.keydown(ev(null, 'Escape'));
+    ok('Esc no celular não grava "full" nem anuncia (o rail é layout, não escolha)',
+      cEsc.els.sidebar.getAttribute('data-rail') === 'on'
+      && cEsc.sandbox.localStorage.getItem('gcon-sidebar-v1') === 'rail'
+      && cEsc.els['rail-status'].textContent === '',
+      [cEsc.els.sidebar.getAttribute('data-rail'),
+        cEsc.sandbox.localStorage.getItem('gcon-sidebar-v1'),
+        cEsc.els['rail-status'].textContent].join(' / '));
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

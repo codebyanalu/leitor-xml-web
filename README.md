@@ -11,7 +11,7 @@ O que é versionado:
 | `index.html` | o aplicativo inteiro (arquivo único, CSS + JS embutidos) |
 | `painel-gerencial.html` | painel do estado do projeto, mesma linguagem visual do app |
 | `README.md` | este arquivo |
-| `testes/` | as três suítes de gate (ver [Testes](#testes)) |
+| `testes/` | as quatro suítes de gate (ver [Testes](#testes)) |
 
 O que **não** é versionado (continua na máquina, sai do índice do git):
 
@@ -42,6 +42,8 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 - **Exportação**: CSV e XLSX completos (40 colunas PDF, 93 NF-e, 56 NFS-e)
 - **Busca**: filtro por texto/CNPJ/confiança
 - **Interface**: tema claro/escuro persistente, breadcrumb de navegação, ícones SVG vetoriais (zero emoji) e layout responsivo (desktop/tablet/mobile)
+- **Menu lateral recolhível**: o botão no topo da sidebar reduz o menu a uma barra de 64px de ícones e volta a 240px; a escolha fica salva no navegador (`gcon-sidebar-v1`) e acompanha entre abas abertas. No celular o menu já é uma barra de ícones e o botão não aparece. `Esc` expande um menu recolhido, sem roubar a tecla de quem está digitando. Na barra estreita o nome de cada aba vem do `title` e da marca fica só a sigla `SIAN` — **nada aparece ao lado da barra** (nenhum balão, nenhum card), e a largura do menu é 100% do que sobra da tela
+- **Telas sem inventário**: contador de produtos/serviços/XMLs só aparece quando tem valor, o aviso de privacidade do CNPJ fica recolhido em uma linha, a busca do leitor de PDF só existe depois do primeiro PDF e o Dashboard sem documento mostra um estado vazio em vez de KPIs zerados
 
 ## Privacidade
 
@@ -94,24 +96,37 @@ Colunas de auditoria na exportação: `Garantia`, `NumeroOk`, `CNPJ_Ok`, `CNPJ_F
 
 ## Testes
 
-Três suítes, todas em `testes/`, sem browser e sem OCR (fora a bancada). Cada uma sai com código diferente de zero quando algo falha, então servem de portão de entrada:
+Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da bancada); a quarta é o smoke de navegador. Cada uma sai com código diferente de zero quando algo falha, então servem de portão de entrada:
 
 | Comando | O que faz | Depende de `amostras/` |
 |---|---|---|
 | `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, e os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
+| `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
 
 A bancada exige que a verdade seja *verificada*, não gerada pelo próprio leitor: `chave`, `numero`, `serie` e `cnpjPrestador` entram porque a chave impressa se auto-verifica em três checks independentes (DV módulo 11 dos 44 dígitos, estrutura `cUF`/`AAMM`/`mod` e DV do CNPJ nas posições 7-20) — um dígito errado no OCR derruba pelo menos um deles. Os demais campos foram lidos na nota, a mão.
 
 Ou, de dentro de `testes/`:
 
 ```bash
-npm test          # regressao + painel-check + bancada
+npm test              # regressao + painel-check + bancada
 npm run test:rapido   # só as duas suítes de ~1 s
-npm run painel    # só o painel-check
-npm run bancada   # só a bancada de extração
+npm run painel        # só o painel-check
+npm run bancada       # só a bancada de extração
+npm run smoke         # só o smoke de navegador (precisa de Edge + Playwright)
+npm run test:tudo     # as 3 suítes sem browser + o smoke
 ```
+
+O `smoke` é a única suíte que precisa de browser — o Edge instalado (ou `EDGE_PATH` apontando para ele) e o `playwright-core`, que é **devDependency**: `npm i` já traz. Por isso ela não entra no `npm test`, que roda em qualquer máquina. Se você mantém o pacote num cache fora do repo, aponte uma vez e chame o script:
+
+```bash
+export PLAYWRIGHT_PATH="$HOME/.cache/pw/node_modules/playwright-core"   # Linux/mac
+$env:PLAYWRIGHT_PATH="$env:TEMP\pw\node_modules\playwright-core"   # Windows
+npm run smoke
+```
+
+O `smoke` sai com **2** (não 1) e diz o que faltou quando o browser não está disponível. Sem `amostras/`, o bloco de leitura de PDF é pulado com aviso e não conta como falha — em clone novo isso é o esperado.
 
 `painel-check.mjs` e `regressao.mjs` resolvem os caminhos por `__dirname`, então rodam da raiz ou de dentro de `testes/`. Sem `amostras/` e `verdade.json` (ambos gitignored) a bancada sai com "Nenhum PDF em amostras/" e código 1 — é o comportamento esperado em clone novo, não uma falha do gate.
 
