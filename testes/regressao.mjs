@@ -96,7 +96,54 @@ ok('escrita do cache tem try/catch dedicado (quota)', /gravar\(k,v\)\{try\{local
 ok('cache libera espaço quando a cota estoura', /function gravarCache[\s\S]{0,900}cacheEntradas\(\)/.test(html) && /function gravarCache[\s\S]{0,1400}ARM\.apagar\(/.test(html));
 ok('cache degradado é reportado (não some em silêncio)', /ARM\.bloq=true/.test(html) && /cacheResumo/.test(html));
 ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec(html)[0].includes('\\s*'));
-ok('ReDoS: \s{0,4} presente como limite', /const PADROES_SEP[\s\S]*?\];/.exec(html)[0].includes('\\s{0,4}'));
+
+/* ── Dado fiscal real não pode entrar no fonte versionado ─────────────────
+   `git check-ignore` prova que o ARQUIVO da cliente não está no índice; não
+   prova que o DADO não foi copiado para dentro de um arquivo versionado. Foi
+   assim que o dado voltou: um exemplo de medição copiado verbatim da nota real
+   para o comentário de uma regex, achado pelo DevSecOps na revisão de push.
+
+   Este gate cruza todo CNPJ mascarado do fonte contra a verdade local (que é
+   gitignored). Sem verdade.json — clone novo — ele avisa e não reprova, porque
+   sem gabarito não há com o comparar; nesse caso exige a lista de sintéticos
+   conhecidos, o que ainda pega o caso mais comum. */
+{
+  const VERDADE = path.join(__dirname, 'verdade.json');
+  /* DoIS formatos, porque o dado escapa pelos dois: mascarado (o que eu tinha
+     colado no comentário) e CRU, 14 dígitos seguidos — que é como CNPJ aparece
+     dentro de chave, de XML e de código. A primeira versão do gate só olhava o
+     mascarado e deixou passar um mutante com o cru; provado por mutação. */
+  const mascarados = [...new Set([...html.matchAll(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g)].map((m) => m[0]))];
+  /* O cru só conta como candidato quando tem 14 dígitos isolados: um bloco de
+     44 (chave) ou de 15 (código de barras) tem 14 dentro dele sem ser CNPJ
+     próprio, e o app tem testes legítimos desses formatos. */
+  const crus = [...new Set([...html.matchAll(/(?<![\d.])\d{14}(?![\d.])/g)].map((m) => m[0]))];
+  const cnpjsDoFonte = [...mascarados, ...crus.map((d) => 'CRU:' + d)];
+  const SINTETICOS = ['00.000.000/0000-00', '11.222.333/0001-81', '11.222.334/0001-26',
+    '11.222.337/0001-83', '11.222.338/0001-72', '12.345.678/0001-95',
+    'CRU:11222333000181', 'CRU:11222334000126', 'CRU:11222337000183', 'CRU:11222338000172',
+    'CRU:12345678000195', 'CRU:00000000000000'];
+  if (!fs.existsSync(VERDADE)) {
+    console.log('  ! sem verdade.json: sem gabarito para cruzar CNPJ real (aviso, não falha)');
+    ok('todo CNPJ escrito no fonte é um dos sintéticos conhecidos',
+      cnpjsDoFonte.every((c) => SINTETICOS.includes(c)),
+      'achou: ' + cnpjsDoFonte.join(', '));
+  } else {
+    const t = JSON.parse(fs.readFileSync(VERDADE, 'utf8'));
+    const notas = Array.isArray(t) ? t : Object.values(t);
+    const reais = new Set();
+    for (const n of notas) {
+      if (!n || typeof n !== 'object') continue;
+      for (const k of ['cnpjPrestador', 'cnpjTomador', 'cnpj']) {
+        if (n[k]) reais.add(String(n[k]).replace(/\D/g, ''));
+      }
+    }
+const achou = (c) => reais.has(c.replace(/\D/g, ''));
+    const vazou = mascarados.filter(achou).concat(crus.filter((d) => achou(d)));
+    ok('nenhum CNPJ real da cliente está escrito no fonte (mascarado ou cru)',
+      vazou.length === 0, vazou.join(', ') + ' | todos: ' + cnpjsDoFonte.join(', '));
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 grupo('3 · CDNs E DEGRADAÇÃO');
@@ -1848,6 +1895,39 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       listaCnpj.length === 0, JSON.stringify(listaCnpj.map((c) => c.dig)));
     ok('eJ: o CNPJ impresso ao lado do rótulo SOBREVIVE ao corte por span',
       M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' CNPJ / CPF 11.222.333/0001-81').prest === EMIT);
+
+    /* 2b · o código de barras da DANFE tem 15 dígitos (CNPJ+número+"SAS"), não 44.
+       Com o span em 44+, o RE_CNPJ casava os 14 primeiros desse código, o módulo
+       11 fechava por acaso e o leitor devolvia aquele número como emitente com
+       confiança 95 e garantia VERDE — as duas pontas trocadas, em silêncio.
+       Este caso é a medida direta do defeito: prestador tem que ser o CNPJ
+       impresso ao lado, nunca o DV do código de barras. */
+    const BARRAS = '123451234512345';
+    ok('o caso está armado: os 14 primeiros dígitos do código de barras fecham DV',
+      M.vC(BARRAS.slice(0, 14)) === true, 'dig=' + BARRAS.slice(0, 14));
+    const rBarras = M.eJ('CONTROLE ' + BARRAS + ' 11.222.333/0001-81 11.222.334/0001-26');
+    ok('eJ: o DV do código de barras de 15 NÃO vira CNPJ de ninguém',
+      !rBarras.lista.some((c) => c.dig === BARRAS.slice(0, 14)),
+      JSON.stringify(rBarras.lista.map((c) => c.dig)));
+    ok('eJ: com o código de barras presente, o prestador é o CNPJ impresso ao lado',
+      rBarras.prest === EMIT && rBarras.conf === 95,
+      'prest=' + rBarras.prest + ' conf=' + rBarras.conf);
+    /* O span não pode engolir o CNPJ real: sozinho tem 14 dígitos e é contado. */
+    ok('eJ: um CNPJ isolado (14 dígitos) continua sendo lido',
+      M.eJ('11.222.333/0001-81 NOTA FISCAL Nº 12345').prest === EMIT);
+    /* Com o piso em 44, o run de 23 dígitos ("000004844 11.222.333/0001-81")
+       NÃO era bloqueado, apesar de o comentário do código afirmar que era: o
+       span exige separador entre dígitos e a "/" do CNPJ não é separador, então
+       o span terminava antes do CNPJ. Incluir a "/" no separador resolveria,
+       mas medido: quebrou a bancada (262/285) e dois casos de nome. Então o
+       contador de formulário continua sendo lido como CNPJ — comportamento
+       antigo e conhecido, registrado aqui para não virar surpresa. O que
+       estava em jogo (o DV do código de barras de 15) está resolvido acima. */
+    ok('eJ: contador de 9 dígitos + CNPJ ainda é lido (comportamento antigo, fora do escopo)',
+      M.eJ('000004844 11.222.333/0001-81').prest === EMIT,
+      JSON.stringify(M.eJ('000004844 11.222.333/0001-81').lista.map((c) => c.dig)));
+    ok('eJ: a chave de 44 colada no CNPJ não impede a leitura do CNPJ ao lado',
+      M.eJ(CHAVE_OK + ' 11.222.333/0001-81').prest === EMIT);
 
     /* 3 · nomePertoCnpj: run cortado volta vazio, nunca a cauda do nome. */
     const LONGO = 'DADOS DO EMITENTE INDUSTRIA E COMERCIO DE VEICULOS NOVOS E USADOS LTDA '

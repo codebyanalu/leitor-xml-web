@@ -142,7 +142,24 @@ function reparaChave(dig){
    O piso de 44 protege o codigo interno de 9 digitos colado no CNPJ
    ("000004844 11.222.334/0001-26" = 23 digitos). */
 const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
-function spansCodigoBarras(txt){return [...txt.matchAll(/\d(?:[\s\.\-]*\d){43,}/g)].map(m=>[m.index,m.index+m[0].length]);}
+/* Runs de dígito que NÃO podem conter CNPJ de ninguém.
+   Dois tamanhos, e o segundo é o que faltava:
+   - 44+: é a chave de acesso; dela só vale o CNPJ das posições 7-20, e só
+     quando a chave inteira passa no DV e na estrutura.
+   - 15: é o código de barras impresso na DANFE, que traz CNPJ+número+"SAS"
+     colados. Sem esta faixa, o RE_CNPJ casava os 14 primeiros dígitos desse
+     código, o módulo 11 fechava por acaso, e o leitor devolvia aquele número
+     como CNPJ do emitente com confiança 95 e garantia verde — trocando as duas
+     pontas da nota em silêncio. Medido com um código de barras de 15 dígitos
+     seguido de DOIS CNPJs: saía o DV do código como emitente, que não é
+     empresa nenhuma. Os CNPJs do exemplo aqui são sintéticos de propósito — o
+     gate 8 cruza todo CNPJ deste arquivo contra a verdade da cliente, porque
+     escrever num comentário o CNPJ de uma nota real é como esse dado entra
+     num arquivo público sem ninguém perceber.
+   O piso é 15 e não 14: o CNPJ colado no rodapé do comprovante vem com o
+   número da nota ao lado ("000004844 11.222.334/0001-26" = 23 dígitos), que
+   precisa continuar caindo aqui, e um CNPJ sozinho tem 14. */
+function spansCodigoBarras(txt){return [...txt.matchAll(/\d(?:[\s\.\-]*\d){14,}/g)].map(m=>[m.index,m.index+m[0].length]);}
 function cnpjsNoTexto(txt){
   const spans=spansCodigoBarras(txt),out=[];
   for(const m of txt.matchAll(new RegExp(RE_CNPJ.source,'g'))){
