@@ -727,7 +727,7 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
       --border. No escuro cada um vira o mecanismo que o claro não precisa. */
    --sidebar-edge:#223049;   /* 1,44:1 contra --sidebar: a borda que faltava */
    --accent-bar:#6b4708;     /* âmbar fosco: perceptível, não ofusca */
-   --track:#2b3752;
+   --track:#33405c;
  }
 
 /* ═══════════════════════════════════════════════════════════
@@ -913,7 +913,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    CTA, o que não é o principal tem que recuar. */
 .btn-out{background:transparent;border:1px solid var(--border-input);color:var(--text)}
 .btn-out:hover{background:var(--row-hover);border-color:var(--text3)}
-.btn-out:disabled{border-color:var(--border);color:var(--text3)}
+.btn-out:disabled{border:1px solid var(--border);color:var(--text3)}
 .btn-acent{background:var(--accent-cta);color:#fff}
 .btn-ok{background:var(--success-solid);color:#fff}
 .btn-prim:hover{background:var(--primary-cta-h)}
@@ -927,8 +927,17 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    reprovação: é o eixo errado de diferenciação. O eixo certo é a força da
    borda e a força do texto — desabilitado mais fraco nas duas dimensões,
    sem sumir. */
-.btn:disabled{opacity:1;cursor:not-allowed;transform:none;box-shadow:none;background:transparent;border-color:var(--border);color:var(--text3)}
-.btn:disabled:hover{transform:none;box-shadow:none}
+.btn:disabled{
+  /* O eixo é força da borda + força do texto, não opacidade: opacity:.5
+     apagava a silhueta (1,44:1) e o botão virava um fantasma. Mas border-color
+     sozinho NÃO pinta nada — .btn tem border:none, então é preciso devolver a
+     largura e o estilo. Sem estes dois, o desabilitado ficava sem caixa, e
+     pior: na mesma linha o .btn-out desabilitado TINHA forma (ele declara
+     border:1px solid). Dois estados que deviam se parecer. */
+  opacity:1;cursor:not-allowed;transform:none;box-shadow:none;
+  background:transparent;border:1px solid var(--border);color:var(--text3);
+}
+.btn:disabled:hover{transform:none;box-shadow:none;background:transparent}
 
 /* ═══════════════════════════════════════════════════════════
    10 · STATUS, ESTADOS VAZIOS, LOGS E OVERLAY
@@ -994,7 +1003,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #tab-separar .btn-select:hover{background:var(--primary-cta-h)}
 #tab-separar #btn-processar{width:100%;margin-top:18px;background:var(--primary-cta);color:#fff;padding:13px;font-size:15px;justify-content:center}
 #tab-separar #btn-processar:hover{background:var(--primary-cta-h)}
-#btn-processar:disabled{cursor:not-allowed;background:transparent;border-color:var(--border);color:var(--text3)}
+#btn-processar:disabled{cursor:not-allowed;background:transparent;border:1px solid var(--border);color:var(--text3)}
 #tab-separar #barra{height:8px;background:var(--track);border-radius:var(--radius-sm);margin-top:18px;overflow:hidden;display:none}
 #tab-separar #barra-inner{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:0%;transition:width .2s}
 #tab-separar #baixar{width:100%;margin-top:10px;background:var(--success-solid);color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}

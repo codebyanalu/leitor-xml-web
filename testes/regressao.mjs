@@ -9,6 +9,10 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath } from 'url';
+/* O gate anti-vazamento lê `git ls-files`: a lista de publicação é o índice do
+   git, não uma lista escrita à mão aqui — que foi exatamente como o segundo
+   vazamento escapou (o primeiro estava no index.html, o seguinte em testes/). */
+import { execFileSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(__dirname, '..');
@@ -97,51 +101,89 @@ ok('cache libera espaço quando a cota estoura', /function gravarCache[\s\S]{0,9
 ok('cache degradado é reportado (não some em silêncio)', /ARM\.bloq=true/.test(html) && /cacheResumo/.test(html));
 ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec(html)[0].includes('\\s*'));
 
-/* ── Dado fiscal real não pode entrar no fonte versionado ─────────────────
+/* ── Dado fiscal real não pode entrar em NENHUM arquivo versionado ────
    `git check-ignore` prova que o ARQUIVO da cliente não está no índice; não
-   prova que o DADO não foi copiado para dentro de um arquivo versionado. Foi
-   assim que o dado voltou: um exemplo de medição copiado verbatim da nota real
-   para o comentário de uma regex, achado pelo DevSecOps na revisão de push.
+   prova que o DADO não foi copiado para dentro de um arquivo versionado. E o
+   dado fiscal não é só CNPJ: chave de acesso (44) e protocolo de autorização
+   (15) identificam nota e operação tanto quanto o CNPJ identifica empresa.
 
-   Este gate cruza todo CNPJ mascarado do fonte contra a verdade local (que é
-   gitignored). Sem verdade.json — clone novo — ele avisa e não reprova, porque
-   sem gabarito não há com o comparar; nesse caso exige a lista de sintéticos
-   conhecidos, o que ainda pega o caso mais comum. */
+   O escopo é `git ls-files`, não uma lista escrita à mão — porque o segundo
+   vazamento (protocolo + natureza de operação, achado pelo DevSecOps depois do
+   push) entrou por `testes/regressao.mjs`, um arquivo que a primeira versão do
+   gate não olhava. Sem verdade.json — clone novo — o gate cai na lista de
+   sintéticos e NÃO reprova o fonte correto: falhar sem gabarito treina a
+   equipe a ignorar a falha. */
 {
-  const VERDADE = path.join(__dirname, 'verdade.json');
-  /* DoIS formatos, porque o dado escapa pelos dois: mascarado (o que eu tinha
-     colado no comentário) e CRU, 14 dígitos seguidos — que é como CNPJ aparece
-     dentro de chave, de XML e de código. A primeira versão do gate só olhava o
-     mascarado e deixou passar um mutante com o cru; provado por mutação. */
-  const mascarados = [...new Set([...html.matchAll(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g)].map((m) => m[0]))];
-  /* O cru só conta como candidato quando tem 14 dígitos isolados: um bloco de
-     44 (chave) ou de 15 (código de barras) tem 14 dentro dele sem ser CNPJ
-     próprio, e o app tem testes legítimos desses formatos. */
-  const crus = [...new Set([...html.matchAll(/(?<![\d.])\d{14}(?![\d.])/g)].map((m) => m[0]))];
-  const cnpjsDoFonte = [...mascarados, ...crus.map((d) => 'CRU:' + d)];
-  const SINTETICOS = ['00.000.000/0000-00', '11.222.333/0001-81', '11.222.334/0001-26',
-    '11.222.337/0001-83', '11.222.338/0001-72', '12.345.678/0001-95',
-    'CRU:11222333000181', 'CRU:11222334000126', 'CRU:11222337000183', 'CRU:11222338000172',
-    'CRU:12345678000195', 'CRU:00000000000000'];
+  const VERDADE = path.join(RAIZ,'testes','verdade.json');
+  /* Versionados, lidos do índice do git — o mesmo que o GitHub Pages publica. */
+  const versionados = execFileSync('git', ['ls-files'], { cwd: RAIZ, encoding: 'utf8' })
+    .split('\n').filter(Boolean)
+    .filter((f) => /\.(html|mjs|cjs|md|json|js|css)$/.test(f));
+  const brutos = [];
+  for (const f of versionados) {
+    const p = path.join(__dirname, '..', f);
+    if (!fs.existsSync(p)) continue;
+    try { brutos.push([f, fs.readFileSync(p, 'utf8')]); } catch (e) { /* binário */ }
+  }
+  const achouEm = (re) => {
+    const out = new Map();
+    for (const [f, txt] of brutos) {
+      for (const m of txt.matchAll(re)) out.set(m[0], f);
+    }
+    return out;
+  };
+  /* CNPJ: mascarado e cru de 14. O cru usa borda que não seja dígito NEM
+     ponto-final — sem o ponto, "prestador 06020318000544." (fim natural de uma
+     frase em comentário) escapava; o ponto está ali para não contar
+     "45.932.889/0002" atravessando a máscara. */
+  const cnpjMasc = achouEm(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g);
+  const cnpjCru = achouEm(/(?<![\d.])\d{14}(?![\d.])/g);
+  const chave44 = achouEm(/(?<![\d.])\d{44}(?![\d.])/g);
+  const protocolo = achouEm(/(?<![\d.])\d{15}(?![\d.])/g);
+  const SINT_14 = ['00000000000000', '11222333000181', '11222334000126', '11222337000183',
+    '11222338000172', '12345678000195', '00000000000191', '00000000000004'];
+  const SINT_15 = ['100200300400501', '3526011222333000181550010000001231123456783'];
+  const SINT_44 = ['35260911222333000181550010000001231123456783',
+    '35268011222334000126550010007388381123456783',
+    '52609112223330001815500100000012311234567835',
+    '43526091122233300018155001000000123112345678'];
+  const SINT_MASC = ['00.000.000/0000-00', '11.222.333/0001-81', '11.222.334/0001-26',
+    '11.222.337/0001-83', '11.222.338/0001-72', '12.345.678/0001-95'];
+
   if (!fs.existsSync(VERDADE)) {
-    console.log('  ! sem verdade.json: sem gabarito para cruzar CNPJ real (aviso, não falha)');
-    ok('todo CNPJ escrito no fonte é um dos sintéticos conhecidos',
-      cnpjsDoFonte.every((c) => SINTETICOS.includes(c)),
-      'achou: ' + cnpjsDoFonte.join(', '));
+    console.log('  ! sem verdade.json: cruzamento impossível; valida só os sintéticos conhecidos');
+    const fora = [...[...cnpjMasc.keys()].filter((x) => !SINT_MASC.includes(x)),
+      ...[...cnpjCru.keys()].filter((x) => !SINT_14.includes(x)),
+      ...[...protocolo.keys()].filter((x) => !SINT_15.includes(x)),
+      ...[...chave44.keys()].filter((x) => !SINT_44.includes(x))];
+    ok('sem gabarito: todo CNPJ/protocolo/chave nos versionados é sintético conhecido',
+      fora.length === 0, fora.join(', ') || 'todos sintéticos');
   } else {
     const t = JSON.parse(fs.readFileSync(VERDADE, 'utf8'));
     const notas = Array.isArray(t) ? t : Object.values(t);
-    const reais = new Set();
+    const dig = (v) => String(v).replace(/\D/g, '');
+    const cnpjReais = new Set(); const chavesReais = new Set(); const protReais = new Set();
     for (const n of notas) {
       if (!n || typeof n !== 'object') continue;
-      for (const k of ['cnpjPrestador', 'cnpjTomador', 'cnpj']) {
-        if (n[k]) reais.add(String(n[k]).replace(/\D/g, ''));
-      }
+      for (const k of ['cnpjPrestador', 'cnpjTomador', 'cnpj']) if (n[k]) cnpjReais.add(dig(n[k]));
+      if (n.chave) chavesReais.add(dig(n.chave));
+      if (n.protocolo) protReais.add(dig(n.protocolo));
     }
-const achou = (c) => reais.has(c.replace(/\D/g, ''));
-    const vazou = mascarados.filter(achou).concat(crus.filter((d) => achou(d)));
-    ok('nenhum CNPJ real da cliente está escrito no fonte (mascarado ou cru)',
-      vazou.length === 0, vazou.join(', ') + ' | todos: ' + cnpjsDoFonte.join(', '));
+    const marca = (m, reais, rotulo) => [...m.keys()]
+      .filter((x) => reais.has(x.replace(/\D/g, '')))
+      .map((x) => rotulo + ' ' + x + ' em ' + m.get(x));
+    const vazou = [
+      ...marca(cnpjMasc, cnpjReais, 'CNPJ'),
+      ...marca(cnpjCru, cnpjReais, 'CNPJ-cru'),
+      ...marca(chave44, chavesReais, 'chave'),
+      ...marca(protocolo, protReais, 'protocolo'),
+    ];
+    ok('nenhum dado fiscal real da cliente está em arquivo versionado (CNPJ, chave, protocolo)',
+      vazou.length === 0,
+      vazou.slice(0, 6).join(' | ') || 'limpo em ' + versionados.length + ' arquivo(s)');
+    ok('o gate olha os versionados, não só o index.html',
+      versionados.length >= 7 && versionados.some((f) => f.startsWith('testes/')),
+      versionados.length + ' arquivo(s): ' + versionados.join(', '));
   }
 }
 
@@ -1307,6 +1349,12 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
      Antes eram duas cópias e já divergiram: o min-height:44px entrou só na
      media query, então um rail ligado por atributo nasceria com 42px. */
   const css = html.slice(0, html.indexOf('</style>'));
+  /* O mesmo CSS sem nenhum comentário. O comentário dentro de .btn:disabled
+     CITA "opacity:.5" ao explicar por que a opacidade não é usada, e o gate
+     anti-opacidade casava com a própria documentação do defeito — reprovar a
+     regra que corrige o problema porque ela explica o problema é o gate
+     mentindo. Texto de comentário nunca conta como CSS. */
+  const semComentario = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const corpo = (sel, texto) => {
     const r = new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}', 'g');
     return [...texto.matchAll(r)].map((m) => m[1]);
@@ -1433,20 +1481,56 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     /#accent-bar\{height:3px;background:var\(--accent-bar\)\}/.test(css)
     && /--accent-bar:var\(--accent\)/.test(css) && /--accent-bar:#6b4708/.test(css));
   ok('o trilho de progresso usa --track (--border-light sumia no escuro)',
-    /--track:#e2e8f0/.test(css) && /--track:#2b3752/.test(css)
+    /--track:#e2e8f0/.test(css) && /--track:#33405c/.test(css)
     /* as TRÊS places: barra do separador, barra do lote e anel do spinner */
     && (html.match(/var\(--track\)/g) || []).length >= 3
     && /#loading-box \.spinner\{[^}]*border:4px solid var\(--track\)/.test(css));
   ok('o botão desabilitado não usa opacity (a forma sumia, não só o rótulo)',
-    /\.btn:disabled\{opacity:1;[^}]*background:transparent;[^}]*border-color:var\(--border\)/.test(css)
+    /* Sem confiar na ORDEM das declarações: o comentário dentro da regra quebra
+       qualquer sequência posicional, e a ordem não é o que importa aqui — o que
+       importa é que as três propriedades existam, todas juntas. */
+    (() => {
+      const corpo = /\.btn:disabled\{([\s\S]{0,1200}?)\}/.exec(css);
+      if (!corpo) return false;
+      const decl = corpo[1].replace(/\/\*[\s\S]*?\*\//g, '');
+      return /opacity:1/.test(decl) && /background:transparent/.test(decl)
+        && /border:1px solid var\(--border\)/.test(decl);
+    })()
     /* A segunda condição NÃO pode ser "não usa opacity": opacity:1 É a forma
        correta. O que não pode existir é opacidade REDUZIDA, que é o defeito
        antigo (.5) e o que apagava a silhueta. E o padrão tem que pegar QUALQUER
        regra :disabled, não só a de classe: #btn-processar:disabled sobreviveu
        à reescrita da classe e, sendo regra por ID, vencia por especificidade
-       e mantinha o defeito — com o gate antigo passando 522/0. */
-    && !/[:.][\w-]*disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(css)
+       e mantinha o defeito — com o gate antigo passando 522/0.
+
+       Sem comentários no meio: o comentário dentro de .btn:disabled CITA
+       "opacity:.5" ao explicar por que ela não é usada, e esse negate casava
+       com a própria documentação do defeito. Reprovar a regra que corrige o
+       problema porque ela explica o problema é o gate mentindo. */
+    && !/[:.][\w-]*disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(semComentario)
     && !/\.btn:disabled\{opacity:\./.test(css));
+  /* O achado do Designer, que nenhum dos gates acima pegava: `border-color` não
+     pinta nada quando o `border-style` herdado é `none`. A regra do desabilitado
+     ficava certa no papel ("mais fraco na borda") e no browser sem CAIXA — e
+     pior, o .btn-out desabilitado da MESMA linha tinha forma, porque declara
+     `border`. Dois estados que deviam se parecer e não se pareciam.
+     Este gate exige border com largura E estilo, não só cor. */
+  ok('a borda do desabilitado tem largura e estilo (border-color sozinho não pinta)',
+    (() => {
+      const regra = (re) => {
+        const m = re.exec(css);
+        return m ? m[1].replace(/\/\*[\s\S]*?\*\//g, '') : '';
+      };
+      const btn = regra(/\.btn:disabled\{([\s\S]{0,1200}?)\}/);
+      const out = regra(/\.btn-out:disabled\{([\s\S]{0,300}?)\}/);
+      const sep = regra(/#btn-processar:disabled\{([\s\S]{0,300}?)\}/);
+      const temBorda = (c) => /border:1px solid var\(--border\)/.test(c);
+      /* E nenhuma delas pode voltar a_border-color_: sem border-style, não pinta. */
+      const soCor = (c) => /border-color:/.test(c) && !temBorda(c);
+      return temBorda(btn) && temBorda(out) && temBorda(sep)
+        && !soCor(btn) && !soCor(out) && !soCor(sep);
+    })(),
+    'border-color sem border-style nao desenha nada');
   ok('o secundário do lote é contorno, e o CTA do lote é o primário azul',
     /\.btn-out\{background:transparent;border:1px solid var\(--border-input\)/.test(css)
     && /id="cnpj-lote-start" class="btn btn-prim"/.test(html)
@@ -1836,8 +1920,13 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       M.eEndereco('ENDEREÇO: RUA EXEMPLO - 100 1- SAÍDA [1] 3326 0806 0203 1800') === 'RUA EXEMPLO - 100',
       JSON.stringify(M.eEndereco('ENDEREÇO: RUA EXEMPLO - 100 1- SAÍDA [1] 3326 0806 0203 1800')));
 
-    /* texto plano: rótulo, depois o ruído do protocolo e da IE, depois o valor */
-    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 100200300410013 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
+/* Texto plano: rótulo, depois o ruído do protocolo e da IE, depois o valor.
+       O número de 15 dígitos e a data são SINTÉTICOS: este texto veio de uma
+       nota real, e protocolo + natureza de operação + endereço de emitente são
+       dado fiscal tanto quanto o CNPJ. A barreira é o gate que cruza protocolo e
+       chave 44 do gabarito contra TODO arquivo versionado — este bloco é
+       exatamente onde o dado real entrou da última vez. */
+    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 100200300400501 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
     ok('natureza da operação pula o rótulo do protocolo e lê o valor',
       M.eNatOp(NAT) === 'VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE', JSON.stringify(M.eNatOp(NAT)));
     const NAT_OCR = 'NATUREZA DA OPERAÇÃO INSCRIÇÃO ESTADUAL TNSCR ESTADUAL SUBSTITUTO TRIBUTÁRIO VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT 85586181 DESTINATÁRIO';
