@@ -1325,10 +1325,12 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
      única. Se um par for acrescentado aqui, confere que existe nos dois lados
      — um par sem equivalente na media query reprova com "sem <prop>", que é o
      sinal de que o array ficou defasado. */
+  /* A marca não tem par no rail: nos DOIS gatilhos ela some inteira, então
+     não há o que comparar. As regras #logo/#logo h1 saíram da lista (a barra
+     estreita não ajusta a marca), e o gate de paridade genérico abaixo
+     confere que nenhuma declaração de geometria do rail ficou órfã. */
   const pares = [
     ['#sidebar[data-rail="on"]', '#sidebar', ['width', 'min-width']],
-    ['#sidebar[data-rail="on"] #logo', '#logo', ['padding', 'max-width', 'overflow']],
-    ['#sidebar[data-rail="on"] #logo h1', '#logo h1', ['font-size', 'line-height', 'letter-spacing', 'white-space', 'max-width', 'overflow']],
     ['#sidebar[data-rail="on"] .nav-btn', '.nav-btn', ['justify-content', 'padding', 'gap', 'min-height']],
     ['#sidebar[data-rail="on"] .nav-btn .icon', '.nav-btn .icon', ['width']],
     ['#sidebar[data-rail="on"] .nav-btn .icon svg.i', '.nav-btn .icon svg.i', ['width', 'height']],
@@ -1408,17 +1410,49 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
      max-width + overflow:hidden o texto vazava para a área do conteúdo (o "N"
      do GCON/SIAN aparecia pendurado no canto da tela). O "GCON/" vira
      visually-hidden — não display:none — para o h1 continuar inteiro no texto. */
-  ok('a marca do rail tem max-width e overflow:hidden (o texto não vaza)',
-    /#sidebar\[data-rail="on"\] #logo\{[^}]*max-width:64px;[^}]*overflow:hidden/.test(css)
-    && /#sidebar\[data-rail="on"\] #logo h1\{[^}]*max-width:56px;[^}]*overflow:hidden/.test(css));
-  ok('a marca do rail não usa overflow-wrap:anywhere (quebrava o N numa linha solta)',
-    !/#sidebar\[data-rail="on"\] #logo h1\{[^}]*overflow-wrap/.test(css));
-  ok('o "GCON/" some da tela sem sumir do texto (visually-hidden, não display:none)',
-    /<h1><b class="lbl-cheio">GCON\/<\/b><span>SIAN<\/span><\/h1>/.test(html)
-    && /#sidebar\[data-rail="on"\] \.lbl-cheio\{[^}]*position:absolute;[^}]*width:1px;[^}]*clip:rect/.test(css)
-    && !/#sidebar\[data-rail="on"\] \.lbl-cheio\{[^}]*display:none/.test(css));
-  ok('o logo tem title com o nome completo (a sigla sozinha não identifica o sistema)',
-    /<div id="logo" title="GCON\/SIAN — NF-e \| NFS-e">/.test(html));
+  /* A marca some INTEIRA no rail (Designer): o primeiro item de uma coluna de
+     8 ícones de mesmo peso não pode ser texto, e o fragmento herdava a cor mais
+     saturada do topo. O nome completo continua no breadcrumb e no title de cada
+     item. Isto também substitui o max-width/overflow que existia só para o
+     texto não vazar da barra — com o bloco fora, os dois não têm consumidor. */
+  ok('a marca some inteira no rail (não vira sigla espremida)',
+    /#sidebar\[data-rail="on"\] #logo\{display:none\}/.test(css)
+    && /#logo,#logo p,\.nav-section\{display:none\}/.test(css)
+    && !/#sidebar\[data-rail="on"\] #logo h1\{/.test(css));
+  ok('o logo do menu cheio continua inteiro (GCON/SIAN em texto)',
+    /<div id="logo"><h1>GCON\/<span>SIAN<\/span><\/h1><p>NF-e \| NFS-e<\/p><\/div>/.test(html)
+    && !/lbl-cheio/.test(html));
+  ok('a costura lateral existe nos dois temas (no escuro --sidebar≈--surface)',
+    /#sidebar\{[^}]*border-right:1px solid var\(--sidebar-edge\)/.test(css)
+    && /--sidebar-edge:transparent/.test(css)
+    && /--sidebar-edge:#223049/.test(css));
+  ok('a barra de acento tem token por tema (o laranja da barra tinha 2 donos)',
+    /#accent-bar\{height:3px;background:var\(--accent-bar\)\}/.test(css)
+    && /--accent-bar:var\(--accent\)/.test(css) && /--accent-bar:#6b4708/.test(css));
+  ok('o trilho de progresso usa --track (--border-light sumia no escuro)',
+    /--track:#e2e8f0/.test(css) && /--track:#2b3752/.test(css)
+    /* as TRÊS places: barra do separador, barra do lote e anel do spinner */
+    && (html.match(/var\(--track\)/g) || []).length >= 3
+    && /#loading-box \.spinner\{[^}]*border:4px solid var\(--track\)/.test(css));
+  ok('o botão desabilitado não usa opacity (a forma sumia, não só o rótulo)',
+    /\.btn:disabled\{opacity:1;[^}]*background:transparent;[^}]*border-color:var\(--border\)/.test(css)
+    /* A segunda condição NÃO pode ser "não usa opacity": opacity:1 É a forma
+       correta. O que não pode existir é opacidade REDUZIDA, que é o defeito
+       antigo (.5) e o que apagava a silhueta. */
+    && !/\.btn:disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(css)
+    && !/\.btn:disabled\{opacity:\./.test(css));
+  ok('o secundário do lote é contorno, e o CTA do lote é o primário azul',
+    /\.btn-out\{background:transparent;border:1px solid var\(--border-input\)/.test(css)
+    && /id="cnpj-lote-start" class="btn btn-prim"/.test(html)
+    && /id="cnpj-lote-stop" class="btn btn-out"/.test(html)
+    && /id="cnpj-lote-export" class="btn btn-out"/.test(html)
+    && !/id="cnpj-lote-start" class="btn btn-ok"/.test(html));
+  ok('o texto do menu vem dos tokens (o gate mede token, rgba escapa por construção)',
+    /\.nav-section\{[^}]*color:var\(--sidebar-fg-dim\)/.test(css)
+    && /\.nav-btn\{[^}]*color:var\(--sidebar-fg-mute\)/.test(css)
+    && /\.nav-btn:hover\{[^}]*color:var\(--sidebar-fg\)/.test(css)
+    && /\.nav-btn\.active\{[^}]*color:var\(--sidebar-fg\)/.test(css)
+    && !/\.nav-btn\{[^}]*color:rgba/.test(css));
   ok('o rail do celular tem o mesmo fallback de largura do atributo',
     /#sidebar\{width:64px;min-width:64px\}/.test(mqRail ? mqRail[1] : '')
     && /#sidebar\[data-rail="on"\]\{width:64px;min-width:64px/.test(css));

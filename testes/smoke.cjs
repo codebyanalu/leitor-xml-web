@@ -321,39 +321,41 @@ const MEDIR_MENU = `(() => {
     ok(semCartao.invadindo === 0,
       `nenhum item da barra invade a área do conteúdo (${semCartao.invadindo} invadindo, conteúdo começa em ${semCartao.conteudoEsq}px)`);
 
-    /* Nada do cabeçalho da barra pode vazar para a área do conteúdo. Foi
-       assim que o "N" do GCON/SIAN apareceu pendurado no canto da tela: o h1
-       era mais largo que os 56px úteis e o texto vazava. O slideWidth > o
-       clientWidth é a prova de que o texto é MAIOR que a caixa — e é justamente
-       aí que o overflow:hidden corta. */
+    /* A marca some inteira no rail (Designer): o primeiro item de uma coluna
+       de 8 ícones não pode ser texto, e o fragmento herdava a cor mais
+       saturada do topo. O que ainda tem que valer: nada vaza da barra, e o
+       nome completo continua no breadcrumb do topo. */
     const cab = await page.evaluate(() => {
       const logo = document.getElementById('logo');
-      const h1 = logo.querySelector('h1');
-      const lbl = h1.querySelector('.lbl-cheio');
-      const r = (e) => e.getBoundingClientRect();
+      const sb = document.getElementById('sidebar').getBoundingClientRect();
+      const conteudo = document.getElementById('content').getBoundingClientRect();
+      const crumb = (document.getElementById('crumb-cur') || {}).textContent || '';
+      const marca = (document.querySelector('#crumb .c-brand') || {}).textContent || '';
+      /* Todo filho direto da barra tem que caber nela: se algo vazar, invade o
+         conteúdo — foi assim que o "N" do GCON/SIAN ficou no canto da tela. */
+      const vazando = [...document.getElementById('sidebar').children]
+        .filter((e) => getComputedStyle(e).display !== 'none')
+        .filter((e) => e.getBoundingClientRect().right > sb.right + 1)
+        .map((e) => e.id || e.className || e.tagName);
       return {
-        w: Math.round(r(logo).width),
-        logoDireita: Math.round(r(logo).right),
-        h1Direita: Math.round(r(h1).right),
-        spanDireita: Math.round(r(h1.querySelector('span')).right),
-        lblDireita: Math.round(r(lbl).right),
-        corta: h1.scrollWidth >= h1.clientWidth,
-        cortaLogo: logo.scrollWidth >= logo.clientWidth,
-        h1Linhas: Math.round(r(h1).height / 15),
-        nomeCompleto: h1.textContent,
-        lblSomeu: getComputedStyle(lbl).width === '1px',
+        marcaVisivel: logo ? getComputedStyle(logo).display !== 'none' : false,
+        sbDireita: Math.round(sb.right),
+        conteudoEsq: Math.round(conteudo.left),
+        vazando,
+        crumb: crumb.trim(),
+        marca: marca.trim(),
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
     });
-    ok(cab.logoDireita <= 64 && cab.h1Direita <= 64 && cab.spanDireita <= 64 && cab.lblDireita <= 64,
-      `nada do cabeçalho vaza da barra (logo ${cab.logoDireita}, h1 ${cab.h1Direita}, "SIAN" ${cab.spanDireita})`);
-    ok(cab.corta && cab.cortaLogo,
-      `o texto é maior que a caixa e o overflow corta (h1 ${cab.corta}, logo ${cab.cortaLogo})`);
-    ok(cab.h1Linhas === 1,
-      `a marca fica em uma linha só (altura/15 = ${cab.h1Linhas})`);
-    ok(cab.nomeCompleto === 'GCON/SIAN' && cab.lblSomeu,
-      `o nome continua inteiro no texto e o "GCON/" só sai da tela (texto="${cab.nomeCompleto}")`);
-    ok(cab.overflow <= 1, `nenhum overflow horizontal com o logo no rail (${cab.overflow})`);
+    ok(cab.marcaVisivel === false,
+      `a marca não ocupa a barra recolhida (visivel=${cab.marcaVisivel})`);
+    ok(cab.vazando.length === 0,
+      `nenhum filho da barra ultrapassa a largura dela (vazando: ${cab.vazando.join(',') || 'nenhum'})`);
+    ok(cab.sbDireita === 64 && cab.conteudoEsq === 64,
+      `a barra ocupa exatamente 64px e o conteúdo começa depois (${cab.sbDireita}/${cab.conteudoEsq})`);
+    ok(cab.marca === 'GCON·SIAN',
+      `o nome completo da marca continua no topo ("${cab.marca}", aba "${cab.crumb}")`);
+    ok(cab.overflow <= 1, `nenhum overflow horizontal com a barra recolhida (${cab.overflow})`);
 
     /* O rótulo do item continua exposto ao leitor de tela no rail: o
        breadcrumb lê textContent e um display:none aqui o apagaria em silêncio. */

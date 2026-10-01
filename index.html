@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -673,6 +673,21 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
     lê token por getComputedStyle, então um hex nasce sem ser auditado. Com
     token, o anel, o rótulo e o nome flutuante entram na conta. */
 --sidebar-fg:#fff;--sidebar-fg-dim:rgba(255,255,255,.55);--sidebar-fg-mute:rgba(255,255,255,.5);
+/* Costura lateral↔conteúdo. No claro os dois lados estão a 17:1 e separam
+   sozinhos; no escuro --sidebar e --surface dão 1,03:1 — mesma coisa que
+   surface, e a separação era acidente de luminância, não regra. Sombra preta
+   sobre quase-preto vira halo escuro, não elevação, então o mecanismo é borda
+   de 1px. No claro fica transparente: zero mudança visual. */
+--sidebar-edge:transparent;
+/* Barra de acento da topbar: token próprio, não --accent. O laranja da barra
+   e o do item ativo tinham dois donos em pontas opostas da tela, e os dois
+   perdiam hierarquia. No escuro, #f59e0b a 3px × 1440px é a maior área de
+   alto contraste da tela e não carrega informação — vira fonte de luz. */
+--accent-bar:var(--accent);
+/* Trilho de barra de progresso: --border-light dá 1,13:1 sobre --card no
+   escuro. O preenchimento aparece, o trilho some — e o trilho é o que diz
+   "isto vai de 0 a 100%". */
+--track:#e2e8f0;
 --font-mono:'Cascadia Code','Fira Code',Consolas,monospace;
 }
 :root[data-theme="dark"]{
@@ -702,7 +717,14 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
    /* Mesmo par do claro, declarado de novo: o gate de contraste mede token por
       tema, e um herdado do :root ficaria sem par próprio para comparar. */
    --sidebar-fg:#fff;--sidebar-fg-dim:rgba(255,255,255,.55);--sidebar-fg-mute:rgba(255,255,255,.5);
-}
+   /* Estes três SÓ existem no escuro, e é o oposto do que o nome sugere: no
+      claro a costura é invisível (17:1 separa sozinho), a barra de acento é
+      uma linha morna sobre branco, e o trilho de progresso aparece com
+      --border. No escuro cada um vira o mecanismo que o claro não precisa. */
+   --sidebar-edge:#223049;   /* 1,44:1 contra --sidebar: a borda que faltava */
+   --accent-bar:#6b4708;     /* âmbar fosco: perceptível, não ofusca */
+   --track:#2b3752;
+ }
 
 /* ═══════════════════════════════════════════════════════════
    2 · BASE + ÍCONES (sprite SVG)
@@ -721,12 +743,12 @@ svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 /* ═══════════════════════════════════════════════════════════
    3 · LATERAL (navegação)
    ═══════════════════════════════════════════════════════════ */
-#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;height:100dvh;z-index:10}
+#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;height:100dvh;z-index:10;border-right:1px solid var(--sidebar-edge)}
 #logo{padding:22px 18px 18px;text-align:center}
 #logo h1{color:var(--sidebar-fg);font-size:20px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
 #logo h1 span{color:var(--accent)}
 #logo p{color:var(--sidebar-fg-dim);font-size:10px;margin-top:1px;font-weight:500;letter-spacing:1px;text-transform:uppercase}
-.nav-section{padding:16px 18px 4px;color:rgba(255,255,255,.55);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.nav-section{padding:16px 18px 4px;color:var(--sidebar-fg-dim);font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
 /* Botão de recolher/expandir. Fica ACIMA da lista, no topo da sidebar, e não é
    .nav-btn de propósito: dois listeners fazem querySelectorAll('.nav-btn') (a
    troca de aba e o breadcrumb, que ainda lê b.lastElementChild.textContent), e o
@@ -741,9 +763,9 @@ svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-l
    cada troca de estado. Um rótulo visível aqui viraria a nona linha da sidebar
    e não caberia em 64px. */
 #sidebar[data-rail="on"] #btn-rail{justify-content:center;padding:16px 0 0}
-.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 18px;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;border-right:3px solid transparent}
-.nav-btn:hover{background:var(--sidebar-hover);color:#fff}
-.nav-btn.active{background:var(--sidebar-active);color:#fff;font-weight:600;border-right-color:var(--accent)}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--sidebar-fg-mute);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;border-right:3px solid transparent}
+.nav-btn:hover{background:var(--sidebar-hover);color:var(--sidebar-fg)}
+.nav-btn.active{background:var(--sidebar-active);color:var(--sidebar-fg);font-weight:600;border-right-color:var(--accent)}
 .nav-btn .icon{width:22px;display:flex;align-items:center;justify-content:center;opacity:.7}
 .nav-btn.active .icon{opacity:1;color:var(--sidebar-accent)}
 .nav-btn:focus-visible,#btn-fechar:focus-visible{outline-color:var(--sidebar-accent)}
@@ -770,7 +792,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .icon-btn .sun{display:none}
 :root[data-theme="dark"] .icon-btn .sun{display:inline}
 :root[data-theme="dark"] .icon-btn .moon{display:none}
-#accent-bar{height:3px;background:var(--accent)}
+#accent-bar{height:3px;background:var(--accent-bar)}
 /* Utilitário: some da tela sem sair da árvore de acessibilidade. Diferente de
    `display:none` (tira do leitor de tela) e de `aria-hidden` em elemento
    focável (viola 4.1.2). As duas listas de declarações idênticas do
@@ -880,13 +902,29 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .btn:active{transform:translateY(0)}
 .btn-prim{background:var(--primary-cta);color:#fff}
 .btn-sec{background:var(--sec-cta);color:#fff}
+/* Secundário de verdade = contorno. Nenhum cinza preenchido atinge 3:1 de
+   preenchimento contra --card e 4,5:1 com texto branco ao mesmo tempo, então
+   o cinza preenchido é ou ilegível ou um borrão. Contorno passa os dois
+   (--border-input a 3,26:1, rótulo a 13,96:1) e pesa menos: numa linha com um
+   CTA, o que não é o principal tem que recuar. */
+.btn-out{background:transparent;border:1px solid var(--border-input);color:var(--text)}
+.btn-out:hover{background:var(--row-hover);border-color:var(--text3)}
+.btn-out:disabled{border-color:var(--border);color:var(--text3)}
 .btn-acent{background:var(--accent-cta);color:#fff}
 .btn-ok{background:var(--success-solid);color:#fff}
 .btn-prim:hover{background:var(--primary-cta-h)}
 .btn-sec:hover{background:var(--sec-cta-h)}
 .btn-acent:hover{background:var(--accent-cta-h)}
 .btn-ok:hover{background:var(--success-solid-h)}
-.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+/* Estado desabilitado. O opacity:.5 sumia com a FORMA, não só com o rótulo:
+   o texto continuava legível (6,21:1 no escuro) enquanto a silhueta caía para
+   1,44:1 — "Parar" e "Exportar lote" viravam fantasmas que não pareciam
+   botão. WCAG isenta componente inativo da 1.4.11, então isto não é
+   reprovação: é o eixo errado de diferenciação. O eixo certo é a força da
+   borda e a força do texto — desabilitado mais fraco nas duas dimensões,
+   sem sumir. */
+.btn:disabled{opacity:1;cursor:not-allowed;transform:none;box-shadow:none;background:transparent;border-color:var(--border);color:var(--text3)}
+.btn:disabled:hover{transform:none;box-shadow:none}
 
 /* ═══════════════════════════════════════════════════════════
    10 · STATUS, ESTADOS VAZIOS, LOGS E OVERLAY
@@ -930,7 +968,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #loading-overlay.active{display:flex}
 #loading-box{background:var(--card);padding:36px 48px;border-radius:var(--radius-lg);text-align:center;box-shadow:var(--shadow-lg);border:1px solid var(--border)}
 #loading-box p{color:var(--text2);font-size:13px;font-weight:500;margin-top:10px}
-#loading-box .spinner{width:42px;height:42px;border:4px solid var(--border-light);border-top-color:var(--primary);border-radius:50%;animation:spin .7s cubic-bezier(.4,0,.2,1) infinite;margin:0 auto}
+#loading-box .spinner{width:42px;height:42px;border:4px solid var(--track);border-top-color:var(--primary);border-radius:50%;animation:spin .7s cubic-bezier(.4,0,.2,1) infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 #error-banner{background:var(--err-solid);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:12px;display:none;box-shadow:var(--shadow-err);font-weight:500}
 
@@ -953,7 +991,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #tab-separar #btn-processar{width:100%;margin-top:18px;background:var(--primary-cta);color:#fff;padding:13px;font-size:15px;justify-content:center}
 #tab-separar #btn-processar:hover{background:var(--primary-cta-h)}
 #btn-processar:disabled{opacity:.5;cursor:not-allowed}
-#tab-separar #barra{height:8px;background:var(--border-light);border-radius:var(--radius-sm);margin-top:18px;overflow:hidden;display:none}
+#tab-separar #barra{height:8px;background:var(--track);border-radius:var(--radius-sm);margin-top:18px;overflow:hidden;display:none}
 #tab-separar #barra-inner{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:0%;transition:width .2s}
 #tab-separar #baixar{width:100%;margin-top:10px;background:var(--success-solid);color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}
 #tab-separar #status{color:var(--text2);margin-top:14px;font-size:12px;min-height:16px}
@@ -977,24 +1015,16 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    query mas o atributo não tinha, e o botão novo nasceria com 42px.
    O piso de 44px do Designer também vale para o toggle (rail: 42px medido). */
 #sidebar[data-rail="on"]{width:64px;min-width:64px;transition:width .18s,min-width .18s}
-/* 56px = 64px da barra menos 4 de cada lado. max-width + overflow:hidden no
-   #logo e no h1: sem o limite, um texto mais largo que a barra estoura e invade
-   o conteúdo (aconteceu — o "N" do GCON/SIAN ficou pendurado no canto superior
-   direito da tela). O h1 é centralizado e tem largura limitada, então o texto
-   é cortado no meio em vez de vazar para fora da barra. */
-#sidebar[data-rail="on"] #logo{padding:16px 4px 12px;max-width:64px;overflow:hidden}
-/* No rail a marca não cabe em 11px dentro de 56px: "GCON/SIAN" quebrava no
-   meio e o "N" caía numa segunda linha, deixando um quadrinho solto no topo
-   da barra. Aqui vira a sigla e o nome completo vai para o title do logo,
-   que o mouse já mostra. */
-#sidebar[data-rail="on"] #logo h1{font-size:12px;line-height:1.25;letter-spacing:0;white-space:nowrap;max-width:56px;overflow:hidden}
-/* O "GCON/" some no rail: sobra só "SIAN", que cabe em 56px, e o nome inteiro
-   quebrava no meio deixando um quadrinho solto no topo da barra. Não é
-   display:none: vira visually-hidden, que tira da tela e deixa no texto — o
-   leitor de tela continua anunciando "GCON/SIAN". O title do #logo repete o
-   nome para o mouse. */
-#sidebar[data-rail="on"] .lbl-cheio{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-#sidebar[data-rail="on"] #logo p,#sidebar[data-rail="on"] .nav-section{display:none}
+/* No rail o bloco da marca some INTEIRO. Cheguei aqui tentando centralizar a
+   sigla, e centralizar não resolve: o primeiro item de uma coluna de 8 ícones
+   de mesmo peso não pode ser texto, de 12px ou de qualquer tamanho — e o
+   fragmento herdava a cor mais saturada do topo (o span usa --accent), então
+   ocupava o slot de maior peso visual com o menor conteúdo. O nome completo
+   não se perde: o breadcrumb mostra "GCON·SIAN" em texto no topobar, e cada
+   .nav-btn tem title. Isto também mata o max-width/overflow que existia só
+   para impedir o texto de vazar da barra. */
+#sidebar[data-rail="on"] #logo{display:none}
+#sidebar[data-rail="on"] .nav-section{display:none}
 #sidebar[data-rail="on"] .nav-btn{justify-content:center;padding:12px 0;gap:0;min-height:44px}
 #sidebar[data-rail="on"] .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #sidebar[data-rail="on"] .nav-btn .icon{width:auto}
@@ -1040,9 +1070,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
      outra, a regressão quebra. */
   #btn-rail{display:none}
   #sidebar{width:64px;min-width:64px}
-  #logo{padding:16px 4px 12px;max-width:64px;overflow:hidden}
-  #logo h1{font-size:12px;line-height:1.25;letter-spacing:0;white-space:nowrap;max-width:56px;overflow:hidden}
-  #logo p,.nav-section{display:none}
+  #logo,#logo p,.nav-section{display:none}
   .nav-btn{justify-content:center;padding:12px 0;gap:0;min-height:44px}
   .nav-btn>span:not(.icon){position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .nav-btn .icon{width:auto}
@@ -1086,7 +1114,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 <nav id="sidebar">
   <!-- title no logo: na barra recolhida o h1 mostra só a sigla (o nome inteiro
      não cabe em 56px e quebrava), e o title é quem devolve o nome completo. -->
-<div id="logo" title="GCON/SIAN — NF-e | NFS-e"><h1><b class="lbl-cheio">GCON/</b><span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
+<div id="logo"><h1>GCON/<span>SIAN</span></h1><p>NF-e | NFS-e</p></div>
   <button id="btn-rail" type="button" aria-expanded="true" aria-controls="sidebar" title="Recolher menu"><svg class="i" aria-hidden="true"><use href="#i-panel-close"></use></svg></button>
   <div class="nav-section">IMPORTAR</div>
   <button class="nav-btn active" data-tab="importar" title="Importar XMLs"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg></span><span>Importar XMLs</span></button>
@@ -1299,13 +1327,13 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <p style="font-size:11px;color:var(--text2);margin-bottom:12px">Importe XLSX/CSV com coluna <strong>CNPJ</strong> — respeita <strong>3/min</strong> (20s entre requisições) • cache automático de <strong>30 dias</strong></p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <input type="file" id="cnpj-lote-file" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);font-size:12px">
-            <button id="cnpj-lote-modelo" class="btn btn-sec" type="button" style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Baixar modelo</button>
-            <button id="cnpj-lote-start" class="btn btn-ok" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg> Iniciar lote</button>
-            <button id="cnpj-lote-stop" class="btn btn-sec" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-stop"></use></svg> Parar</button>
-            <button id="cnpj-lote-export" class="btn btn-prim" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Exportar lote</button>
+            <button id="cnpj-lote-modelo" class="btn btn-out" type="button" style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Baixar modelo</button>
+            <button id="cnpj-lote-start" class="btn btn-prim" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg> Iniciar lote</button>
+            <button id="cnpj-lote-stop" class="btn btn-out" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-stop"></use></svg> Parar</button>
+            <button id="cnpj-lote-export" class="btn btn-out" disabled style="white-space:nowrap"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Exportar lote</button>
           </div>
           <div id="cnpj-cache-aviso" role="status" aria-live="polite" style="display:none;margin-top:10px;padding:9px 12px;background:var(--warn-bg);border:1px solid var(--warn-line,var(--border));border-left:3px solid var(--warn-ink);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.5"></div>
-          <div id="cnpj-lote-bar" style="height:6px;background:var(--border-light);border-radius:var(--radius-sm);margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
+          <div id="cnpj-lote-bar" style="height:6px;background:var(--track);border-radius:var(--radius-sm);margin-top:12px;overflow:hidden;display:none"><div id="cnpj-lote-bar-inner" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width .3s"></div></div>
           <div class="lote-rodape"><span id="cnpj-lote-info"></span><span id="cnpj-lote-eta" style="margin-left:auto"></span></div>
           <div id="cnpj-lote-log" class="code" style="margin-top:10px;font-size:10px;max-height:160px;display:none"></div>
           <div id="cnpj-lote-table" style="margin-top:12px"></div>
