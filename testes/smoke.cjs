@@ -269,7 +269,17 @@ const MEDIR_MENU = `(() => {
       `Esc no celular não grava nem anuncia (salvo=${celEsc.salvo}, rail=${celEsc.rail})`);
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.waitForTimeout(400);
+    /* A sidebar anima a largura por 180ms. Um timeout fixo mede no meio da
+       transição (já peguei 114,89px — nem 64 nem 240) e falha sem que exista
+       bug. Espero a largura assentar no valor final. */
+    await page.waitForFunction(
+      () => {
+        const sb = document.getElementById('sidebar');
+        return sb && Math.abs(sb.getBoundingClientRect().width - sb.offsetWidth) < 0.5;
+      },
+      null, { timeout: 4000 },
+    ).catch(() => {});
+    await page.waitForTimeout(250);
     const volta = await medir();
     ok(volta.w === 240 && volta.rail === 'off' && volta.btnVisivel === true,
       `voltando de 375 para 1440, a preferencia salva reassume (${volta.w}px, salvo=${volta.salvo})`);
