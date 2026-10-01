@@ -49,6 +49,21 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 
 Todo o processamento acontece **no navegador**. Nada é enviado a servidor algum por este sistema: os XMLs e PDFs nunca saem da máquina. As únicas requisições externas são (1) as CDNs das bibliotecas e (2) a consulta de CNPJ ao `publica.cnpj.ws`, que recebe apenas o CNPJ digitado. Os resultados de CNPJ ficam em `localStorage` **por 30 dias** e podem ser apagados a qualquer momento pelo botão "Limpar cache" (Ferramentas → Consultar CNPJ). O cache usa o namespace versionado `cnpj_v2_`; as entradas do namespace antigo `cnpj_` são expurgadas no boot, porque uma versão anterior gravava a resposta da API sem escapar.
 
+### Nenhum dado fiscal da cliente no repositório
+
+Duas camadas no gate 14 da regressão, porque nenhuma das duas sozinha fecha o problema:
+
+| Gate | Como decide | O que fecha |
+|---|---|---|
+| **14.1 — cruzamento com o gabarito** | cruza todo CNPJ (mascarado e cru), chave 44 e protocolo 15 dos **arquivos versionados** contra os valores de `verdade.json` | dado que está no gabarito, até em arquivo que o gate antigo não visitava |
+| **14.2 — CNPJ válido x sintético declarado** | todo `\d{14}` cujo **DV fecha** tem que estar na lista de sintéticos que o `index.html` e o README usam como exemplo | dado que **ninguém catalogou** |
+
+O escopo dos dois é `git ls-files` — a lista de publicação é o índice do git, não uma lista escrita à mão. Foi por isso que os dois vazamentos passaram: o primeiro porque o gate olhava só o `index.html`, o segundo porque o cruzamento dependia do gabarito.
+
+Por que o 14.2 existe: o `regex` de CNPJ cru é `(?<![\d.])\d{14}(?![\d])`. O ponto no *lookahead* existe para não contar `45.932.889/0002` atravessando a máscara, mas **ponto final é o fim natural de uma frase em comentário** — e foi assim que o CNPJ real entrou, citado num comentário que explicava a própria regra. Um gate que só cruza com o gabarito não tem como ver esse valor: ele não está catalogado. Nenhum dado real deve ser reescrito aqui nem neste README, nem em comentário de teste — o gate existe para barrar justamente o que alguém copia do vazamento anterior.
+
+Sem `verdade.json` (clone novo), o 14.1 cai na lista de sintéticos e **não** reprova o fonte correto: falhar sem gabarito treina a equipe a ignorar a falha. O 14.2 não depende do gabarito e continua valendo.
+
 ## Design tokens
 
 Todas as cores, raios e sombras vivem como variáveis CSS em `:root` (tema claro) e `:root[data-theme="dark"]` (tema escuro). Para criar um novo tema, basta declarar o mesmo conjunto de variáveis em outro seletor — **nenhum valor de cor deve ser escrito à mão em `<style>` ou em `style=""`**. JS que precisa de cor (Chart.js) lê o token via `getComputedStyle(root).getPropertyValue('--x')`, nunca um literal.
@@ -100,7 +115,7 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 
 | Comando | O que faz | Depende de `amostras/` |
 |---|---|---|
-| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, e os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) | não |
+| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) e o **gate 14 anti-vazamento** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
 | `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
