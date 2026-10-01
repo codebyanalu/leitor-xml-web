@@ -1406,10 +1406,6 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     && !/#sidebar\[data-rail="on"\][^{]*::after\{/.test(css));
   ok('o item ativo continua marcado no rail (cor e borda, sem balão)',
     /\.nav-btn\.active\{[^}]*background:var\(--sidebar-active\)[^}]*border-right-color:var\(--accent\)/.test(css));
-  /* A marca no rail: o h1 inteiro é mais largo que os 56px úteis, então sem
-     max-width + overflow:hidden o texto vazava para a área do conteúdo (o "N"
-     do GCON/SIAN aparecia pendurado no canto da tela). O "GCON/" vira
-     visually-hidden — não display:none — para o h1 continuar inteiro no texto. */
   /* A marca some INTEIRA no rail (Designer): o primeiro item de uma coluna de
      8 ícones de mesmo peso não pode ser texto, e o fragmento herdava a cor mais
      saturada do topo. O nome completo continua no breadcrumb e no title de cada
@@ -1419,6 +1415,13 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     /#sidebar\[data-rail="on"\] #logo\{display:none\}/.test(css)
     && /#logo,#logo p,\.nav-section\{display:none\}/.test(css)
     && !/#sidebar\[data-rail="on"\] #logo h1\{/.test(css));
+  /* O h1 do documento vive no body, não dentro de #logo — a marca some em
+     ≤768px e, sem isso, o documento ficava sem nenhum h1 nesses dois layouts.
+     Este gate existe porque a afirmação "adicionei o h1" já foi feita uma vez e
+     a mudança não estava no arquivo (perdeu num rebase). */
+  ok('o documento tem um h1 no body, e ele não depende da marca',
+    /<h1 class="visually-hidden">GCON\/SIAN — leitor de NF-e e NFS-e<\/h1>/.test(html)
+    && /<div id="logo"><h1>/.test(html));
   ok('o logo do menu cheio continua inteiro (GCON/SIAN em texto)',
     /<div id="logo"><h1>GCON\/<span>SIAN<\/span><\/h1><p>NF-e \| NFS-e<\/p><\/div>/.test(html)
     && !/lbl-cheio/.test(html));
@@ -1438,8 +1441,11 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     /\.btn:disabled\{opacity:1;[^}]*background:transparent;[^}]*border-color:var\(--border\)/.test(css)
     /* A segunda condição NÃO pode ser "não usa opacity": opacity:1 É a forma
        correta. O que não pode existir é opacidade REDUZIDA, que é o defeito
-       antigo (.5) e o que apagava a silhueta. */
-    && !/\.btn:disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(css)
+       antigo (.5) e o que apagava a silhueta. E o padrão tem que pegar QUALQUER
+       regra :disabled, não só a de classe: #btn-processar:disabled sobreviveu
+       à reescrita da classe e, sendo regra por ID, vencia por especificidade
+       e mantinha o defeito — com o gate antigo passando 522/0. */
+    && !/[:.][\w-]*disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(css)
     && !/\.btn:disabled\{opacity:\./.test(css));
   ok('o secundário do lote é contorno, e o CTA do lote é o primário azul',
     /\.btn-out\{background:transparent;border:1px solid var\(--border-input\)/.test(css)
@@ -1831,7 +1837,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       JSON.stringify(M.eEndereco('ENDEREÇO: RUA EXEMPLO - 100 1- SAÍDA [1] 3326 0806 0203 1800')));
 
     /* texto plano: rótulo, depois o ruído do protocolo e da IE, depois o valor */
-    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 131267892684769 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
+    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 100200300410013 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
     ok('natureza da operação pula o rótulo do protocolo e lê o valor',
       M.eNatOp(NAT) === 'VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE', JSON.stringify(M.eNatOp(NAT)));
     const NAT_OCR = 'NATUREZA DA OPERAÇÃO INSCRIÇÃO ESTADUAL TNSCR ESTADUAL SUBSTITUTO TRIBUTÁRIO VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT 85586181 DESTINATÁRIO';

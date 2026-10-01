@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -153,7 +153,8 @@ const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
      pontas da nota em silêncio. Medido com um código de barras de 15 dígitos
      seguido de DOIS CNPJs: saía o DV do código como emitente, que não é
      empresa nenhuma. Os CNPJs do exemplo aqui são sintéticos de propósito — o
-     gate 8 cruza todo CNPJ deste arquivo contra a verdade da cliente, porque
+     gate "nenhum CNPJ real da cliente está escrito no fonte" (grupo 2 ·
+     Segurança) cruza todo CNPJ deste arquivo contra a verdade local, porque
      escrever num comentário o CNPJ de uma nota real é como esse dado entra
      num arquivo público sem ninguém perceber.
    O piso é 15 e não 14: o CNPJ colado no rodapé do comprovante vem com o
@@ -175,8 +176,11 @@ function eJ(full){
   const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};
 }
 function isNoiseNum(n,full){if(!n)return true;const dig=d(n);if(dig.length>=11&&dig.length<=14)return true;if(dig.length===44)return true;if(/^\d{2}\/\d{2}\/\d{4}$/.test(n))return true;if(/^\d{4}-\d{2}-\d{2}$/.test(n))return true;if(/^\d{2}\.\d{2}\.\d{4}$/.test(n))return true;if(dig.length>=10&&/^\d{2}[\.\-\/]\d{2}[\.\-\/]\d{4}$/.test(n))return true;if(/^\(\d{2}\)\s*\d{4,5}[\-]?\d{4}$/.test(n))return true;if(/^\d{2}\s*\d{4,5}\s*\d{4}$/.test(n))return true;if(/^\d{8,}$/.test(dig)&&dig.length>=10)return true;return false;}
-function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];/* \d{15,} virou \d{14,}: o codigo de barras impresso na DANFE tem 15 digitos
-   e ficava inteiro na janela, engolindo o numero que estava colado nele. */
+function eN(full,items){let best={valor:"",conf:0,ancora:"",cands:[]};const cands=[];for(let ai=0;ai<A.length;ai++){const re=A[ai];const all=[...full.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];/* O corte da janela saiu de \d{15,} para \d{14,}. Baixar o piso SÓ aumenta o
+   que é removido: com {15,} o run de 15 do código de barras já saía; o que
+   faltava era o de 14, o do CNPJ de uma nota sem código de barras. Sem ele, o
+   número que estava colado no CNPJ era engolido pelo próprio CNPJ e saía
+   "não encontrado". */
 for(const m of all){const idx=m.index;let janela=full.slice(idx,idx+320);janela=janela.replace(/\d{44}/g,' ').replace(/\d{14,}/g,' ');const nums=[...janela.matchAll(/\b0*(\d{1,10})\b/g)].map(x=>({raw:x[1],fullRaw:x[0],off:x.index}));for(const nn of nums){const raw=nn.raw;const dig=d(raw);if(!dig||dig.length<1||dig.length>10)continue;if(dig.length>=11)continue;if(dig.length<=3&&+dig<10)continue;if(isNoiseNum(nn.fullRaw,full))continue;const prox=nn.off;let score=(90-ai*4)-Math.min(prox/25,22)+(dig.length>=5&&dig.length<=9?10:dig.length===4?5:0);if(/N[º°]/.test(m[0]))score+=6;if(m[0].length<=4)score-=2;cands.push({valor:raw,ancora:m[0],score,idx});if(score>best.conf)best={valor:raw.replace(/^0+/,'')||raw,conf:Math.round(score),ancora:m[0].trim()+` (+${prox})`};}}}if(items.length){for(const it of items){if(!A.some(r=>r.test(it.str)))continue;const mesmaLinha=items.filter(j=>j.page===it.page&&Math.abs(j.y-it.y)<7&&j.x>it.x+2).sort((a,b)=>a.x-b.x);for(let k=0;k<Math.min(3,mesmaLinha.length);k++){const v=mesmaLinha[k];const raw=v.str.trim();const dig=d(raw);if(!/^\d{1,10}$/.test(dig))continue;if(dig.length<=3&&+dig<10)continue;const sc=/N[º°]/.test(it.str)?88:82;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' → '+raw};break;}if(best.conf>=88)break;const abaixo=items.filter(j=>j.page===it.page&&j.y<it.y&&j.y>it.y-30&&Math.abs(j.x-it.x)<90).sort((a,b)=>b.y-a.y);for(const v of abaixo){const dig=d(v.str.trim());if(/^\d{4,10}$/.test(dig)){const sc=76;if(sc>best.conf)best={valor:dig.replace(/^0+/,'')||dig,conf:sc,ancora:it.str.trim()+' ↓ '+v.str.trim()};break;}}}}cands.sort((a,b)=>b.score-a.score);best.cands=cands.slice(0,8).map(c=>c.valor+' ('+c.ancora.slice(0,22)+')');if(!best.valor){const standalone=[...full.matchAll(/\b(\d{6})\b/g)].map(m=>{const n=parseInt(m[1]);const before=full.slice(Math.max(0,m.index-30),m.index);const hasNoAfter=/N[º°]|Nota|NF|n[uú]mero/i.test(before);return{val:m[1],idx:m.index,nearNo:hasNoAfter,num:n};}).filter(x=>{if(isNoiseNum(x.val,full))return false;if(/^\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}$/.test(x.val))return false;if(x.num%1000===0&&x.num>=100000)return false;return true;});if(standalone.length){standalone.sort((a,b)=>{if(a.nearNo&&!b.nearNo)return -1;if(!a.nearNo&&b.nearNo)return 1;return b.num-a.num;});best={valor:standalone[0].val,conf:standalone[0].nearNo?55:40,ancora:standalone[0].nearNo?"fallback 6 dígitos (perto de Nº)":"fallback 6 dígitos",cands:standalone.slice(0,4).map(x=>x.val)};}}if(!best.valor)best={valor:"",conf:0,ancora:"não encontrado",cands:cands.slice(0,4).map(c=>c.valor)};best.conf=Math.min(95,Math.max(0,best.conf));return best;}
 function eData(full){const m=full.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);return m?m[0]:"";}
 function eDatas(full){const all=[...full.matchAll(/\d{2}\/\d{2}\/\d{4}/g)].map(m=>m[0]);const emis=full.match(/DATA\s*DA\s*EMISS[ÃA]O[\s:]*(\d{2}\/\d{2}\/\d{4})/i);const saida=full.match(/DATA\s*SA[IÍ]DA[\s\/ENTR]*(\d{2}\/\d{2}\/\d{4})/i);const venc=eVenc(full);/* A data de saida so e aceita depois do rotulo. Antes caia no "all[1]",
@@ -990,7 +994,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 #tab-separar .btn-select:hover{background:var(--primary-cta-h)}
 #tab-separar #btn-processar{width:100%;margin-top:18px;background:var(--primary-cta);color:#fff;padding:13px;font-size:15px;justify-content:center}
 #tab-separar #btn-processar:hover{background:var(--primary-cta-h)}
-#btn-processar:disabled{opacity:.5;cursor:not-allowed}
+#btn-processar:disabled{cursor:not-allowed;background:transparent;border-color:var(--border);color:var(--text3)}
 #tab-separar #barra{height:8px;background:var(--track);border-radius:var(--radius-sm);margin-top:18px;overflow:hidden;display:none}
 #tab-separar #barra-inner{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:0%;transition:width .2s}
 #tab-separar #baixar{width:100%;margin-top:10px;background:var(--success-solid);color:#fff;padding:12px;font-size:14px;justify-content:center;display:none}
@@ -1106,6 +1110,10 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 </style>
 </head>
 <body>
+<!-- O h1 do documento mora AQUI e não dentro de #logo: com a marca recolhida
+     (e em todo layout ≤768px) o #logo some, e o documento ficava sem nenhum h1.
+     Zero impacto visual. -->
+<h1 class="visually-hidden">GCON/SIAN — leitor de NF-e e NFS-e</h1>
 <svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-panel-close" viewBox="0 0 24 24"><path d="M15 3l-6 9 6 9M9 3l-6 9 6 9"/></symbol><symbol id="i-panel-open" viewBox="0 0 24 24"><path d="M9 3l6 9-6 9M15 3l6 9-6 9"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
 
 
@@ -1309,7 +1317,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
               <input type="text" id="cnpj-input" placeholder="00.000.000/0000-00" maxlength="18" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:monospace;letter-spacing:.5px">
             </div>
             <button id="cnpj-btn" class="btn btn-prim" style="padding:10px 22px;white-space:nowrap">Consultar</button>
-            <button id="cnpj-limpar" class="btn btn-sec" style="padding:10px 14px" aria-label="Limpar" title="Limpar"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
+            <button id="cnpj-limpar" class="btn btn-out" style="padding:10px 14px" aria-label="Limpar" title="Limpar"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
           </div>
           <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
             <span style="font-size:10px;color:var(--text3)">Enter para consultar • cache local automático</span>
@@ -1350,7 +1358,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
             <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de produtos — itens e tributos</p>
             <div style="display:flex;gap:8px">
               <button class="btn btn-prim" onclick="exportCSV('nfe')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> CSV</button>
-              <button class="btn btn-ok" onclick="exportXLSX('nfe')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
+              <button class="btn btn-out" onclick="exportXLSX('nfe')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
             </div>
           </div>
           <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
@@ -1358,7 +1366,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
             <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Notas fiscais de serviços — valores e retenções</p>
             <div style="display:flex;gap:8px">
               <button class="btn btn-prim" onclick="exportCSV('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> CSV</button>
-              <button class="btn btn-ok" onclick="exportXLSX('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
+              <button class="btn btn-out" onclick="exportXLSX('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
             </div>
           </div>
         </div>
