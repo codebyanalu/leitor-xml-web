@@ -133,13 +133,23 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     return out;
   };
   /* CNPJ: mascarado e cru de 14. O cru usa borda que não seja dígito NEM
-     ponto-final — sem o ponto, "prestador 06020318000544." (fim natural de uma
+     ponto-final — sem o ponto, "prestador 11222333000181." (fim natural de uma
      frase em comentário) escapava; o ponto está ali para não contar
      "45.932.889/0002" atravessando a máscara. */
   const cnpjMasc = achouEm(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g);
-  const cnpjCru = achouEm(/(?<![\d.])\d{14}(?![\d.])/g);
-  const chave44 = achouEm(/(?<![\d.])\d{44}(?![\d.])/g);
-  const protocolo = achouEm(/(?<![\d.])\d{15}(?![\d.])/g);
+  /* O ponto está no LOOKAHEAD para não contar "45.932.889/0002" atravessando
+      a máscara. Mas o ponto-final também é fim natural de frase em comentário
+      — e foi por um "prestador <CNPJ>." escrito assim que o dado real da
+      cliente escapou (não repito o número aqui: citar o dado real na
+      comentário que explica o vazamento seria um terceiro vazamento). Com
+      (?![\d.]) o gate era cego para o caso que mais importa: dado real citado
+      dentro de um comentário, que é publicado como o resto. O ponto na borda
+      esquerda continua protegendo a máscara; o da direita, não: 14 dígitos
+      não-mascarados logo após ponto ou espaço são um CNPJ, não um fragmento
+      de máscara. */
+  const cnpjCru = achouEm(/(?<![\d.])\d{14}(?![\d])/g);
+  const chave44 = achouEm(/(?<![\d.])\d{44}(?![\d])/g);
+  const protocolo = achouEm(/(?<![\d.])\d{15}(?![\d])/g);
   const SINT_14 = ['00000000000000', '11222333000181', '11222334000126', '11222337000183',
     '11222338000172', '12345678000195', '00000000000191', '00000000000004'];
   const SINT_15 = ['100200300400501', '3526011222333000181550010000001231123456783'];
@@ -184,6 +194,43 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     ok('o gate olha os versionados, não só o index.html',
       versionados.length >= 7 && versionados.some((f) => f.startsWith('testes/')),
       versionados.length + ' arquivo(s): ' + versionados.join(', '));
+
+    /* O cruzamento acima só pega o que o GABARITO conhece. E foi assim que o
+       CNPJ real da cliente entrou de novo, dentro de um COMENTÁRIO deste
+       arquivo — eu mesmo escrevi, copiando do valor vazado. Dado que não está
+       no gabarito não tem como o cruzamento acusar.
+
+       Regra que fecha isso sem depender do gabarito: um CNPJ de 14 dígitos
+       cujo DV fecha é, neste projeto, ou um sintético declarado ou um dado
+       real. Não há terceiro caso. Então a lista de sintéticos é a allowlist,
+       e qualquer outro CNPJ válido reprova — inclusive em comentário, porque
+       comentário é texto e texto publicado é público. */
+    const dvCnpjFecha = (c14) => {
+      const mod11 = (s) => {
+        let r = 0;
+        for (let i = 0; i < s.length; i++) r += Number(s[s.length - 1 - i]) * (2 + (i % 8));
+        const d = 11 - (r % 11);
+        return d >= 10 ? 0 : d;
+      };
+      const b12 = c14.slice(0, 12);
+      const d1 = String(mod11(b12));
+      return c14 === b12 + d1 + String(mod11(b12 + d1));
+    };
+    /* sintéticos independentes do gabarito: os que o FONTE CORRETO usa como
+       exemplo. Uma lista viva aqui, e não importada, porque deriva do que está
+       escrito no index.html/README — que é o que este gate protege. */
+    const SINT_CNPJ = new Set(['00000000000000', '11222333000181', '11222334000126',
+      '11222335000170', '11222336000115', '11222337000183', '11222338000172',
+      '12345678000195', '00000000000191', '00000000000004', '11111111111111']);
+    const cnpjValidosNaoSinteticos = [...cnpjCru.keys()]
+      .filter((x) => /^\d{14}$/.test(x))
+      .filter((x) => !SINT_CNPJ.has(x))
+      .filter((x) => dvCnpjFecha(x))
+      .map((x) => 'CNPJ ' + x + ' em ' + cnpjCru.get(x));
+    ok('todo CNPJ de DV válido nos versionados é um sintético declarado',
+      cnpjValidosNaoSinteticos.length === 0,
+      cnpjValidosNaoSinteticos.slice(0, 6).join(' | ')
+        || 'todos os CNPJ válidos são sintéticos conhecidos');
   }
 }
 
