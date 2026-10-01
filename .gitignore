@@ -36,6 +36,14 @@ opencode.json
 # Estado salvo do painel (gerado no navegador, nunca versionado)
 painel-estado.json
 
+# Cache local de skills de terceiros (instaladas por npx skills / claude).
+# Configuração da máquina, não do projeto. `.opencode/skills/` acima também
+# não tem nada versionado — lá é a pasta do agente, que só existe na máquina.
+# O que É versionado em .opencode/ é só plugins/obsidian-sync.js.
+.agents/
+.claude/
+skills-lock.json
+
 # Ruído de ambiente (git check-ignore confirma que nada disso é rastreado)
 node_modules/
 .env
