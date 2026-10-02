@@ -85,6 +85,24 @@ const contraste = `(() => {
 
 const fmt = (m) => `${m.w}px rail=${m.rail} aria=${m.expanded} ${m.icone} salvo=${m.salvo} secoes=${m.secoes}`;
 
+/* Botões que passam pelo estado desabilitado, e o tom que a borda tem que
+   ter em cada tema. Os valores são o par do token `--border-disabled`
+   (2,31:1 no escuro, 2,10:1 no claro) — a FAIXA entre `--border`, que some,
+   e `--border-input`, que confundiria com o habilitado. Estão escritos aqui
+   como rgb() porque o browser resolve o token: comparar com o hex do CSS
+   mediria o texto, não o que está renderizado.
+
+   `btn-processar` é o caso difícil: a regra base dele
+   (`#tab-separar #btn-processar`, 2,0,0) vence o `:disabled` (1,1,0) sem o
+   prefixo — foi esse o defeito. Os outros dois são `.btn` e `.btn-out`. */
+const DESABILITADOS = [
+  { id: 'btn-processar', aba: 'separar' },
+  { id: 'cnpj-lote-stop', aba: 'cnpj' },
+  { id: 'cnpj-lote-export', aba: 'cnpj' },
+];
+const DESAB_ESCURO = 'rgb(72, 87, 113)';   /* #485771 */
+const DESAB_CLARO = 'rgb(169, 180, 195)';  /* #a9b4c3 */
+
 /* Mede o estado da sidebar e da área de drop de uma vez. */
 const MEDIR_SIDEBAR = `(() => {
   const sb = document.getElementById('sidebar'), btn = document.getElementById('btn-rail');
@@ -186,6 +204,85 @@ const MEDIR_MENU = `(() => {
         `${w}px ${tema}: os 8 itens do menu têm title (${menu.titulos}/8)`);
       ok(menu.crumb === 'Leitura PDF',
         `${w}px ${tema}: o breadcrumb mostra a aba, sem o toggle ("${menu.crumb.trim()}")`);
+
+      /* ESTADO DESABILITADO — o que faltava, e que custou seis rodadas de
+         harness manual. O defeito do `:disabled` do CTA só apareceu por
+         leitura de CSS; nenhuma suíte renderizava o estado. Aqui o browser
+         é quem diz.
+
+         Três asserções por botão, e cada uma pega um defeito diferente:
+           1. fundo transparente — pega a regra base por especificidade
+              vencendo o `:disabled` (2,0,0 contra 1,1,0);
+           2. borda com LARGURA e ESTILO — `border-color` sozinho não pinta
+              nada quando o `border-style` herdado é `none`;
+           3. borda no token do desabilitado — pega a volta a `--border`,
+              que é 1,23:1 no claro e some.
+
+         O botão precisa ser forçado pelo próprio teste: o app reabilita o CTA
+         quando não há PDF escolhido, o que é CORRETO. E a leitura vem
+         depois de duas estabilizações, porque medir no mesmo tick em que o
+         atributo é forçado devolve o estado de antes do JS rodar. */
+      for (const alvo of DESABILITADOS) {
+        /* cada botão mora numa aba: sem navegar até ela, o elemento está
+           display:none e o getComputedStyle resolve a folha inteira, devolvendo
+           o estado habilitado — foi exatamente o que aconteceu em três
+           versões do harness manual */
+        await page.evaluate((aba) => {
+          const nav = document.querySelector('.nav-btn[data-tab="' + aba + '"]');
+          if (nav) nav.click();
+        }, alvo.aba);
+        await page.waitForTimeout(450);
+        /* `.btn` tem `transition:all .2s`: ao forçar `disabled`, o fundo
+           parte do azul do CTA e chega no transparente em 200ms. Medir antes
+           devolve `rgba(26,75,140,0.016)` — alfa 0,016, metade do caminho —
+           e o teste reprova um CSS correto.espera a transição terminar em
+           vez de dormir um tempo arbitrário. */
+        await page.evaluate((sel) => {
+          const el = document.getElementById(sel);
+          el.disabled = true;
+          const fim = el.getAnimations ? el.getAnimations().map((a) => a.finished) : [];
+          return Promise.all(fim.map((p) => p.catch(() => {})));
+        }, alvo.id);
+        const d = await page.evaluate((sel) => {
+          const el = document.getElementById(sel);
+          if (!el) return { erro: 'botao inexistente' };
+          el.disabled = true;
+          void el.offsetHeight;
+          const c = getComputedStyle(el);
+          return {
+            bg: c.backgroundColor,
+            bordaLarg: c.borderTopWidth,
+            bordaEst: c.borderTopStyle,
+            bordaCor: c.borderTopColor,
+            rotulo: c.color,
+          };
+        }, alvo.id);
+        if (d.erro) { ok(false, `${w}px ${tema} ${alvo.id}: ${d.erro}`); continue; }
+        /* assenta o JS e relê: se o app reabilitar, o estado não é estável
+           e a medição não diz nada sobre o desabilitado */
+        await page.waitForTimeout(250);
+        const d2 = await page.evaluate((sel) => {
+          const el = document.getElementById(sel);
+          void el.offsetHeight;
+          const c = getComputedStyle(el);
+          return { bg: c.backgroundColor, disabled: el.disabled };
+        }, alvo.id);
+        if (!d2.disabled) continue;   /* o app reabilitou: nada a medir */
+
+        const transparente = /rgba\(0,\s*0,\s*0,\s*0\)|transparent/.test(d.bg);
+        ok(transparente,
+          `${w}px ${tema} ${alvo.id}: fundo transparente, não o do CTA (${d.bg})`);
+        ok(parseFloat(d.bordaLarg) > 0 && d.bordaEst !== 'none',
+          `${w}px ${tema} ${alvo.id}: a caixa existe (borda ${d.bordaLarg} ${d.bordaEst} — border-color sem estilo não pinta)`);
+
+        /* a cor tem de ser a do token do desabilitado, e o gate de contraste
+           mede: se o valor bater com o par do tema, a caixa está no tom certo
+           e não no --border que somia */
+        const esperado = tema === 'escuro' ? DESAB_ESCURO : DESAB_CLARO;
+        ok(d.bordaCor.toLowerCase() === esperado.toLowerCase(),
+          `${w}px ${tema} ${alvo.id}: borda no token do desabilitado (${d.bordaCor}${d.bordaCor.toLowerCase() === esperado.toLowerCase() ? '' : ', esperado ' + esperado})`);
+      }
+
       await ctx.close();
     }
   }

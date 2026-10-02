@@ -123,7 +123,7 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 | `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) e o **gate anti-vazamento (2.A/2.B/2.C)** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
-| `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
+| `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, **o estado desabilitado renderizado nos 2 temas** (fundo transparente, caixa presente, borda no token certo), a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
 
 A bancada exige que a verdade seja *verificada*, não gerada pelo próprio leitor: `chave`, `numero`, `serie` e `cnpjPrestador` entram porque a chave impressa se auto-verifica em três checks independentes (DV módulo 11 dos 44 dígitos, estrutura `cUF`/`AAMM`/`mod` e DV do CNPJ nas posições 7-20) — um dígito errado no OCR derruba pelo menos um deles. Os demais campos foram lidos na nota, a mão.
 
@@ -138,7 +138,13 @@ npm run smoke         # só o smoke de navegador (precisa de Edge + Playwright)
 npm run test:tudo     # as 3 suítes sem browser + o smoke
 ```
 
-O `smoke` é a única suíte que precisa de browser — o Edge instalado (ou `EDGE_PATH` apontando para ele) e o `playwright-core`, que é **devDependency**: `npm i` já traz. Por isso ela não entra no `npm test`, que roda em qualquer máquina. Se você mantém o pacote num cache fora do repo, aponte uma vez e chame o script:
+O `smoke` é a única suíte que precisa de browser — o Edge instalado (ou `EDGE_PATH` apontando para ele) e o `playwright-core`, que é **devDependency**: `npm i` já traz. Por isso ela não entra no `npm test`, que roda em qualquer máquina.
+
+**Por que o estado desabilitado está no smoke, e não só na regressão.** A regra `.btn` tem `transition:all .2s`: ao forçar `disabled`, o fundo parte do azul do CTA e chega no transparente em 200 ms. Medir no meio devolve `rgba(26,75,140,0.016)` — alfa 0,016, metade do caminho — e reprova um CSS correto. O gate espera `getAnimations().finished` em vez de dormir um tempo arbitrário. Vale para elemento em aba fechada (`display:none` faz o `getComputedStyle` resolver a folha inteira) e para atributo forçado que o app reabilita em seguida: o `btn-processar` fica habilitado sem PDF escolhido, e isso é CORRETO.
+
+Três versões de harness manual deram "defeito" com a correção certa, e a captura de tela foi o que consentiu. **Gate que mede estado de animação precisa esperar a animação, e harness que diverge da captura perde.**
+
+Se você mantém o pacote num cache fora do repo, aponte uma vez e chame o script:
 
 ```bash
 export PLAYWRIGHT_PATH="$HOME/.cache/pw/node_modules/playwright-core"   # Linux/mac
