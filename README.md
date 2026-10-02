@@ -49,6 +49,22 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 
 Todo o processamento acontece **no navegador**. Nada é enviado a servidor algum por este sistema: os XMLs e PDFs nunca saem da máquina. As únicas requisições externas são (1) as CDNs das bibliotecas e (2) a consulta de CNPJ ao `publica.cnpj.ws`, que recebe apenas o CNPJ digitado. Os resultados de CNPJ ficam em `localStorage` **por 30 dias** e podem ser apagados a qualquer momento pelo botão "Limpar cache" (Ferramentas → Consultar CNPJ). O cache usa o namespace versionado `cnpj_v2_`; as entradas do namespace antigo `cnpj_` são expurgadas no boot, porque uma versão anterior gravava a resposta da API sem escapar.
 
+### Dado de arquivo de terceiro no DOM
+
+XML e PDF são entrada de terceiro: o conteúdo do arquivo aparece na tela, e um arquivo forjado com `"><img src=x onerror=…>` no campo CNPJ executaria script no navegador de quem abriu. A regra é **escape no render, não na fronteira** — o dado é escapado onde vira HTML, e não onde foi lido. Assim o invariante é garantido pelo código e não por "qual versão gravou isto".
+
+| Onde | O que é |
+|---|---|
+| `ESC()` / `esc()` | o escape: `&` `<` `>` `"` `'` |
+| `escProfundo()` | o render do resultado do CNPJ aplica na árvore inteira |
+| `celVazia()` | célula da tabela do PDF, com o `title` do tooltip |
+| `cnpjCell()` | CNPJ da tabela do PDF |
+| `fmtCNPJ()` / `fmtChave()` | reformatam **e escapam** |
+
+**Por que `onclick` inline com o dado dentro é proibido.** Um CNPJ em `onclick="abrirConsultaCNPJ('…')"` cai num contexto de JavaScript, e o escape de HTML não protege lá: uma aspa simples sobrevive ao `esc` e fecha o argumento da chamada. Por isso o link da tabela do PDF usa `data-cnpj` com `esc()` mais um `addEventListener` — o mesmo padrão dos botões `.pdfiso-debug` e `.pdfiso-copy` ao lado.
+
+Um `<option>` é um caso que passa despercebido: `value="${esc(c)}"` escapado e `>${c}` cru na mesma linha. O atributo está protegido e o texto não — e o texto é o que o usuário lê.
+
 ### Nenhum dado fiscal da cliente no repositório
 
 Três camadas no gate anti-vazamento da regressão, porque nenhuma sozinha fecha o problema. Dado fiscal não é só o que identifica a empresa: é o que identifica a **operação**.

@@ -1437,8 +1437,22 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   ok('o texto auxiliar cita o rótulo real do radio',
     /Com “Ler número da nota” o nome sai como/.test(html) && /com “Não ler”/.test(html));
   /* Contrato entre módulos: consultarCNPJ é publicado por outra IIFE. */
+  /* O consumidor do CNPJ verifica o contrato antes de chamar — e o dado vai por
+     ATRIBUTO, nunca interpolado em `onclick`. Num onclick inline o CNPJ cai
+     num contexto de JavaScript, onde o escape de HTML não protege: uma aspa
+     simples sobrevive ao esc e fecha o argumento da chamada. */
   ok('o consumidor do CNPJ verifica o contrato antes de chamar (não ReferenceError cru)',
-    /typeof window\.consultarCNPJ!=='function'/.test(html) && /onclick="return abrirConsultaCNPJ\(/.test(html));
+    /typeof window\.consultarCNPJ!=='function'/.test(html)
+    && /class="pdfiso-cnpj" data-cnpj="\$\{esc\(c\)\}"/.test(html)
+    && /querySelectorAll\('\.pdfiso-cnpj'\)\.forEach\(a=>a\.addEventListener\('click'/.test(html));
+  ok('nenhum dado de arquivo entra em onclick inline (contexto de JavaScript)',
+    !/onclick="[^"]*\$\{[^}]*(cnpj|CNPJ|c\}|prestador|emitente|tomador)/.test(html),
+    'escapar para HTML nao protege dentro de onclick: a aspa simples sobrevive');
+  /* fmtCNPJ e fmtChave escapam alem de formatar: o dado vem de PDF/XML, e
+     reformatar nao protege. */
+  ok('os formatadores de dado de arquivo escapam, não só reformatam',
+    /function fmtCNPJ\(c\)\{return c\?esc\(/.test(html)
+    && /function fmtChave\(ch\)\{return ch\?esc\(/.test(html));
   ok('a IIFE de CNPJ nomeia o contrato que publica',
     /CONTRATO ENTRE M[ÓO]DULOS: publica window\.consultarCNPJ/.test(html));
   /* Teto de volume do separador. */

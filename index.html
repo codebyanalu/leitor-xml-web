@@ -1754,8 +1754,12 @@ function updateStatus(){
 function populateFilters(){
   const sn=document.getElementById('filtro-nfe-cnpj');
   const ss=document.getElementById('filtro-nfse-cnpj');
-  sn.innerHTML='<option value="">Todos emitentes</option>'+[...new Set(DB.nfe.map(p=>p.CNPJ_Emitente).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
-  ss.innerHTML='<option value="">Todos prestadores</option>'+[...new Set(DB.nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
+  /* O TEXTO do option também vai escapado: `value="${esc(c)}"` escapava o
+     atributo e deixava `${c}` cru dentro do innerHTML. Um XML com
+     `"><img src=x onerror=...>` no CNPJ entrava como HTML — o valor do
+     atributo é limitado pelo `=`, mas o texto não é. */
+  sn.innerHTML='<option value="">Todos emitentes</option>'+[...new Set(DB.nfe.map(p=>p.CNPJ_Emitente).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  ss.innerHTML='<option value="">Todos prestadores</option>'+[...new Set(DB.nfse.map(n=>n.CNPJ_Prestador).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
 }
 
 // ═══ RENDER NF-e (COMPLETO) ═══
@@ -2718,8 +2722,12 @@ document.getElementById('baixar').addEventListener('click', async () => {
   const DBpdf=[]; const logEl=document.getElementById('pdfiso-log'); const resEl=document.getElementById('pdfiso-result');
   const esc=ESC; /* esc vive no escopo do script (ver ESC) — antes daqui quebrava os consumidores fora deste IIFE */
   function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'var(--code-fg)';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
-  function fmtCNPJ(c){return c?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):'';}
-  function fmtChave(ch){return ch?ch.replace(/(\d{4})/g,'$1 ').trim():'';}
+  /* fmtCNPJ e fmtChave nao so reformatam: elas ESCAPAM tambem. O dado vem de
+     PDF e de XML — arquivo de terceiro. Reformatar nao protege: um CNPJ forjado
+     com `"><img src=x onerror=...>` sobrevive ao replace e ia parar no
+     `onclick="abrirConsultaCNPJ('...')"` e no texto da celula. */
+  function fmtCNPJ(c){return c?esc(c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')):'';}
+  function fmtChave(ch){return ch?esc(ch.replace(/(\d{4})/g,'$1 ').trim()):'';}
 /* Celula vazia da tabela do leitor de PDF. O "—" cobre tres estados ("não li", "o
    documento não tem", "recusei por ambiguidade") e nada na tela dizia qual. A regra do
    leitor é "vazio em vez de errado", então o vazio carrega o porquê no title.
@@ -2778,7 +2786,12 @@ const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
       window.consultarCNPJ(cnpj);
       return false;
     };
-    const cnpjCell=(c)=>c?`<a href="#" onclick="return abrirConsultaCNPJ('${c}')" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(c)}</a>`:`<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="CNPJ não localizado na leitura do PDF" title="CNPJ não localizado na leitura do PDF">✗ ausente</span>`;
+    /* O CNPJ vai por atributo `data-`, e nao dentro de `onclick="..."`. Num
+       onclick inline o valor cai num contexto de JAVASCRIPT: escapar para HTML
+       nao protege, porque uma aspa simples sobrevive ao esc de HTML e fecha o
+       argumento da chamada. `data-cnpj` + listener elimina os dois contextos.
+       O escape do atributo continua, para o `data-` nao virar marcação. */
+    const cnpjCell=(c)=>c?`<a href="#" class="pdfiso-cnpj" data-cnpj="${esc(c)}" style="color:var(--primary);text-decoration:none" title="Consultar">${fmtCNPJ(c)}</a>`:`<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="CNPJ não localizado na leitura do PDF" title="CNPJ não localizado na leitura do PDF">✗ ausente</span>`;
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
@@ -2793,7 +2806,7 @@ const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
    e conferia a asserção de garantia com um "99%", medindo a coisa errada. */
 const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title="${esc(r.garantia||'')}"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg>${esc(r.garantia||'incompleto')}</span>`:(r.cnpjValido===false?`<span class="pdfiso-badge warn" data-para="garantia" title="CNPJ encontrado mas com dígito verificador inválido - confira no debug">✗ CNPJ+Nº · DV ✗</span>`:(emitenteConfirmado(r)?`<span class="pdfiso-badge ok" data-para="garantia" title="CNPJ e número garantidos${r.cnpjFonte?' · CNPJ via '+esc(r.cnpjFonte):''}${r.numeroAncora?' · nº via '+esc(r.numeroAncora):''}">✓ CNPJ+Nº</span>`:`<span class="pdfiso-badge warn" data-para="garantia" title="CNPJ com DV válido e número localizados, mas o emitente NÃO foi confirmado: o nome do emitente não pôde ser lido sem ambiguidade neste PDF, então o CNPJ veio do texto e não da chave">~ CNPJ+Nº · emissor não confirmado</span>`));
       return `<tr>
-        <td style="font-size:11px;white-space:nowrap">${r.numero||'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" data-para="confianca" style="margin-left:4px">${r.confMedio}%</span></td>
+        <td style="font-size:11px;white-space:nowrap">${r.numero?esc(r.numero):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" data-para="confianca" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>
         <td style="font-family:monospace;font-size:11px">${celVazia(r.serie)}</td>
         <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
@@ -2801,7 +2814,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
         <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" >${celVazia(r.nomePrestador)}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
         <td style="font-size:11px;white-space:nowrap">${celVazia(r.data)}</td>
-        <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+(r.valorTotalNota||r.valor):'—'}</td>
+        <td style="font-size:11px;white-space:nowrap;font-weight:600">${r.valorTotalNota||r.valor?'R$ '+esc(r.valorTotalNota||r.valor):'—'}</td>
         <td style="font-size:11px;white-space:nowrap">${celVazia(r.protocolo?r.protocolo.slice(-8):"")}</td>
         <td style="white-space:nowrap;display:flex;gap:4px"><a href="#" data-idx="${i}" class="pdfiso-debug btn btn-sec" style="padding:3px 6px;font-size:10px" aria-label="Ver texto extraído da nota" title="Ver texto extraído">detalhar</a><a href="#" data-copy="${i}" class="pdfiso-copy btn btn-prim" style="padding:3px 6px;font-size:10px" aria-label="Copiar dados da nota" title="Copiar dados">copiar</a></td>
       </tr>`;
@@ -2838,6 +2851,13 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     }));
     resEl.querySelectorAll('.pdfiso-copy').forEach(a=>a.addEventListener('click',e=>{
       e.preventDefault();const r=DBpdf[+e.target.dataset.copy];navigator.clipboard.writeText(`${r.numero};${r.cnpjPrestador};${r.chave}`);e.target.textContent='✓ copiado';setTimeout(()=>e.target.textContent='copiar',1200);
+    }));
+    /* Link de consultar CNPJ. Mesmo padrão do debug: o valor vem por atributo
+       e a ação por listener, em vez de `onclick` com o dado interpolado. */
+    resEl.querySelectorAll('.pdfiso-cnpj').forEach(a=>a.addEventListener('click',e=>{
+      e.preventDefault();
+      window.abrirConsultaCNPJ(e.target.dataset.cnpj);
+      return false;
     }));
   }
   async function handlePDFs(files){
