@@ -1621,7 +1621,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
       if (!corpo) return false;
       const decl = corpo[1].replace(/\/\*[\s\S]*?\*\//g, '');
       return /opacity:1/.test(decl) && /background:transparent/.test(decl)
-        && /border:1px solid var\(--border\)/.test(decl);
+        && /border:1px solid var\(--border-disabled\)/.test(decl);
     })()
     /* A segunda condição NÃO pode ser "não usa opacity": opacity:1 É a forma
        correta. O que não pode existir é opacidade REDUZIDA, que é o defeito
@@ -1651,13 +1651,40 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
       const btn = regra(/\.btn:disabled\{([\s\S]{0,1200}?)\}/);
       const out = regra(/\.btn-out:disabled\{([\s\S]{0,300}?)\}/);
       const sep = regra(/#btn-processar:disabled\{([\s\S]{0,300}?)\}/);
-      const temBorda = (c) => /border:1px solid var\(--border\)/.test(c);
-      /* E nenhuma delas pode voltar a_border-color_: sem border-style, não pinta. */
+      const temBorda = (c) => /border:1px solid var\(--border-disabled\)/.test(c);
+      /* E nenhuma delas pode voltar a_border-color_: sem border-style, nao pinta. */
       const soCor = (c) => /border-color:/.test(c) && !temBorda(c);
       return temBorda(btn) && temBorda(out) && temBorda(sep)
         && !soCor(btn) && !soCor(out) && !soCor(sep);
     })(),
     'border-color sem border-style nao desenha nada');
+  /* O token é dedicado porque o alvo NÃO é o mínimo de WCAG. A borda do
+     desabilitado vive numa FAIXA: --border a 1,23:1 (claro) some, e
+     --border-input a 3,16:1 fica indistinguível do habilitado. Subir o piso
+     trocaria "fantasma" por "parece ativo". Por isso o gate mede a FAIXA e
+     não um mínimo, e por isso ele não aceita --border nem --border-input. */
+  ok('a borda do desabilitado usa o token próprio, na faixa entre invisível e ativo',
+    (() => {
+      const decl = (re) => {
+        const m = re.exec(css);
+        return m ? m[1].replace(/\/\*[\s\S]*?\*\//g, '') : '';
+      };
+      const raiz = decl(/\:root\{([\s\S]{0,4000}?)\}/);
+      const dark = decl(/\:root\[data-theme="dark"\]\{([\s\S]{0,4000}?)\}/);
+      /* tem de existir nos DOIS temas — um token sem par no dark some nele */
+      return /--border-disabled:#[0-9a-f]{3,6}/i.test(raiz)
+        && /--border-disabled:#[0-9a-f]{3,6}/i.test(dark);
+    })(),
+    'sem par por tema o token nao existe no escuro');
+  /* O hover do CTA da aba Separar nao pode vencer o :disabled por
+     especificidade. #tab-separar #btn-processar:hover e' (2,1,0) e ganha de
+     #btn-processar:disabled (1,1,0): o botao desabilitado virava azul de CTA
+     com o rotulo em --text3 por cima, a 2,61:1 no escuro e 1,84:1 no claro.
+     Parecia ativo e nao se lia. */
+  ok('o hover do CTA da aba Separar nao vence o estado desabilitado',
+    /#tab-separar #btn-processar:not\(:disabled\):hover/.test(css)
+    && !/#tab-separar #btn-processar:hover\{/.test(css),
+    'hover sem :not(:disabled) pinta o CTA em cima do desabilitado');
   ok('o secundário do lote é contorno, e o CTA do lote é o primário azul',
     /\.btn-out\{background:transparent;border:1px solid var\(--border-input\)/.test(css)
     && /id="cnpj-lote-start" class="btn btn-prim"/.test(html)
