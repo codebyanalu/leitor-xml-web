@@ -83,10 +83,10 @@ function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c
 function vH(ch){ch=d(ch);if(ch.length!==44)return false;/* degenerados: '000...0' e '111...1' passam no modulo 11 (soma 0 => DV 0) mas nao sao chave */if(/^(\d)\1+$/.test(ch))return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
 /* Estrutura da chave de acesso: cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3)
    nNF(9) tpEmis(1) cNF(8) cDV(1). O modulo 11 sozinho NAO identifica a chave.
-   Medido no PDF "NF 738838": o codigo de barras colado no endereco
+   Medido no PDF "NF 900000101": o codigo de barras colado no endereco
    ("... - 100 3326 0806 ...") gera um run de 48 digitos e TRES janelas de 44
    passam no DV. Duas tem AAMM com mes inexistente e mod fora de 55/65, e o eC
-   pegava a primeira delas: o numero saia 500073883 em vez de 738838, o CNPJ do
+   pegava a primeira delas: o numero saia 500073883 em vez de 900000101, o CNPJ do
    emitente virava o do tomador e a garantia ainda dizia "CNPJ+número OK".
    cUF e as 27 unidades da federacao mais o exterior (11-53); a NF-e so existe
    desde 2006, entao ano abaixo de 6 nao e chave; mod e 55 (NF-e) ou 65 (NFC-e). */
@@ -298,7 +298,7 @@ function eNatOp(full){
     if(out.length>=18) break;
   }
   /* O valor comeca no primeiro token que e verbo de operacao. O OCR nem sempre
-     le o rotulo da IE ("INSCR.ESTADUAL" saiu "TNSCR ESTADUAL" na 742504), e
+     le o rotulo da IE ("INSCR.ESTADUAL" saiu "TNSCR ESTADUAL" na 900000103), e
      exigir que o primeiro token fosse o verbo devolvia vazio. Cortar no primeiro
      verbo aceita o lixo de prefixo sem aceitar o valor errado. */
   const VERBO=/^(VENDA|REMESSA|TRANSPORTE|DEVOLU[CÇ][AÃ]O|ENTRADA|S[AÃ]IDA|OUTRAS|COMPRA|SERVI[CÇ]O|CESS[AÃ]O|LOCA[CÇ][AÃ]O|PROMO[CÇ][AÃ]O|REGULARIZA|CONTRATO|INUTILIZA)/i;

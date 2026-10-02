@@ -150,11 +150,25 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
   const cnpjCru = achouEm(/(?<![\d.])\d{14}(?![\d])/g);
   const chave44 = achouEm(/(?<![\d.])\d{44}(?![\d])/g);
   const protocolo = achouEm(/(?<![\d.])\d{15}(?![\d])/g);
+  /* IE e número de nota não têm formato próprio — IE é 8-12 dígitos, número de
+     nota é 1-9. Não dá para casar por regex sem reprovar fixture de teste
+     ("Nº 5", "123456789012345"). Então estes dois são casados pelo VALOR
+     exato que o gabarito declara: é mais lento, mas é o que não gera
+     falso positivo, e o custo é uma passada por arquivo versionado. */
+  const ie = new Map();
+  const numero = new Map();
+  const textoReal = new Map();
+  const casarValor = (destino, alvo) => {
+    if (!alvo) return;
+    for (const [f, txt] of brutos) {
+      if (txt.includes(alvo)) destino.set(alvo, f);
+    }
+  };
   const SINT_14 = ['00000000000000', '11222333000181', '11222334000126', '11222337000183',
     '11222338000172', '12345678000195', '00000000000191', '00000000000004'];
   const SINT_15 = ['100200300400501', '3526011222333000181550010000001231123456783'];
   const SINT_44 = ['35260911222333000181550010000001231123456783',
-    '35268011222334000126550010007388381123456783',
+    '35268011222334000126550019000001011123456780',
     '52609112223330001815500100000012311234567835',
     '43526091122233300018155001000000123112345678'];
   const SINT_MASC = ['00.000.000/0000-00', '11.222.333/0001-81', '11.222.334/0001-26',
@@ -173,11 +187,53 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     const notas = Array.isArray(t) ? t : Object.values(t);
     const dig = (v) => String(v).replace(/\D/g, '');
     const cnpjReais = new Set(); const chavesReais = new Set(); const protReais = new Set();
+    /* Campos que o cruzamento anterior NÃO cobria. Dado fiscal não é só o que
+       identifica a empresa: a inscrição estadual localiza o contribute, o
+       número da nota localiza o documento, a natureza de operação diz o que
+       foi vendido e a quem, e data+CEP situam o evento. Foi por esta porta que
+       a IE e o número de nota reais entraram: os gates eram pesados em
+       CNPJ/chave/protocolo e leves em todo o resto, e dado não catalogado
+       passa por qualquer gate que só olha o que já conhece. */
+    const ieReais = new Set(); const numReais = new Set(); const textoReais = new Map();
+    const CAMPOS_TEXTO = /^(natOp|munEmitente|ufEmitente|enderecoEmitente|logradouro)$/i;
+    /* Números de 1-3 dígitos são identificadores fracos: "108" é o número da
+       nota de amostra que o smoke.crs usa para localizar o PDF na máquina, e
+       "5" é a série. O gate pega "108" em smoke.cjs — que é o comportamento
+       CORRETO do detector, apontando uma colisão real de 3 dígitos. Ele não
+       é acrescentado aqui como exceção silenciosa: número de nota com menos
+       de 4 dígitos não é dado fiscal num portão de acesso a repositório
+       (não localiza empresa nenhuma), e a exceção fica escrita, não
+       escondida no código. IE e NatOp continuamSob o gate — os dois têm
+       comprimento fixo real e não têm essa colisão. */
+    const MIN_DIGITOS_NUMERO = 4;
     for (const n of notas) {
       if (!n || typeof n !== 'object') continue;
       for (const k of ['cnpjPrestador', 'cnpjTomador', 'cnpj']) if (n[k]) cnpjReais.add(dig(n[k]));
       if (n.chave) chavesReais.add(dig(n.chave));
       if (n.protocolo) protReais.add(dig(n.protocolo));
+      if (n.ieEmitente) ieReais.add(dig(n.ieEmitente));
+      /* número com 4+ dígitos: a partir daí o número identifica documento */
+      if (n.numero && dig(n.numero).length >= MIN_DIGITOS_NUMERO) numReais.add(dig(n.numero));
+      /* NatOp, município, UF e endereço são texto livre; entram inteiros */
+      for (const k of Object.keys(n)) {
+        if (!CAMPOS_TEXTO.test(k) || n[k] == null) continue;
+        const v = String(n[k]).trim();
+        if (v.length >= 6) textoReais.set(v, k);
+      }
+    }
+    /* passa os valores sem formato para o Detector por valor exato */
+    for (const v of ieReais) casarValor(ie, v);
+    for (const v of numReais) casarValor(numero, v);
+    for (const [v] of textoReais) casarValor(textoReal, v);
+
+    /* NÚMERO DE NOTA DENTRO DE CHAVE: o nNF ocupa as posições 26-34 de uma
+       chave de 44. Um número de nota real que ninguém mais cita continua
+       publicado dentro da chave — foi assim que ele sobreviveu à primeira
+       limpeza, que só trocava a ocorrência solta. */
+    const nNFemChave = new Map();
+    for (const [ch, arq] of chave44) {
+      const n = ch.slice(25, 34);
+      if (numReais.has(n) || numReais.has(n.replace(/^0+(?=\d)/, ''))) nNFemChave.set(n, arq);
     }
     const marca = (m, reais, rotulo) => [...m.keys()]
       .filter((x) => reais.has(x.replace(/\D/g, '')))
@@ -191,6 +247,30 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     ok('nenhum dado fiscal real da cliente está em arquivo versionado (CNPJ, chave, protocolo)',
       vazou.length === 0,
       vazou.slice(0, 6).join(' | ') || 'limpo em ' + versionados.length + ' arquivo(s)');
+
+    /* Gate 2.C — os campos SEM FORMATO. Os três gates acima casam por regex,
+       e regex pressupõe formato: CNPJ tem 14 dígitos, chave 44, protocolo 15.
+       IE e número de nota não têm comprimento próprio, então nenhuma regex
+       plausível os pega sem reprovar fixture de teste. Resultado: os gates
+       eram pesados em identificador de empresa e leves em identificador de
+       operação, e foi por isso que a IE e o número de nota reais passaram
+       três revisões.
+
+       Aqui o Detector é por VALOR EXATO do gabarito: sem regex, sem falso
+       positivo possível, e cobre NatOp, município e endereço também — que
+       são texto livre e nunca casariam por formato. */
+    const vazou2 = [
+      ...[...ie].map(([v, f]) => 'IE ' + v + ' em ' + f),
+      ...[...numero].map(([v, f]) => 'número ' + v + ' em ' + f),
+      ...[...nNFemChave].map(([v, f]) => 'número ' + v + ' no nNF de uma chave em ' + f),
+      ...[...textoReal].map(([v, f]) => textoReais.get(v) + ' "' + v.slice(0, 30) + '" em ' + f),
+    ];
+    ok('nenhum dado real de operação nos versionados (IE, número de nota, NatOp, endereço)',
+      vazou2.length === 0,
+      vazou2.slice(0, 6).join(' | ') || 'limpo em ' + versionados.length + ' arquivo(s)');
+    ok('o gate de operação cobre os campos que o cruzamento por formato ignorava',
+      ie.size + numero.size + textoReais.size > 0 || !fs.existsSync(VERDADE),
+      'IE=' + ie.size + ' número=' + numero.size + ' texto=' + textoReais.size);
     ok('o gate olha os versionados, não só o index.html',
       versionados.length >= 7 && versionados.some((f) => f.startsWith('testes/')),
       versionados.length + ' arquivo(s): ' + versionados.join(', '));
@@ -1938,7 +2018,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
   const M = sb.window.ModPDFIsolado;
   if (M) {
     const CHAVE_OK = '35260911222333000181550010000001231123456783';
-    /* Janelas forjadas com a MESMA forma do defeito real: no PDF "NF 738838" o
+    /* Janelas forjadas com a MESMA forma do defeito real: no PDF "NF 900000101" o
        codigo de barras sai colado no endereco ("... - 100 3326 0806 ... 1-SAIDA 1")
        e forma um run de 48 digitos; tres janelas de 44 passam no modulo 11 e duas
        tem estrutura impossible. Aqui as duas janelas falsas foram recalculadas por
@@ -1973,14 +2053,18 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
        dado fiscal tanto quanto o CNPJ. A barreira é o gate que cruza protocolo e
        chave 44 do gabarito contra TODO arquivo versionado — este bloco é
        exatamente onde o dado real entrou da última vez. */
-    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE 100200300400501 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
+    /* Natureza de operação e IE SINTÉTICAS. Este texto veio de uma nota real, e
+       os dois identificam a operação fiscal: a natureza diz o que foi
+       vendido e para quem, a IE localiza o contribute. Dado fiscal não é só
+       o que identifica a empresa — é o que identifica a operação. */
+    const NAT = 'NATUREZA DA OPERAÇÃO PROTOCOLO DE AUTORIZAÇÃO DE USO VENDA EXEMPLO COMERCIO EXEMPLO DESTINATÁRIO 100200300400501 09/09/2026 10:47:37 INSCRIÇÃO ESTADUAL';
     ok('natureza da operação pula o rótulo do protocolo e lê o valor',
-      M.eNatOp(NAT) === 'VENDA MERC.ADQ.TERC.DESTIN. A NAO CONTRIBUINTE', JSON.stringify(M.eNatOp(NAT)));
-    const NAT_OCR = 'NATUREZA DA OPERAÇÃO INSCRIÇÃO ESTADUAL TNSCR ESTADUAL SUBSTITUTO TRIBUTÁRIO VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT 85586181 DESTINATÁRIO';
+      M.eNatOp(NAT) === 'VENDA EXEMPLO COMERCIO EXEMPLO DESTINATÁRIO', JSON.stringify(M.eNatOp(NAT)));
+    const NAT_OCR = 'NATUREZA DA OPERAÇÃO INSCRIÇÃO ESTADUAL TNSCR ESTADUAL SUBSTITUTO TRIBUTÁRIO VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT 98000014 DESTINATÁRIO';
     ok('natureza da operação sobrevive ao OCR que leu "INSCR.ESTADUAL" como "TNSCR ESTADUAL"',
       M.eNatOp(NAT_OCR) === 'VENDA PRODUÇÃO ESTAB.DESTINADA A NÃO CONTRIBUINT', JSON.stringify(M.eNatOp(NAT_OCR)));
     ok('sem verbo de operação no rotulo, a natureza volta vazia (não "ÇÃO")',
-      M.eNatOp('NATUREZA DA OPERAÇÃO 85586181 DESTINATÁRIO') === '', JSON.stringify(M.eNatOp('NATUREZA DA OPERAÇÃO 85586181 DESTINATÁRIO')));
+      M.eNatOp('NATUREZA DA OPERAÇÃO 98000014 DESTINATÁRIO') === '', JSON.stringify(M.eNatOp('NATUREZA DA OPERAÇÃO 98000014 DESTINATÁRIO')));
     ok('o rótulo da natureza é casado inteiro (não deixa o "ÇÃO" solto)',
       /NATUREZA\\s\*DA\\s\*OPERA\[CÇ\]\[AÃ\]O/i.test(html));
 
@@ -2045,7 +2129,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
        O DV foi calculado pelo módulo 11, então a janela passa no DV por construção e
        é rejeitada pela estrutura. Era exatamente isto que fazia o emitente virar
        tomador com `garantia = "CNPJ+número OK"`. */
-    const JANELA = '35268011222334000126550010007388381123456783';
+    const JANELA = '35268011222334000126550019000001011123456784';
     const CHAVE_OK = '35260911222333000181550010000001231123456783';
 
     ok('a janela forjada está armada: DV passa, estrutura falha, e o CNPJ interno é do tomador',
@@ -2054,7 +2138,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
 
     const PDF = 'DADOS DO EMITENTE NOME / RAZÃO SOCIAL DISTRIBUIDORA EXEMPLO LTDA CNPJ / CPF 11.222.333/0001-81 '
       + 'DESTINATÁRIO NOME / RAZÃO SOCIAL COMERCIO DE VEICULOS LTDA CNPJ / CPF 11.222.334/0001-26 '
-      + 'CODIGO DE BARRAS ' + JANELA + ' DATA DA EMISSÃO 17/09/2026 NOTA FISCAL Nº 738838';
+      + 'CODIGO DE BARRAS ' + JANELA + ' DATA DA EMISSÃO 17/09/2026 NOTA FISCAL Nº 900000101';
     const r = M.finalizar(M.parseFull(PDF, [], 'texto'), PDF, 'texto', false, '');
 
     /* 1 · o CNPJ das posições 7-20 só vale com chave validada. */
@@ -2066,7 +2150,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       'prest=' + r.cnpjPrestador + ' toma=' + r.cnpjTomador);
 
     /* 2 · eJ: fragmento de 14 dígitos do código de barras não é CNPJ de ninguém. */
-    const listaCnpj = M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 738838').lista;
+    const listaCnpj = M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 900000101').lista;
     ok('eJ: nenhum fragmento de 14 sai do código de barras de 44',
       listaCnpj.length === 0, JSON.stringify(listaCnpj.map((c) => c.dig)));
     ok('eJ: o CNPJ impresso ao lado do rótulo SOBREVIVE ao corte por span',
@@ -2131,9 +2215,9 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       && !ra.numeroAncora.includes('DV inválido'), JSON.stringify(ra.numeroAncora));
 
     /* 6 · eN: o número colado no código de barras é lido (comportamento, não literal). */
-    const en = M.eN('NÚMERO DA NOTA  123456789012345 738838', []);
+    const en = M.eN('NÚMERO DA NOTA  123456789012345 900000101', []);
     ok('número colado num código de 15 dígitos é lido com confiança alta',
-      en.valor === '738838' && en.conf >= 90, JSON.stringify(en.valor) + ' conf ' + en.conf);
+      en.valor === '900000101' && en.conf >= 90, JSON.stringify(en.valor) + ' conf ' + en.conf);
 
     /* 7 · a chave autêntica não regride: fonte "chave 44" e confiança 98/99.
        A chave sintética tem nNF = 000000123, então o número esperado é 123 —

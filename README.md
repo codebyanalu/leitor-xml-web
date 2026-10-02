@@ -51,18 +51,23 @@ Todo o processamento acontece **no navegador**. Nada é enviado a servidor algum
 
 ### Nenhum dado fiscal da cliente no repositório
 
-Duas camadas no gate 14 da regressão, porque nenhuma das duas sozinha fecha o problema:
+Três camadas no gate anti-vazamento da regressão, porque nenhuma sozinha fecha o problema. Dado fiscal não é só o que identifica a empresa: é o que identifica a **operação**.
 
 | Gate | Como decide | O que fecha |
 |---|---|---|
-| **14.1 — cruzamento com o gabarito** | cruza todo CNPJ (mascarado e cru), chave 44 e protocolo 15 dos **arquivos versionados** contra os valores de `verdade.json` | dado que está no gabarito, até em arquivo que o gate antigo não visitava |
-| **14.2 — CNPJ válido x sintético declarado** | todo `\d{14}` cujo **DV fecha** tem que estar na lista de sintéticos que o `index.html` e o README usam como exemplo | dado que **ninguém catalogou** |
+| **2.A — cruzamento com o gabarito, por formato** | cruza CNPJ (mascarado e cru), chave 44 e protocolo 15 dos **arquivos versionados** contra `verdade.json` | dado com formato reconhecível, até em arquivo que o gate antigo não visitava |
+| **2.B — CNPJ de DV válido x sintético declarado** | todo `\d{14}` cujo **DV fecha** tem que estar na lista de sintéticos do `regressao.mjs` | dado que **ninguém catalogou**, sem depender do gabarito |
+| **2.C — campos sem formato, por valor exato** | compara IE, número de nota, NatOp, município e endereço **caráter a carácter** com o gabarito | o que nenhuma regex plausível pega |
 
-O escopo dos dois é `git ls-files` — a lista de publicação é o índice do git, não uma lista escrita à mão. Foi por isso que os dois vazamentos passaram: o primeiro porque o gate olhava só o `index.html`, o segundo porque o cruzamento dependia do gabarito.
+O escopo dos três é `git ls-files` — a lista de publicação é o índice do git, não uma lista escrita à mão.
 
-Por que o 14.2 existe: o `regex` de CNPJ cru é `(?<![\d.])\d{14}(?![\d])`. O ponto no *lookahead* existe para não contar `45.932.889/0002` atravessando a máscara, mas **ponto final é o fim natural de uma frase em comentário** — e foi assim que o CNPJ real entrou, citado num comentário que explicava a própria regra. Um gate que só cruza com o gabarito não tem como ver esse valor: ele não está catalogado. Nenhum dado real deve ser reescrito aqui nem neste README, nem em comentário de teste — o gate existe para barrar justamente o que alguém copia do vazamento anterior.
+**Por que existem três.** O 2.A pressupõe que o dado tem formato: CNPJ tem 14 dígitos, chave 44, protocolo 15. IE e número de nota **não têm comprimento próprio** — 8 a 12 e 1 a 9 — e NatOp e endereço são texto livre. Nenhuma regex plausível os pega sem reprovar fixture de teste, e foi por isso que a IE e o número de nota reais passaram três revisões: os gates eram pesados em identificador de empresa e leves em identificador de operação. O 2.C casa por valor exato, o que elimina falso positivo por construção.
 
-Sem `verdade.json` (clone novo), o 14.1 cai na lista de sintéticos e **não** reprova o fonte correto: falhar sem gabarito treina a equipe a ignorar a falha. O 14.2 não depende do gabarito e continua valendo.
+O 2.C também cobre o **número de nota dentro do nNF de uma chave** (posições 26-34): um número real que ninguém mais cita continua publicado dentro da chave, e foi assim que ele sobreviveu a uma limpeza que só trocava a ocorrência solta. Números de menos de 4 dígitos ficam de fora por decisão explícita: `108` é o nome do PDF de amostra que o smoke usa para localizar o arquivo, e 3 dígitos não identificam documento nenhum num portão de acesso a repositório.
+
+**Sobre o regex de CNPJ cru.** É `(?<![\d.])\d{14}(?![\d])`. O ponto no *lookbehind* existe para não contar `45.932.889/0002` atravessando a máscara. O ponto no *lookahead* **não** existe, e essa é a decisão: ponto final é o fim natural de uma frase em comentário, e foi assim que o CNPJ real entrou, citado no comentário que explicava a própria regra. Do lado direito, 14 dígitos logo após ponto ou espaço são um CNPJ, não um fragmento de máscara. Nenhum dado real deve ser reescrito aqui nem neste README, nem em comentário de teste — o gate existe para barrar justamente o que alguém copia do vazamento anterior.
+
+**Sem `verdade.json` (clone novo):** o 2.A e o 2.C caem na lista de sintéticos e **não** reprovam o fonte correto — falhar sem gabarito treina a equipe a ignorar a falha. Só o 2.B continua valendo, porque ele não usa o gabarito: decide pela validade do DV contra a lista de sintéticos.
 
 ## Design tokens
 
@@ -93,7 +98,7 @@ A leitura de PDF só é dada como completa quando **CNPJ e número** foram local
 4. Se ainda assim faltar, o badge da coluna `Garantia` fica vermelho com "falta CNPJ/número", a célula do dado traz `✗` com descrição para leitor de tela, e um banner no topo da tabela lista os arquivos afetados;
 5. Badge **verde** (`✓ CNPJ+Nº`) só quando o emitente está **confirmado** — pela chave de acesso validada ou pelo nome do participante impresso ao lado do mesmo CNPJ. Sem esse segundo sinal o estado é **laranja** (`~ CNPJ+Nº · emissor não confirmado`) e entra no banner: o CNPJ tem DV válido, mas veio do texto do PDF, não da chave. Valor que o leitor não leu aparece como `—` com `title` explicando que existe no PDF e não foi lido sem ambiguidade.
 
-> **Por que a estrutura importa:** o módulo 11 sozinho não identifica a chave. Com o código de barras colado no endereço, o PDF "NF 738838" forma um bloco de 48 dígitos e **três** janelas de 44 passam no DV — duas com `cUF`/`AAMM` impossíveis. O leitor pegava a primeira: o número saía `500073883` em vez de `738838`, o CNPJ do emitente virava o do tomador e a garantia ainda afirmava "CNPJ+número OK".
+> **Por que a estrutura importa:** o módulo 11 sozinho não identifica a chave. Com o código de barras colado no endereço, o PDF "NF 900000101" forma um bloco de 48 dígitos e **três** janelas de 44 passam no DV — duas com `cUF`/`AAMM` impossíveis. O leitor pegava a primeira: o número saía `500073883` em vez de `900000101`, o CNPJ do emitente virava o do tomador e a garantia ainda afirmava "CNPJ+número OK".
 
 O nome do participante só é aceito quando o **CNPJ impresso ao lado dele** é o mesmo que está sendo nomeado, o que separa a razão social do emitente do destinatário em DANFE de conta de terceiro.
 
@@ -115,7 +120,7 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 
 | Comando | O que faz | Depende de `amostras/` |
 |---|---|---|
-| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) e o **gate 14 anti-vazamento** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
+| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) e o **gate anti-vazamento (2.A/2.B/2.C)** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
 | `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
