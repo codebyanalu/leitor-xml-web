@@ -2087,7 +2087,10 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
   ok('o módulo ModPDFIsolado existe e fecha no </script>', ini > 0 && fim > ini, ini + '..' + fim);
   const EXPORTAR = ['d', 'vC', 'vH', 'chaveEstrutural', 'chaveOk', 'reparaChave', 'isNoiseNum', 'ehRotulo',
     'idxCnpj', 'nomePertoCnpj', 'eNome', 'eDatas', 'eVenc', 'eNatOp', 'eEndereco', 'eSerie',
-    'eJ', 'eN', 'eC', 'decodChave', 'parseFull', 'finalizar', 'mergeExtracao'];
+    'eJ', 'eN', 'eC', 'decodChave', 'parseFull', 'finalizar', 'mergeExtracao',
+    /* O 13.2 exercita `cnpjsNoTexto` direto: é onde está o O(n²) corrigido, e
+       a prova de equivalência precisa da função, não só de `eJ`. */
+    'cnpjsNoTexto', 'spansCodigoBarras'];
   let mod = ini > 0 ? html.slice(ini, fim) : '';
   const mRet = mod.match(/return\s*\{[^}]*extrair[^}]*\}\s*;/);
   ok('o return do ModPDFIsolado é encontrado (o contrato mudou?)', !!mRet);
@@ -2241,6 +2244,29 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       r.cnpjPrestador === EMIT && r.cnpjTomador === TOM,
       'prest=' + r.cnpjPrestador + ' toma=' + r.cnpjTomador);
 
+    /* 1b · a MESMA janela, pelo lado da confiança. `chaveConf` mede o DV, e uma
+       janela que só passa no DV entrava com 70 na média — o que fazia a linha
+       sair verde no filtro "Alta" (>=70) sem chave válida nenhuma. A chave pesa
+       zero enquanto `chaveValida` for falso, pelo mesmo motivo pelo qual o CNPJ
+       das posições 7-20 não vale sem chave validada: DV válido não é chave. */
+    ok('chave não validada: o confMedio não pode entrar na faixa "Alta" (>=70)',
+      r.chaveValida === false && r.confMedio < 70,
+      'confMedio=' + r.confMedio + ' chaveConf=' + r.chaveConf + ' numeroConf=' + r.numeroConf + ' cnpjConf=' + r.cnpjConf);
+    ok('e a média ponderada é MENOR que a média crua (a chave estava pesando DV)',
+      r.confMedio < r.confMedioComChaveInvalida,
+      'ponderada=' + r.confMedio + ' crua=' + r.confMedioComChaveInvalida);
+    ok('o peso é da chave, não da média quebrada: com DV válido a chave sozinha daria >=70',
+      r.chaveConf >= 70, 'chaveConf=' + r.chaveConf);
+    /* Com chave VALIDADA a ponderação é neutra: uma chave real tem de continuar
+       contando, senão a correção vira "abaixa a confiança de tudo". */
+    const rOk = M.finalizar(M.parseFull(
+      'DADOS DO EMITENTE NOME / RAZÃO SOCIAL DISTRIBUIDORA EXEMPLO LTDA CNPJ / CPF 11.222.333/0001-81 '
+      + 'CODIGO DE BARRAS ' + CHAVE_OK + ' DATA DA EMISSÃO 17/09/2026 NOTA FISCAL Nº 900000101',
+      [], 'texto'), 'CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 900000101 CNPJ 11.222.333/0001-81', 'texto', false, '');
+    ok('chave validada: a confiança NÃO é penalizada (a ponderação só cobre chave inválida)',
+      rOk.chaveValida === true && rOk.confMedio === rOk.confMedioComChaveInvalida && rOk.confMedio >= 70,
+      'valida=' + rOk.chaveValida + ' media=' + rOk.confMedio + ' crua=' + rOk.confMedioComChaveInvalida);
+
     /* 2 · eJ: fragmento de 14 dígitos do código de barras não é CNPJ de ninguém. */
     const listaCnpj = M.eJ('CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 900000101').lista;
     ok('eJ: nenhum fragmento de 14 sai do código de barras de 44',
@@ -2264,6 +2290,101 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
     ok('eJ: com o código de barras presente, o prestador é o CNPJ impresso ao lado',
       rBarras.prest === EMIT && rBarras.conf === 95,
       'prest=' + rBarras.prest + ' conf=' + rBarras.conf);
+
+    /* 2c · o O(n²) de `cnpjsNoTexto`. A implementação com `spans.some(...)` por
+       candidato custava O(candidatos × spans) — 47 ms em 800 KB, com 16x de
+       entrada para 31,8x de tempo. Agora os dois percursos avançam juntos, e o
+       predicado é o mesmo ("candidato contido no span").
+
+       O gate não mede tempo (timer varia por máquina): ele mede a ORDEM dos
+       percursos, que é o que torna a complexidade linear. Um gate de tempo aqui
+       reprovaria em CI lento e passaria em máquina rápida — o oposto de um
+       portão. */
+    {
+/* O gate NÃO fixa a forma do laço, e é deliberado: `i++` → `i+=1` é
+         equivalente, e um gate que exige `i++` reprova uma correção sem
+         comportamento. O que ele mede é o que faz o custo ser linear: a
+         varredura quadrática não está lá. Se o `while` não existe, a
+         equivalência por exaustão abaixo morre (medido: 5 asserções), e é ela
+         que segura. */
+      const brutoCnpj = html.slice(html.indexOf('function cnpjsNoTexto'), html.indexOf('function eJ('));
+      const corpoCnpj = brutoCnpj.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').split(/\r?\n/);
+      ok('cnpjsNoTexto não faz varredura quadrática (sem `spans.some` por candidato)',
+        !corpoCnpj.some((l) => /spans\.some\(/.test(l)),
+        corpoCnpj.filter((l) => /spans\.some\(/.test(l)).join(' | ') || 'nenhuma varredura por candidato');
+      /* O comportamento tem de ser IDÊNTICO: o predicado "contido no span" com
+         dois ponteiros só é equivalente se o `while` pula span que termina antes
+         do candidato — sem ele, um candidato depois de um span longo seria
+         comparado com o span errado. */
+      const textoLongo = 'CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 1 CNPJ 11.222.333/0001-81 '
+        + 'CODIGO DE BARRAS ' + CHAVE_OK + ' NOTA 2 CNPJ 11.222.334/0001-26 '
+        + 'CODIGO DE BARRAS ' + JANELA + ' NOTA 3 CNPJ 11.222.337/0001-83';
+      const lido = M.cnpjsNoTexto(textoLongo);
+      ok('dois ponteiros: os três CNPJs ao lado do rótulo sobrevivem (3 spans antes)',
+        lido.length === 3 && lido[0].dig === EMIT && lido[1].dig === TOM && lido[2].dig === '11222337000183',
+        JSON.stringify(lido.map((c) => c.dig)));
+      /* E o que o `while` descarta: o CNPJ DENTRO do código de barras some,
+         mesmo vindo depois de outros. */
+      const colado = M.cnpjsNoTexto('X ' + CHAVE_OK + ' Y CNPJ 11.222.333/0001-81 Z ' + JANELA + ' W');
+      ok('e o CNPJ colado no código de barras continua descartado (o `while` pula o span certo)',
+        !colado.some((c) => c.idx >= 2 && c.idx < 2 + CHAVE_OK.length) && colado.some((c) => c.dig === EMIT),
+        JSON.stringify(colado.map((c) => c.dig + '@' + c.idx)));
+
+/* Equivalência por DIFERENÇA, não por borda escolhida à mão. Dois ponteiros
+         só substituem `spans.some` se derem o mesmo resultado em TODA
+         entrada, e escolher "a borda" na mão erra: o `spansCodigoBarras` é
+         guloso e só atravessa `[\s.\-]`, então a "/" do CNPJ mascarado o
+         para e a borda que eu imaginei (`fim<=`) não existe no texto que eu
+         construí. A verificação vai por exaustão: casos montados mais texto
+         aleatório com semente fixa, e os dois lados comparados. */
+      {
+        /* Compara (dig, idx), não o objeto inteiro: o `antigo` reimplementado
+           aqui não calcula `valida`, e comparar o JSON inteiro acusava 229
+           divergências que eram o campo a menos. Comparar o que a decisão
+           produz é o que interessa. */
+        const antigo = (t) => {
+          const spans = M.spansCodigoBarras(t), out = [];
+          const RE = /\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/g;
+          for (const m of t.matchAll(RE)) {
+            if (spans.some(([a, b]) => m.index >= a && m.index + m[0].length <= b)) continue;
+            const dig = m[0].replace(/\D/g, '');
+            if (dig.length !== 14) continue;
+            out.push(dig + '@' + m.index);
+          }
+          return out.join(',');
+        };
+        const novo = (t) => M.cnpjsNoTexto(t).map((c) => c.dig + '@' + c.idx).join(',');
+        const PIECAS = [CHAVE_OK, JANELA, BARRAS, '11.222.333/0001-81', '11.222.334/0001-26', ' CNPJ / CPF ',
+          'NOTA 900000101', '11.222.337/0001-83', '.', '-', ' ', '\n', '0.001.001/0001-81', 'CODIGO DE BARRAS '];
+        let semente = 20260902, difs = 0, casos = 0;
+        /* O caso que pega a borda direita, escrito à mão porque a exaustão só
+           acha por acaso: chave repetida colada, onde o último candidato
+           termina exatamente no último dígito do span. `fim<` deixa esse CNPJ
+           passar. */
+        const repetida = CHAVE_OK.repeat(7) + '  CNPJ / CPF ';
+        casos++;
+        ok('candidato que termina no último dígito do span é descartado (borda `fim<=`)',
+          antigo(repetida) === novo(repetida) && novo(repetida) === '',
+          'antigo=[' + antigo(repetida) + '] novo=[' + novo(repetida) + ']');
+        const rnd = () => { semente = (semente * 1103515245 + 12345) % 2147483648; return semente; };
+        /* 3000 casos, não 400: a borda que separa `fim<=` de `fim<` aparece
+           em ~1 caso de 1500 (medido), porque depende do `spansCodigoBarras`
+           guloso e de onde o `matchAll` do RE_CNPJ cai. Com 400 casos o gate
+           era cego a essa mutação — eu a rodei 1500 vezes antes de achar o
+           caso que a pega. */
+        for (let i = 0; i < 3000; i++) {
+          const partes = [];
+          const quantas = 1 + rnd() % 9;
+          for (let k = 0; k < quantas; k++) partes.push(PIECAS[rnd() % PIECAS.length]);
+          const t = partes.join(rnd() % 3 === 0 ? '' : ' ');
+          casos++;
+          const a = antigo(t), b = novo(t);
+          if (a !== b) { difs++; if (difs <= 2) ok('equivalência do cnpjsNoTexto no caso ' + casos, false, 'antigo=[' + a + '] novo=[' + b + '] em ' + JSON.stringify(t.slice(0, 80))); }
+        }
+        ok('cnpjsNoTexto com dois ponteiros = `spans.some`, por exaustão (' + casos + ' casos)',
+          difs === 0, difs + ' divergência(s)');
+      }
+    }
     /* O span não pode engolir o CNPJ real: sozinho tem 14 dígitos e é contado. */
     ok('eJ: um CNPJ isolado (14 dígitos) continua sendo lido',
       M.eJ('11.222.333/0001-81 NOTA FISCAL Nº 12345').prest === EMIT);

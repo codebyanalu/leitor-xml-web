@@ -162,12 +162,27 @@ const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
    precisa continuar caindo aqui, e um CNPJ sozinho tem 14. */
 function spansCodigoBarras(txt){return [...txt.matchAll(/\d(?:[\s\.\-]*\d){14,}/g)].map(m=>[m.index,m.index+m[0].length]);}
 function cnpjsNoTexto(txt){
+  /* O span do código de barras é procurado em ORDEM, uma vez só, em vez de
+     `spans.some(...)` por candidato: com o texto de uma nota de 800 KB
+     (~4 mil candidatos e ~2 mil spans) isso é 8 milhões de comparações, e o
+     custo é O(candidatos × spans). Medido: eJ saía de 18,4 ms em 400 KB para
+     61,3 ms em 800 KB — 16x de entrada, 3,3x de tempo; o growth era
+     quadrático e a causa era esta varredura, não o regex.
+
+     O predicado é o mesmo (`candidato contido no span`), com `i` correndo
+     pelos spans e `j` pelos candidatos, ambos em ordem crescente de posição:
+     quando o span `i` passou o candidato, nenhum span depois dele pode conter
+     esse candidato — então avança `i`; quando o candidato passou o span,
+     nenhum candidato depois dele cabe nesse span — então avança `j`. */
   const spans=spansCodigoBarras(txt),out=[];
+  let i=0;
   for(const m of txt.matchAll(new RegExp(RE_CNPJ.source,'g'))){
-    if(spans.some(([a,b])=>m.index>=a&&m.index+m[0].length<=b)) continue;
+    const ini=m.index,fim=m.index+m[0].length;
+    while(i<spans.length&&spans[i][1]<ini) i++;
+    if(i<spans.length&&spans[i][0]<=ini&&fim<=spans[i][1]) continue;
     const dig=d(m[0]);
     if(dig.length!==14) continue;
-    out.push({raw:m[0],dig,valida:vC(dig),idx:m.index});
+    out.push({raw:m[0],dig,valida:vC(dig),idx:ini});
   }
   return out;
 }
@@ -616,7 +631,20 @@ function finalizar(r,full,fonte,ocrTentado,ocrErro){
   const falta=[];if(!r.numeroGarantido)falta.push("número");if(!r.cnpjGarantido)falta.push("CNPJ");
   r.ausentes=falta;
   r.garantia=falta.length?"falta "+falta.join(" e "):"CNPJ+número OK";
-  r.confMedio=Math.round(((r.chaveConf||0)+(r.cnpjConf||0)+(r.numeroConf||0))/3);
+  /* A chave pesa ZERO quando ela não é estruturalmente válida, e o motivo é
+     o mesmo do badge e do KPI: `chaveConf` mede o dígito verificador, e uma
+     janela de 44 dígitos que passa no módulo 11 mas reprova em `chaveEstrutural`
+     (cUF impossível, AAMM impossível, modelo ≠ 55/65) tem DV válido e não é
+     chave — foi exatamente essa janela que fazia o emitente virar tomador com
+     "CNPJ+número OK". Sem esta ponderação ela entrava com 70 e a linha podia
+     sair verde no filtro "Alta" (>=70) sem chave nenhuma.
+
+     `chaveConf` continua como está, porque é registro de auditoria: o export
+     tem a coluna `ChaveConf` e o painel de debug mostra a confiança bruta. O que
+     muda é só a média, que é o que decide cor de badge e filtro. */
+  const pesoChave=r.chaveValida?(r.chaveConf||0):0;
+  r.confMedio=Math.round((pesoChave+(r.cnpjConf||0)+(r.numeroConf||0))/3);
+  r.confMedioComChaveInvalida=Math.round(((r.chaveConf||0)+(r.cnpjConf||0)+(r.numeroConf||0))/3);
   r.fullPreview=full.slice(0,2200);r.fullLen=full.length;
   return r;
 }
