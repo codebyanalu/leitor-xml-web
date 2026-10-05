@@ -154,6 +154,20 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 
 A bancada exige que a verdade seja *verificada*, não gerada pelo próprio leitor: `chave`, `numero`, `serie` e `cnpjPrestador` entram porque a chave impressa se auto-verifica em três checks independentes (DV módulo 11 dos 44 dígitos, estrutura `cUF`/`AAMM`/`mod` e DV do CNPJ nas posições 7-20) — um dígito errado no OCR derruba pelo menos um deles. Os demais campos foram lidos na nota, a mão.
 
+### `mutacao.mjs` — a prova de que os gates têm dente
+
+Uma suíte que passa não prova que ela mede alguma coisa: prova que o código está como estava. `mutacao.mjs` roda cada correção **de volta ao estado errado** e exige que algum gate reprove. Sai com 1 se alguma mutação passar — porque um gate que aceita o defeito é pior do que nenhum gate, treina a equipe a confiar nele.
+
+```bash
+npm run mutacao          # todas as famílias (~minutos)
+npm run mutacao:rapido   # sem os casos caros
+node mutacao.mjs render  # só uma família
+```
+
+Hoje: **23 mutações, todas morrem**, e 1 **controle** passa — o controle é uma mutação *equivalente* (`i++` → `i+=1`) que **não pode** reprovar. Sem ele, o harness aceita a versão que fixa a forma do laço, que é o defeito que o gate do `cnpjsNoTexto` tinha (exigia `i++` no fonte). As famílias: `render` (o `esc` de um campo dos quatro renders, com a lista de sinks derivada do fonte), `conf` (a chave inválida pesando na confiança), `cnpj` (a varredura quadrática e as duas bordas), `privacidade` (um CNPJ real citado em comentário) e `clone` (a lista de sintéticos órfã). O harness ainda roda a regressão num **clone limpo** e confere a promessa de [clone-safety](#nenhum-dado-fiscal-da-cliente-no-repositório).
+
+O harness devolve os arquivos ao estado original em **toda** saída, inclusive `Ctrl+C` — um harness que deixa o `index.html` mutado faz o próximo `npm test` medir um fonte que ninguém commitou.
+
 Ou, de dentro de `testes/`:
 
 ```bash

@@ -10,6 +10,8 @@
     "painel": "node painel-check.mjs",
     "bancada": "node rodar.mjs",
     "smoke": "node smoke.cjs",
+    "mutacao": "node mutacao.mjs",
+    "mutacao:rapido": "node mutacao.mjs --rapido",
     "test:tudo": "node regressao.mjs && node painel-check.mjs && node rodar.mjs && node smoke.cjs",
     "ocr": "node rodar.mjs --ocr-somente"
   },
