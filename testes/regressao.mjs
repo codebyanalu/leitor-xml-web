@@ -1453,6 +1453,10 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   ok('os formatadores de dado de arquivo escapam, não só reformatam',
     /function fmtCNPJ\(c\)\{return c\?esc\(/.test(html)
     && /function fmtChave\(ch\)\{return ch\?esc\(/.test(html));
+  /* dataBr truncava sem escapar, e o truncamento nao impede o ataque:
+     `"><img src=x onerror=...>` nos 10 primeiros caracteres ainda abre tag. */
+  ok('dataBr escapa além de truncar (a data vem do XML)',
+    /function dataBr\(d\)\{if\(!d\|\|d==='nan'\|\|d==='None'\)return'';return esc\(String\(d\)\.slice\(0,10\)\)\}/.test(html));
   ok('a IIFE de CNPJ nomeia o contrato que publica',
     /CONTRATO ENTRE M[ÓO]DULOS: publica window\.consultarCNPJ/.test(html));
   /* Teto de volume do separador. */
@@ -2332,6 +2336,276 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       /const celVazia=\(txt,tip\)=>/.test(html) && /não lido nesta extra/.test(html));
     ok('o glifo de chave não validada tem nome acessível (não é glifo solto)',
       /aria-label="Chave de 44 dígitos lida, mas não validada/.test(html));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade)');
+// ══════════════════════════════════════════════════════════════
+/* O passeio anterior consertou os sinks do LEITOR DE PDF e deixou o render XML
+   inteiro cru: `cellsTable`, `nfeItemDetalhe`, `renderNFE` e `renderNFSe`
+   interpolavam o campo do XML direto no innerHTML. Medido aqui: 40 <img> no
+   card de NF-e e 34 no de NFS-e com o payload em cada campo de texto.
+
+   Este grupo CRUZA as duas metades, porque nenhuma fecha sozinha:
+
+     (a) EXECUÇÃO — os dois renders rodam de verdade, com o script real e um stub
+         de DOM, e o innerHTML resultante é medido. Um gate que só lê o fonte
+         passa verde com o payload vivo se o `esc` estiver no lugar errado, que
+         foi exatamente o defeito do <option> no commit anterior.
+     (b) FONTE — a lista de campos vem do FONTE dos renders, não de um literal
+         escrito à mão. Fixture escrita à mão é lista com buraco: campo novo
+         entra no render, não entra no fixture, e o gate passa com o sink novo a
+        ceso. Medido no passeio: 3 sinks (`Item`, `UF_Prestador`,
+         `Mun_Prestador`) eram exatamente os campos que o fixture deixou de
+         fora, e revertê-los mantinha a regressão verde.
+
+   E a forma, não o token: comparar com um render de valor benigno. `img` e
+   `onerror` são o payload do autor do gate; `<svg onload>`, `<a
+   href=javascript:>`, `<script>` e `<iframe>` são o mesmo ataque com outra
+   forma, e medir só `<img` é medir o payload em vez de medir a falha. O que
+   se compara é que o render com payload tem a MESMA FORMA do render com
+   valor benigno: mesmas tags, nenhum handler, nenhum `<script>`.
+
+   O universo é derivado do FONTE com um marcador de seção, não de um `\n}\n`
+   (o arquivo é CRLF, esse padrão não acha) nem de "até o fim do arquivo" (vaza
+   para o módulo de CNPJ e de PDF, e o gate passa a exigir payload em campo que
+   nenhum render lê). Mutação medida: um campo NOVO lido cru reprova 5 asserções. */
+{
+  const PAY = '"><img src=x onerror="window.__XSS=1">';
+  const BENIGNO = 'EXEMPLO';
+
+  /* Os 4 renders, do fonte, sem depender de ninguém saber onde começam: é o
+     trecho de `cellsTable` até o fim de `renderNFSe`. */
+  const iniRender = html.indexOf('function cellsTable(');
+  /* O fim dos 4 renders é o marcador da seção seguinte, não um `}`: procurar
+     `\n}\n` não acha (o arquivo tem CRLF) e o fallback "até o fim do arquivo"
+     fazia o universo de campos vazar para o módulo de CNPJ e de PDF — o gate
+     passaria a exigir payload em campo que nenhum render lê. */
+  const FIM_RENDER = '// ═══ EVENT DELEGATION';
+  const fimNFSe = html.indexOf(FIM_RENDER, html.indexOf('function renderNFSe('));
+  const fonteRender = iniRender < 0 || fimNFSe < 0 ? '' : html.slice(iniRender, fimNFSe);
+
+  /* (b) O universo de campos: todo `p.X`/`n.X`/`g.X` lido pelos 4 renders. O `g.`
+     entra porque o rodapé do NF-e lê `g.itens[0].Arquivo_Origem` — com só `p.`/`n.`
+     ele entraria no universo por acaso (via o NFS-e) e o dia que o rodapé do NFS-e
+     saísse o campo sumiria do fixture com o sink cru vivo. `length` é membro de
+     array, não campo do XML. A condição da cobertura por construção é esta
+     sintática: um destructuring (`const {X}=n`) tiraria o literal do fonte. */
+  const camposDoFonte = [...fonteRender.matchAll(/\b[png]\.([A-Za-z_]\w*)/g)]
+    .map((m) => m[1]).filter((c) => c !== 'length');
+  const unicos = [...new Set(camposDoFonte)].sort();
+  /* O fixture é DERIVADO: todo campo que o render lê recebe o payload. Um
+     `Item: '1'` (valor "realista") trocava o payload pela própria prova — por
+     isso aqui não há nenhum valor literal no registro de texto. */
+  const registro = (valor) => {
+    const r = { Status_NFe: 'Autorizada' };
+    for (const c of unicos) r[c] = valor;
+    return r;
+  };
+  const linha = (extra, valor) => Object.assign(registro(valor === undefined ? PAY : valor), extra || {});
+  const benigno = (extra) => Object.assign(registro(BENIGNO), extra || {});
+  /* Um só registro serve aos dois renders: a lista vem do fonte, então nenhum
+     campo fica de fora por esquecimento de transcrição — que foi como
+     `UF_Prestador`/`Mun_Prestador` saíram do fixture do NFS-e. */
+  const servico = linha();
+
+  /* O bloco que declara renderNFE/renderNFSe: o MAIOR script inline do arquivo.
+     O grupo 8 roda o ÚLTIMO (a IIFE de tema, 64 linhas) — são blocos diferentes e
+     heuristics diferentes para perguntas diferentes; não são o mesmo sandbox. */
+  function stubRender() {
+    const els = {};
+    function el(id) {
+      if (els[id]) return els[id];
+      const self = {
+        id, value: '', textContent: '', innerHTML: '', hidden: false, style: {}, dataset: {},
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k] || null; },
+        removeAttribute(k) { delete this.attrs[k]; }, addEventListener() {}, appendChild() {},
+        querySelector() { return null; }, querySelectorAll() { return []; },
+      };
+      self.parentElement = { hidden: false, classList: self.classList, querySelector: () => null, querySelectorAll: () => [] };
+      els[id] = self;
+      return self;
+    }
+    const navs = [{ lastElementChild: { textContent: 'Importar XMLs' }, _ev: {}, addEventListener(_, f) { this._ev.click = f; } }];
+    const janela = {
+      matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }),
+      addEventListener() {}, removeEventListener() {}, GCON_CDN_TESSERACT: 0,
+    };
+    const sandbox = {
+      document: {
+        documentElement: { attrs: {}, getAttribute(k) { return this.attrs[k] || null; }, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } },
+        getElementById: el,
+        querySelectorAll: (s) => (s === '.nav-btn' ? navs : []),
+        querySelector: (s) => (s === '.nav-btn.active' ? navs[0] : null),
+        createElement: () => el('__criado'),
+        body: { appendChild() {}, removeChild() {} },
+        addEventListener() {},
+      },
+      localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+      getComputedStyle: () => ({ getPropertyValue: () => '' }),
+      setTimeout, clearTimeout, Date, Math, JSON, console, window: janela,
+    };
+    janela.matchMedia = sandbox.window.matchMedia;
+    sandbox.window.GCON = {};
+    vm.createContext(sandbox);
+    vm.runInContext(scriptRender, sandbox, { filename: 'index.html#render' });
+    vm.runInContext(';this.__DB=DB;', sandbox);
+    return sandbox;
+  }
+  const scriptRender = scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  let sb = null, erroRender = '';
+  try { sb = stubRender(); } catch (e) { erroRender = e.message; }
+  ok('o script do render XML sobe com o stub de DOM', sb !== null && erroRender === '', erroRender);
+
+  if (sb) {
+    /* A medição é de FORMA: quantas tags o HTML tem, quantos handlers em
+       posição de atributo, e se há `<script>`. Um render é "da mesma forma que
+       o benigno" quando não ganhou tag nenhuma por causa do dado. */
+    const forma = (h) => ({
+      tags: (h.match(/<[a-zA-Z]/g) || []).length,
+      /* Qualquer `on...=` seguido de aspas é handler em atributo. O payload
+         escapado vira `onerror=&quot;`, que não casa — texto não reprova. */
+      handler: (h.match(/\son[a-z]+\s*=\s*["']/gi) || []).length,
+      script: (h.match(/<script/gi) || []).length,
+      img: (h.match(/<img/gi) || []).length,
+      escapado: (h.match(/&lt;/g) || []).length,
+    });
+    const conta = (alvo, fn, registros) => {
+      const id = alvo + '-list';
+      try {
+        vm.runInContext(`(()=>{__DB.${alvo}=${JSON.stringify(registros)};${fn}()})()`, sb);
+      } catch (e) { return { erro: e.message }; }
+      return { h: vm.runInContext(`document.getElementById('${id}').innerHTML`, sb) };
+    };
+    const par = (alvo, fn, extra, valor) => {
+      const p = conta(alvo, fn, [linha(extra, valor)]);
+      const b = conta(alvo, fn, [benigno(extra)]);
+      return { p: p.erro ? p : Object.assign(forma(p.h), { h: p.h }), b: b.erro ? b : forma(b.h), erro: p.erro || b.erro };
+    };
+    const cmp = (n, r) => ok(n, !r.erro && r.p.tags === r.b.tags && r.p.handler === r.b.handler && r.p.script === 0 && r.p.img === 0,
+      r.erro || `payload ${r.p.tags} tag(s)/${r.p.handler} handler vs benigno ${r.b.tags} tag(s)/${r.b.handler} handler`);
+    const a = par('nfe', 'renderNFE');
+    const b = par('nfse', 'renderNFSe');
+    cmp('renderNFE: o payload não ganha nenhuma tag (mesma forma do render benigno)', a);
+    cmp('renderNFSe: o payload não ganha nenhuma tag (mesma forma do render benigno)', b);
+    /* A asserção negativa: o dado tem que CONTINUAR na tela. Sem ela, um `esc`
+       que devolve vazio passa em `tags == b.tags`. */
+    ok('o payload continua na tela como texto escapado (não sumiu, não executou)',
+      !a.erro && !b.erro && a.p.escapado > 0 && b.p.escapado > 0,
+      'nfe=' + a.p.escapado + ' nfse=' + b.p.escapado);
+    ok('o render benigno NÃO produz entidade (o texto normal passa limpo)',
+      !a.erro && !b.erro && a.b.escapado === 0 && b.b.escapado === 0,
+      'nfe=' + a.b.escapado + ' nfse=' + b.b.escapado);
+
+    /* Forma alternativa do mesmo ataque. `img`/`onerror` são o payload do autor
+       do gate; com o sink cru, `<svg onload>` e `<script>` também executam e
+       `<img onerror>` mediria 0. Cada forma tem que reprovar — nos DOIS renders,
+       porque um campo exclusivo do NFS-e que trunca em 80 chars neutraliza o
+       `PAY` curto e não neutraliza `<svg onload>`. */
+    const FORMAS = ['<svg onload="window.__XSS=1">', '<a href="javascript:window.__XSS=1">x</a>',
+      '</span><script>window.__XSS=1</script>', '<iframe src="javascript:1"></iframe>'];
+    FORMAS.forEach((formaPay, i) => {
+      [['nfe', 'renderNFE'], ['nfse', 'renderNFSe']].forEach(([alvo, fn]) => {
+        const r = par(alvo, fn, undefined, formaPay);
+        ok('a forma #' + (i + 1) + ' (' + formaPay.slice(0, 18) + '…) não vira HTML em ' + fn,
+          !r.erro && r.p.tags === r.b.tags && r.p.handler === r.b.handler && r.p.script === 0,
+          r.erro || `tags=${r.p.tags} vs benigno=${r.b.tags}`);
+      });
+    });
+
+    /* O `catch` do renderNFE é um sink com `esc` e o caminho nunca era
+       exercitado: `nfeItemDetalhe` não lança, e o `conta` engole erro. Um
+       objeto com `toString` hostil força a exceção de verdade — e tem de entrar
+       pelo sandbox, porque serializado o `toString` customizado vira `{}`. */
+    {
+      sb.__DB.nfe = [Object.assign({}, linha())];
+      /* O payload vai LITERAL no código do VM: `PAY` é uma variável do host e
+         não existe dentro dele — por isso o erro saiu "PAY is not defined" e o
+         gate mediu a mensagem errada. */
+      vm.runInContext('__DB.nfe[0].Nome_Emitente={toString(){throw new Error(' + JSON.stringify(PAY) + ')}}', sb);
+      let h = '';
+      try { vm.runInContext('renderNFE()', sb); } catch (e) { h = 'LANCOU: ' + e.message; }
+      const veio = vm.runInContext("document.getElementById('nfe-list').innerHTML", sb);
+      const f = forma(veio);
+      ok('o catch do renderNFE escapa a mensagem (o erro também é dado de arquivo)',
+        !h && /Erro ao renderizar/.test(veio) && f.img === 0 && f.handler === 0 && f.escapado > 0,
+        h || ('tags=' + f.tags + ' escapado=' + f.escapado));
+      vm.runInContext('__DB.nfe=[]', sb);
+    }
+
+    /* Os ramos de estado vazio são alcançáveis pelo filtro e só guardam
+       literal — mas literal de hoje é interpolação de amanhã. */
+    {
+      vm.runInContext('__DB.nfe=[];__DB.nfse=[]', sb);
+      vm.runInContext('renderNFE()', sb);
+      const v1 = vm.runInContext("document.getElementById('nfe-list').innerHTML", sb);
+      vm.runInContext('renderNFSe()', sb);
+      const v2 = vm.runInContext("document.getElementById('nfse-list').innerHTML", sb);
+      ok('o estado vazio dos dois renders não carrega dado (ramo sem sessão)',
+        /empty-state/.test(v1) && /empty-state/.test(v2)
+        && !/<img|on[a-z]+\s*=\s*["']|<script/i.test(v1 + v2),
+        'nfe=' + v1.slice(0, 90));
+    }
+
+    /* cellsTable é o sink que cobre as células de imposto do item (ICMS, IPI,
+       PIS, COFINS, IBS/CBS). O caminho que a justificativa do comentário cita é
+       `formatoBr`, que devolve a string CRUA quando não casa com
+       `^\d+\.?\d*$` — e seus 3 chamadores estavam fora do fixture escrito à mão.
+       Aqui vêm do fonte. O nome do gate não conta as células: contagem em nome
+       de gate envelhece (era "~40", eram 45). */
+    ok('cellsTable escapa rótulo e valor (o sink das células de imposto do item)',
+      /function cellsTable\(cells\)\{[\s\S]{0,320}?cells\.map\(c=>`<th>\$\{esc\(c\[0\]\)\}<\/th>`\)[\s\S]{0,160}?cells\.map\(c=>`<td>\$\{esc\(c\[1\]\)\}<\/td>`\)/.test(html));
+    /* Regra NEGATIVA, não literal positivo: "todo `.slice(` de dado de arquivo
+       tem o `esc` DENTRO". Listar `xProd` e `xDescServ` (e esquecer
+       `Desc_Servico`, que tem o mesmo formato) trava refactor legítimo e
+       deixa passar o caso irmão. */
+    {
+      const slices = [...fonteRender.matchAll(/\$\{[^}]*\.slice\([^)]*\)[^}]*\}/g)].map((x) => x[0]);
+      /* O `esc` tem de estar ABERTO quando o `.slice` acontece. Contar o
+         balanceamento de parênteses diz isso sem listar campo: em
+         `${esc(x).slice(0,40)}` a profundidade já é 0 no `.slice` (entidade
+         partida); em `${esc(x.slice(0,40))}` ainda é 1 (texto truncado, depois
+         escapado). */
+      const sliceFora = slices.filter((s) => {
+        const i = s.indexOf('esc(');
+        if (i < 0) return true;
+        let p = 1; // o parêntese do próprio `esc(`
+        for (let k = i + 4; k < s.length; k++) {
+          if (s[k] === '(') p++;
+          else if (s[k] === ')') p--;
+          else if (s[k] === '.' && s.startsWith('.slice(', k)) return p <= 0;
+        }
+        return true;
+      });
+      ok('todo truncamento de dado de arquivo tem o esc DENTRO do slice (nenhum por fora)',
+        slices.length >= 3 && sliceFora.length === 0,
+        sliceFora.join(' | ') || (slices.length + ' slice(s) no fonte'));
+    }
+    /* `dataBr` escapa, e por isso não pode aparecer em export: lá o `&`
+     viraria `&amp;` na coluna de data do arquivo da cliente. Hoje nenhum usa —
+     o gate é para o dia em que alguém plugar. */
+    ok('nenhum export usa dataBr (escapar no CSV/XLSX mudaria o arquivo da cliente)',
+      !/function export(CSV|XLSX)\(tipo\)\{[\s\S]{0,900}?\bdataBr\(/.test(html)
+      && (html.match(/dataBr\(/g) || []).length === 6, /* 1 definição + 5 consumidores de render */
+      (html.match(/dataBr\(/g) || []).length + ' ocorrência(s) de dataBr');
+    /* dataBr com data legítima: escapa não pode virar "escapa a data também". */
+    ok('dataBr devolve a data, não a entidade',
+      vm.runInContext("dataBr('2026-09-17T10:20:30-03:00')", sb) === '2026-09-17',
+      vm.runInContext("dataBr('2026-09-17T10:20:30-03:00')", sb));
+    /* A COBERTURA do fixture é por construção (o universo vem do fonte); o que esta
+       asserção detecta é a DERIVAÇÃO colapsar — o gate 8 voltar a rodar outro
+       bloco, ou o marcador de seção mudar de lugar. Por isso o nome mede a
+       derivação, não a cobertura: nome que promete cobertura vira crença. */
+    ok('a derivação do universo não colapsou (o gate lê os 4 renders, não outro bloco)',
+      unicos.length >= 60 && fonteRender.length > 4000,
+      unicos.length + ' campos em ' + fonteRender.length + ' chars de fonte');
+    /* A cobertura por construção vale sob a condição sintática da derivação:
+       `p.X`/`n.X`. Um `g.itens[0].X` ou um destructuring escapariam dela — por
+       isso `g.` também entra, e o campo do rodapé do NF-e é lido por `g.` */
+    ok('o universo inclui campo lido por `g.` (o rodapé de Arquivo_Origem do NF-e)',
+      /\bg\./.test(fonteRender) && unicos.includes('Arquivo_Origem'));
   }
 }
 // ══════════════════════════════════════════════════════════════

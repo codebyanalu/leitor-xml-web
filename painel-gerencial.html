@@ -262,7 +262,7 @@
   </div>
   <div class="kpi">
           <div class="r"><span class="sw" style="background:var(--verde)"></span><span class="k">Regressão estrutural</span></div>
-    <div class="v">532/532</div>
+    <div class="v">554/554</div>
     <div class="d">~1 s · sem OCR, sem browser</div>
   </div>
   <div class="kpi">
@@ -414,7 +414,7 @@
       <thead><tr><th scope="col">Lote</th><th scope="col">O que mudou</th><th scope="col">Como foi provado</th><th scope="col">Achado da revisão</th><th scope="col">Commit</th></tr></thead>
       <tbody>
         <tr><td><b>Contraste e acessibilidade</b></td><td class="dim">tokens de hover, badge sólido no tema escuro, borda de aviso, foco, teclado, região viva</td><td class="dim">179 casos + contraste WCAG próprio nos 2 temas</td><td><span class="chip atn">painel no tema escuro a 3,56:1 na primeira renderização</span></td><td><code>627b8e0</code></td></tr>
-        <tr><td><b>Segurança</b></td><td class="dim">escaping na fronteira, console, globais, LGPD, ReDoS</td><td class="dim">varredura + medição do ReDoS</td><td><span class="chip atn">200 espaços = 70,6 s</span></td><td><code>138af48</code></td></tr>
+        <tr><td><b>Segurança</b></td><td class="dim">escape no render (não na fronteira), console, globais, LGPD, ReDoS</td><td class="dim">varredura + medição do ReDoS + renders de XML executados com payload</td><td><span class="chip atn">200 espaços = 70,6 s</span></td><td><code>138af48</code></td></tr>
         <tr><td><b>Infraestrutura</b></td><td class="dim">SRI, versão fixada, corePath, teto de OCR, aviso de CDN</td><td class="dim">6/6 SRI conferidos + OCR real no navegador</td><td><span class="chip atn">tesseract.js-core 4.1.4 não existe</span></td><td><code>c81933c</code></td></tr>
         <tr><td><b>Testes</b></td><td class="dim">regressão estrutural sem browser, portão de entrada com código de saída 1, npm test rodando as duas suítes</td><td class="dim">npm test + prova de que reprova</td><td><span class="chip atn">#cnpj-status não existia no HTML</span></td><td><code>f736ac3</code></td></tr>
         <tr><td><b>Vault</b></td><td class="dim">agente restrito + hook sem LLM</td><td class="dim">hook executado contra o MOC real, com git real</td><td><span class="chip atn">indicadores de ahead/behind invertidos no hook</span></td><td><code>11d2665</code></td></tr>

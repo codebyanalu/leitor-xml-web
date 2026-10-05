@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1439,7 +1439,14 @@ function parseXML(texto){
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
 function moeda(v){return `R$ ${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
 function pct(v){return `${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%`}
-function dataBr(d){if(!d||d==='nan'||d==='None')return'';return String(d).slice(0,10)}
+/* dataBr ESCAPA além de truncar: a data vem do XML e o `.slice(0,10)` não
+   impede o ataque — `"><img src=x onerror=...>` truncado nos 10 primeiros
+   caracteres ainda abre uma tag (`"><img src`), que é o que a prova mediu
+   (40 tags no card de NF-e, 38 handlers: os 2 sem handler são as datas).
+   Por isso ela NÃO pode entrar em export — lá o `&` viraria `&amp;` na coluna
+   de data do arquivo da cliente. Os 5 consumidores são todos de render, e o
+   export usa o irmão `formatoBr`; o gate do grupo 15 conta as ocorrências. */
+function dataBr(d){if(!d||d==='nan'||d==='None')return'';return esc(String(d).slice(0,10))}
 /* Escape de HTML — texto do nó E atributos (& < > " ').
    Vigia em todo texto que venha de arquivo (XML/PDF/OCR) ou de fetch, antes de entrar via innerHTML.
    Fica no escopo do script (e nao dentro de um IIFE) porque tem consumidores em varios modulos. */
@@ -1763,9 +1770,20 @@ function populateFilters(){
 }
 
 // ═══ RENDER NF-e (COMPLETO) ═══
+/* Tabela de rótulo/valor (ICMS, IPI, PIS, COFINS, IBS). Os dois lados escapam:
+   o rótulo é literal do app, mas o VALOR vem do XML. Escapar aqui cobre ~40
+   células de uma vez. Para `moeda`/`pct` o escape é inofensivo (nenhum dos dois
+   emite `&<>"'`); para `formatoBr` ele é a ÚNICA camada, porque `formatoBr`
+   devolve a string crua quando ela não casa com `^\d+\.?\d*$`.
+
+   Não é a única tabela do render — RESUMO FINANCEIRO, CSRF, IBS/CBS, "Financeiro
+   do Item" e a tabela de itens também são tabelas rótulo/valor. O motivo de não
+   virem por aqui é que recebem `moeda`/`pct`/literal (a única exceção é
+   `cClassTrib`, que já chega escapado). O gate 15 cobre todas assim mesmo: o
+   universo de campos vem do FONTE dos quatro renders, não deste helper. */
 function cellsTable(cells){
   if(!cells.length)return'';
-  return `<table><thead><tr>${cells.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody><tr>${cells.map(c=>`<td>${c[1]}</td>`).join('')}</tr></tbody></table>`;
+  return `<table><thead><tr>${cells.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody><tr>${cells.map(c=>`<td>${esc(c[1])}</td>`).join('')}</tr></tbody></table>`;
 }
 function nfeItemDetalhe(p){
   const icmsCells=[];
@@ -1823,11 +1841,18 @@ function nfeItemDetalhe(p){
   if(p.pCBS)ibsCells.push(['Alíq. CBS',pct(p.pCBS)]);
   if(p.CBS_vCBS)ibsCells.push(['V.CBS',moeda(p.CBS_vCBS)]);
   const ibs=cellsTable(ibsCells);
+  /* Item vem do XML: `xProd`, `cEAN` e `NCM` são texto livre, e só `xProd` é
+     truncado. O truncamento (`.slice(0,40)`) corta o payload sem cortar o
+     escapamento — por isso o `esc` fica DENTRO do slice, ou seja aplicado ao
+     texto já truncado. Cortar depois de escapar produziria `&l` sozinho, que é
+     lixo visível na tela. `Item` precisa do `||'—'` porque `esc` mapeia
+     `undefined` em `''`, não em `—`: campo ausente viraria a palavra
+     `undefined` na tabela. */
   return `<tr>
-    <td>${p.Item}</td><td>${p.cProd||'—'}</td><td>${p.cEAN||'—'}</td><td>${(p.xProd||'').slice(0,40)}</td>
-    <td>${p.NCM||'—'}</td><td>${p.CEST||'—'}</td><td>${p.CFOP||'—'}</td>
-    <td>${p.qCom||'—'}</td><td>${p.uCom||'—'}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
-    <td>${p.indEscala||'—'}</td><td>${p.nFCI||'—'}</td>
+    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}</td>
+    <td>${esc(p.NCM||'—')}</td><td>${esc(p.CEST||'—')}</td><td>${esc(p.CFOP||'—')}</td>
+    <td>${esc(p.qCom||'—')}</td><td>${esc(p.uCom||'—')}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
+    <td>${esc(p.indEscala||'—')}</td><td>${esc(p.nFCI||'—')}</td>
   </tr>
   <tr style="background:var(--card-2)!important"><td colspan="13" style="padding:4px 6px">
     <div class="det-section">
@@ -1841,7 +1866,7 @@ function nfeItemDetalhe(p){
           <td>${moeda(p.vOutro_item)}</td>
           <td><strong>${moeda(f(p.vProd)-f(p.vDesc_item)+f(p.vFrete_item)+f(p.vSeg_item)+f(p.vOutro_item))}</strong></td>
         </tr></tbody></table>
-        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${p.infAdProd}</div>`:''}
+        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${esc(p.infAdProd)}</div>`:''}
       </div>
     </div>
     ${icms?`<div class="det-section">
@@ -1895,36 +1920,36 @@ function renderNFE(){
     const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS','IBS','CBS','BC ST','ICMS ST'];
     html+=`<div class="nota-card">
       <div class="header" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">
-        <span class="info"><strong>NF-e</strong> — ${n.Numero_NFe||'?'}${n.Serie_NFe?' Série '+n.Serie_NFe:''} — ${n.Nome_Emitente||'?'} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg> CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg> AUTORIZADA</span>':''}</span>
+        <span class="info"><strong>NF-e</strong> — ${esc(n.Numero_NFe||'?')}${n.Serie_NFe?' Série '+esc(n.Serie_NFe):''} — ${esc(n.Nome_Emitente||'?')} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg> CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg> AUTORIZADA</span>':''}</span>
         <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
       </div>
       <div class="body-detail">
         <div class="info-grid">
           <div class="info-box"><h4>Emitente</h4>
-            <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Emitente||'-'}</span></div>
-            <div class="row"><span class="lbl">Razão:</span><span>${n.Nome_Emitente||'-'}</span></div>
-            <div class="row"><span class="lbl">Fantasia:</span><span>${n.NomeFantasia_Emit||'-'}</span></div>
-            <div class="row"><span class="lbl">IE:</span><span>${n.IE_Emitente||'-'}</span></div>
-            <div class="row"><span class="lbl">UF:</span><span>${n.UF_Emitente||'-'}</span></div>
-            <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Emitente||'-'}</span></div>
+            <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Emitente||'-')}</span></div>
+            <div class="row"><span class="lbl">Razão:</span><span>${esc(n.Nome_Emitente||'-')}</span></div>
+            <div class="row"><span class="lbl">Fantasia:</span><span>${esc(n.NomeFantasia_Emit||'-')}</span></div>
+            <div class="row"><span class="lbl">IE:</span><span>${esc(n.IE_Emitente||'-')}</span></div>
+            <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Emitente||'-')}</span></div>
+            <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Emitente||'-')}</span></div>
           </div>
           <div class="info-box"><h4>Destinatário</h4>
-            <div class="row"><span class="lbl">CNPJ/CPF:</span><span>${n.CNPJ_Destinatario||n.CPF_Destinatario||'-'}</span></div>
-            <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Destinatario||'-'}</span></div>
-            <div class="row"><span class="lbl">IE:</span><span>${n.IE_Destinatario||'-'}</span></div>
-            <div class="row"><span class="lbl">UF:</span><span>${n.UF_Destinatario||'-'}</span></div>
-            <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Destinatario||'-'}</span></div>
+            <div class="row"><span class="lbl">CNPJ/CPF:</span><span>${esc(n.CNPJ_Destinatario||n.CPF_Destinatario||'-')}</span></div>
+            <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Destinatario||'-')}</span></div>
+            <div class="row"><span class="lbl">IE:</span><span>${esc(n.IE_Destinatario||'-')}</span></div>
+            <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Destinatario||'-')}</span></div>
+            <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Destinatario||'-')}</span></div>
           </div>
         </div>
         <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
-          <span><strong>Chave:</strong> ${n.Chave_NFe||'-'}</span>
-          <span><strong>Série:</strong> ${n.Serie_NFe||'-'}</span>
+          <span><strong>Chave:</strong> ${esc(n.Chave_NFe||'-')}</span>
+          <span><strong>Série:</strong> ${esc(n.Serie_NFe||'-')}</span>
           <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
-          <span><strong>NatOp:</strong> ${n.NatOp||'-'}</span>
-          <span><strong>Mod:</strong> ${n.Mod_NFe||'-'}</span>
-          <span><strong>TpNF:</strong> ${n.Tp_NF||'-'}</span>
+          <span><strong>NatOp:</strong> ${esc(n.NatOp||'-')}</span>
+          <span><strong>Mod:</strong> ${esc(n.Mod_NFe||'-')}</span>
+          <span><strong>TpNF:</strong> ${esc(n.Tp_NF||'-')}</span>
         </div>
-        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${n.infCpl}</div>`:''}
+        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${esc(n.infCpl)}</div>`:''}
         ${totLinhas.length?`<div class="det-section">
           <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer;font-weight:700;color:var(--text)">RESUMO FINANCEIRO DA NOTA</div>
           <div class="det-body open">
@@ -1946,7 +1971,7 @@ function renderNFE(){
             <th>Qtd</th><th>Un</th><th>V.Unit</th><th>V.Total</th><th>Escala</th><th>FCI</th>
           </tr></thead><tbody>${itensBody}</tbody></table>
         </div>
-        <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${g.itens[0].Arquivo_Origem||'-'}</div>
+        <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${esc(g.itens[0].Arquivo_Origem||'-')}</div>
       </div>
     </div>`;
   }
@@ -1972,55 +1997,55 @@ function renderNFSe(){
   if(!d.length){c.innerHTML='<div class="empty-state"><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
   c.innerHTML=d.map(n=>`<div class="nota-card">
     <div class="header" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">
-      <span class="info"><strong>NFS-e</strong> — ${n.Numero_NFSe||'?'} — ${n.Nome_Prestador||n.CNPJ_Prestador||'?'} <span class="badge">${n.Formato||'?'}</span></span>
+      <span class="info"><strong>NFS-e</strong> — ${esc(n.Numero_NFSe||'?')} — ${esc(n.Nome_Prestador||n.CNPJ_Prestador||'?')} <span class="badge">${esc(n.Formato||'?')}</span></span>
       <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
       </div>
       <div class="body-detail">
         <div class="info-grid">
         <div class="info-box"><h4>Prestador</h4>
-          <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">Fantasia:</span><span>${n.NomeFantasia_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">IM:</span><span>${n.IM_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">UF:</span><span>${n.UF_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">Email:</span><span>${n.Email_Prestador||'-'}</span></div>
-          <div class="row"><span class="lbl">Simples Nac:</span><span>${n.Simples_Nacional||'-'}</span></div>
+          <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">Fantasia:</span><span>${esc(n.NomeFantasia_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">IM:</span><span>${esc(n.IM_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">Email:</span><span>${esc(n.Email_Prestador||'-')}</span></div>
+          <div class="row"><span class="lbl">Simples Nac:</span><span>${esc(n.Simples_Nacional||'-')}</span></div>
         </div>
         <div class="info-box"><h4>Tomador</h4>
-          <div class="row"><span class="lbl">CNPJ:</span><span>${n.CNPJ_Tomador||'-'}</span></div>
-          <div class="row"><span class="lbl">Nome:</span><span>${n.Nome_Tomador||'-'}</span></div>
-          <div class="row"><span class="lbl">IM:</span><span>${n.IM_Tomador||'-'}</span></div>
-          <div class="row"><span class="lbl">Município:</span><span>${n.Mun_Tomador||'-'}</span></div>
-          <div class="row"><span class="lbl">UF:</span><span>${n.UF_Tomador||'-'}</span></div>
-          <div class="row"><span class="lbl">Email:</span><span>${n.Email_Tomador||'-'}</span></div>
+          <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Tomador||'-')}</span></div>
+          <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Tomador||'-')}</span></div>
+          <div class="row"><span class="lbl">IM:</span><span>${esc(n.IM_Tomador||'-')}</span></div>
+          <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Tomador||'-')}</span></div>
+          <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Tomador||'-')}</span></div>
+          <div class="row"><span class="lbl">Email:</span><span>${esc(n.Email_Tomador||'-')}</span></div>
         </div>
       </div>
       <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
-        <span><strong>Chave:</strong> ${n.Chave_NFSe||'-'}</span>
-        <span><strong>Número:</strong> ${n.Numero_NFSe||'-'}</span>
-        <span><strong>Série RPS:</strong> ${n.Serie_RPS||'-'}</span>
+        <span><strong>Chave:</strong> ${esc(n.Chave_NFSe||'-')}</span>
+        <span><strong>Número:</strong> ${esc(n.Numero_NFSe||'-')}</span>
+        <span><strong>Série RPS:</strong> ${esc(n.Serie_RPS||'-')}</span>
         <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
         <span><strong>Competência:</strong> ${dataBr(n.Data_Competencia)}</span>
-        <span><strong>Mun. Prestação:</strong> ${n.Municipio_Prestacao||'-'}</span>
+        <span><strong>Mun. Prestação:</strong> ${esc(n.Municipio_Prestacao||'-')}</span>
       </div>
       <div class="info-grid">
         <div class="info-box"><h4>Serviço</h4>
-          <div class="row"><span class="lbl">cTribNac:</span><span>${n.cTribNac||'-'}</span></div>
-          <div class="row"><span class="lbl">Desc.Serv.:</span><span>${(n.xDescServ||'-').slice(0,80)}</span></div>
-          <div class="row"><span class="lbl">cNBS:</span><span>${n.cNBS_DPS||'-'}</span></div>
-          <div class="row"><span class="lbl">Serv.Mun.:</span><span>${n.Cod_Servico_Mun||'-'}</span></div>
-          <div class="row"><span class="lbl">Desc.Mun.:</span><span>${(n.Desc_Servico||'-').slice(0,80)}</span></div>
-          <div class="row"><span class="lbl">Item Lei 116:</span><span>${n.Cod_Item_Lei116||'-'}</span></div>
-          <div class="row"><span class="lbl">Cód.NBS:</span><span>${n.Cod_NBS||'-'}</span></div>
+          <div class="row"><span class="lbl">cTribNac:</span><span>${esc(n.cTribNac||'-')}</span></div>
+          <div class="row"><span class="lbl">Desc.Serv.:</span><span>${esc((n.xDescServ||'-').slice(0,80))}</span></div>
+          <div class="row"><span class="lbl">cNBS:</span><span>${esc(n.cNBS_DPS||'-')}</span></div>
+          <div class="row"><span class="lbl">Serv.Mun.:</span><span>${esc(n.Cod_Servico_Mun||'-')}</span></div>
+          <div class="row"><span class="lbl">Desc.Mun.:</span><span>${esc((n.Desc_Servico||'-').slice(0,80))}</span></div>
+          <div class="row"><span class="lbl">Item Lei 116:</span><span>${esc(n.Cod_Item_Lei116||'-')}</span></div>
+          <div class="row"><span class="lbl">Cód.NBS:</span><span>${esc(n.Cod_NBS||'-')}</span></div>
         </div>
         <div class="info-box"><h4>ISS</h4>
-          <div class="row"><span class="lbl">Retido:</span><span>${n.ISS_Retido||'-'}</span></div>
+          <div class="row"><span class="lbl">Retido:</span><span>${esc(n.ISS_Retido||'-')}</span></div>
           <div class="row"><span class="lbl">BC ISS:</span><span>${moeda(n.BC_ISS)}</span></div>
           <div class="row"><span class="lbl">Alíq ISS:</span><span>${pct(n.Aliq_ISS)}</span></div>
           <div class="row"><span class="lbl">Valor ISS:</span><span><strong>${moeda(n.Valor_ISS)}</strong></span></div>
           <div class="row"><span class="lbl">pAliq ISS:</span><span>${pct(n.pAliq_ISS)}</span></div>
-          <div class="row"><span class="lbl">tpRetISSQN:</span><span>${n.tpRetISSQN||'—'}</span></div>
+          <div class="row"><span class="lbl">tpRetISSQN:</span><span>${esc(n.tpRetISSQN||'—')}</span></div>
         </div>
       </div>
       <div class="det-section">
@@ -2037,7 +2062,7 @@ function renderNFSe(){
         <div class="det-body">
           <table><thead><tr><th>BC IBS/CBS</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>Alíq.CBS</th><th>V.CBS</th><th>Class.Trib.</th></tr></thead><tbody><tr>
             <td>${moeda(n.IBS_vBC)}</td><td>${pct(n.IBS_pIBSUF)}</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${pct(n.IBS_pIBSMun)}</td><td>${moeda(n.IBS_vIBSMun)}</td>
-            <td>${pct(n.CBS_pCBS)}</td><td>${moeda(n.CBS_vCBS)}</td><td>${n.cClassTrib||'—'}</td>
+            <td>${pct(n.CBS_pCBS)}</td><td>${moeda(n.CBS_vCBS)}</td><td>${esc(n.cClassTrib||'—')}</td>
           </tr></tbody></table>
           ${n.pTotTribSN?`<div style="margin-top:4px;font-size:10px;color:var(--text2)">pTotTribSN: ${pct(n.pTotTribSN)}</div>`:''}
         </div>
@@ -2056,8 +2081,8 @@ function renderNFSe(){
           <div class="row"><span class="lbl">INSS:</span><span>${moeda(n.Valor_INSS)}</span></div>
         </div>
       </div>
-      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${n.Discriminacao}</div>`:''}
-      <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${n.Arquivo_Origem||'-'}</div>
+      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${esc(n.Discriminacao)}</div>`:''}
+      <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${esc(n.Arquivo_Origem||'-')}</div>
     </div>
   </div>`).join('');
 }

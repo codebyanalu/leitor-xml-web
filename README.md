@@ -60,10 +60,19 @@ XML e PDF são entrada de terceiro: o conteúdo do arquivo aparece na tela, e um
 | `celVazia()` | célula da tabela do PDF, com o `title` do tooltip |
 | `cnpjCell()` | CNPJ da tabela do PDF |
 | `fmtCNPJ()` / `fmtChave()` | reformatam **e escapam** |
+| `dataBr()` | trunca a data **e escapa** — truncar não impede o ataque (ver abaixo) |
+| `cellsTable()` | rótulo e valor das ~40 células de imposto do item (ICMS, IPI, PIS, COFINS, IBS/CBS) |
+| `nfeItemDetalhe()` / `renderNFE()` / `renderNFSe()` | o card da nota inteiro, campo a campo |
 
 **Por que `onclick` inline com o dado dentro é proibido.** Um CNPJ em `onclick="abrirConsultaCNPJ('…')"` cai num contexto de JavaScript, e o escape de HTML não protege lá: uma aspa simples sobrevive ao `esc` e fecha o argumento da chamada. Por isso o link da tabela do PDF usa `data-cnpj` com `esc()` mais um `addEventListener` — o mesmo padrão dos botões `.pdfiso-debug` e `.pdfiso-copy` ao lado.
 
 Um `<option>` é um caso que passa despercebido: `value="${esc(c)}"` escapado e `>${c}` cru na mesma linha. O atributo está protegido e o texto não — e o texto é o que o usuário lê.
+
+**Truncar não é escapar.** `${dataBr(n.Data_Emissao)}` cortava a string em 10 caracteres e devolvia o resto cru — e `"><img src=x onerror=…>` truncado nos 10 primeiros ainda abre uma tag (`"><img src`). É por isso que `dataBr` escapa depois de truncar, e que nos campos com `.slice()` o `esc` fica **dentro** do slice: cortar depois de escapar deixaria `&l` sozinho, lixo visível na tela.
+
+**Por que o gate 15 cruza fonte e execução, e por que mede forma.** Um gate que lê `${n.Nome_Emitente}` e exige `esc` passa verde com o payload vivo se o `esc` estiver no lugar errado — foi exatamente o defeito do `<option>` acima. Mas o outro extremo também falha: um gate que só executa com uma **fixture escrita à mão** é lista com buraco, e campo novo entra no render sem entrar no fixture. Por isso o grupo 15 faz as duas coisas — tira a lista de campos do **fonte** dos quatro renders (um campo novo entra no fixture sozinho) e **executa** `renderNFE` e `renderNFSe` com o script real e um stub de DOM.
+
+O que se compara é a **forma** do HTML, não o token do payload: o render com payload tem que ter a mesma contagem de tags do render com valor benigno, nenhum handler em posição de atributo e nenhum `<script>`. Medir só `<img>` mede o payload em vez de medir a falha — `<svg onload>`, `<a href=javascript:>`, `<script>` e `<iframe>` são o mesmo ataque com outra forma, e os quatro são exercitados nos **dois** renders. Antes das correções o grupo mediava **40 tags no card de NF-e e 34 no de NFS-e**; hoje, mutar qualquer `esc` de campo dos quatro renders para o estado cru reprova, e um campo novo lido cru reprova as asserções de forma. A cobertura por construção vale sob uma condição explícita: o universo sai de `p.X`/`n.X`/`g.X` no fonte — um destructuring (`const {X}=n`) tiraria o literal do fonte, e por isso a derivação tem gate própria.
 
 ### Nenhum dado fiscal da cliente no repositório
 
@@ -136,7 +145,7 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 
 | Comando | O que faz | Depende de `amostras/` |
 |---|---|---|
-| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ) e o **gate anti-vazamento (2.A/2.B/2.C)** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
+| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ), os **renders de XML executados com payload** (ver [Privacidade](#dado-de-arquivo-de-terceiro-no-dom)) e o **gate anti-vazamento (2.A/2.B/2.C)** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
 | `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, **o estado desabilitado renderizado nos 2 temas** (fundo transparente, caixa presente, borda no token certo), a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
