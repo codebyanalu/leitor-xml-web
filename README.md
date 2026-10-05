@@ -94,6 +94,8 @@ O 2.C também cobre o **número de nota dentro do nNF de uma chave** (posições
 
 **Sem `verdade.json` (clone novo):** o 2.A e o 2.C caem na lista de sintéticos e **não** reprovam o fonte correto — falhar sem gabarito treina a equipe a ignorar a falha. Só o 2.B continua valendo, porque ele não usa o gabarito: decide pela validade do DV contra a lista de sintéticos.
 
+Essa promessa é verificada, não afirmada: os dois ramos do gate leem **uma lista só** (`SINT`), e há um gate de órfão que reprova entrada declarada que não existe no fonte. Duas listas do mesmo conceito era o que fazia `npm test` reprovar no clone (14 valores que o 2.B aceitava) e passar na máquina da autora — uma delas só exigia declaração quando o DV **fecha**, e placeholder como `11.111.111/1111-11` jamais fecha. Para conferir de novo: copie o `git ls-files` para fora e rode `regressao.mjs` lá.
+
 ## Design tokens
 
 Todas as cores, raios e sombras vivem como variáveis CSS em `:root` (tema claro) e `:root[data-theme="dark"]` (tema escuro). Para criar um novo tema, basta declarar o mesmo conjunto de variáveis em outro seletor — **nenhum valor de cor deve ser escrito à mão em `<style>` ou em `style=""`**. JS que precisa de cor (Chart.js) lê o token via `getComputedStyle(root).getPropertyValue('--x')`, nunca um literal.
@@ -145,7 +147,7 @@ Quatro suítes, todas em `testes/`. Três rodam sem browser e sem OCR (fora da b
 
 | Comando | O que faz | Depende de `amostras/` |
 |---|---|---|
-| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ), os **renders de XML executados com payload** (ver [Privacidade](#dado-de-arquivo-de-terceiro-no-dom)) e o **gate anti-vazamento (2.A/2.B/2.C)** (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
+| `node regressao.mjs` | regressão estrutural do `index.html` (~1 s): sintaxe de cada bloco, segurança, CDNs/SRI, acessibilidade, contraste WCAG medido, chave 44, regras do projeto, agrupamento e **nomeação** do separador, módulo de CNPJ executado num `vm`, os extratores do leitor de PDF rodados de verdade (chave com estrutura, rótulo como valor, nome por CNPJ), os **renders de XML executados com payload** (ver [Privacidade](#dado-de-arquivo-de-terceiro-no-dom)) e o **gate anti-vazamento (2.A/2.B/2.C)**, que também roda **num clone limpo** com o `git ls-files` copiado para fora, sem `verdade.json` (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)) | não |
 | `node painel-check.mjs` | prova do `painel-gerencial.html`: roda o script do painel num `vm` com stub de DOM (inclusive o clique que filtra a lista), invariantes estruturais, e roda a regressão para conferir o KPI do painel | não |
 | `node rodar.mjs` | bancada de extração: **14 notas reais** (2 emissores, com camada de texto e escaneadas, uma de 4 páginas) contra `verdade.json` — 285 campos com referência, 100% exigido, sai com 1 se não bater. O OCR só roda nos PDFs sem camada de texto, e campo sem valor de referência fica **fora** da conta em vez de virar acerto por construção | **sim** |
 | `node smoke.cjs` | smoke de navegador (Edge): 5 breakpoints × 2 temas sem overflow, o ciclo completo da sidebar recolhível (clique, persistência entre recargas, `Esc`, troca de largura, foco visível), as telas vazias sem inventário, **o estado desabilitado renderizado nos 2 temas** (fundo transparente, caixa presente, borda no token certo), a leitura de PDF de ponta a ponta com uma nota real e `prefers-reduced-motion` | não (a NF 108, opcional) |
@@ -180,6 +182,8 @@ npm run smoke
 O `smoke` sai com **2** (não 1) e diz o que faltou quando o browser não está disponível. Sem `amostras/`, o bloco de leitura de PDF é pulado com aviso e não conta como falha — em clone novo isso é o esperado.
 
 `painel-check.mjs` e `regressao.mjs` resolvem os caminhos por `__dirname`, então rodam da raiz ou de dentro de `testes/`. Sem `amostras/` e `verdade.json` (ambos gitignored) a bancada sai com "Nenhum PDF em amostras/" e código 1 — é o comportamento esperado em clone novo, não uma falha do gate.
+
+A regressão, ao contrário, tem de **passar** em clone novo, e isso é conferido: o gate anti-vazamento aceita a ausência do gabarito sem reprovar o fonte correto (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)). Uma suíte que só passa na máquina de quem escreveu é um portão que não existe para mais ninguém.
 
 ## Stack
 

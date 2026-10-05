@@ -164,24 +164,75 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
       if (txt.includes(alvo)) destino.set(alvo, f);
     }
   };
-  const SINT_14 = ['00000000000000', '11222333000181', '11222334000126', '11222337000183',
-    '11222338000172', '12345678000195', '00000000000191', '00000000000004'];
-  const SINT_15 = ['100200300400501', '3526011222333000181550010000001231123456783'];
-  const SINT_44 = ['35260911222333000181550010000001231123456783',
-    '35268011222334000126550019000001011123456780',
+  /* UMA lista de sintéticos, compartilhada pelos dois ramos deste gate.
+     Duas listas do mesmo conceito é a armadilha que este projeto já pagou:
+     `SINT_14` (rama sem gabarito) e `SINT_CNPJ` (2.B, com gabarito) tinham
+     conteúdo diferente, e o clone novo reprovava com 14 valores que o 2.B
+     aceitava — porque o 2.B só exige declaração quando o DV FECHA, enquanto o
+     ramo sem gabarito exigia para qualquer 14 dígitos, inclusive placeholder
+     como `11.111.111/1111-11` que jamais fecha.
+
+     Cada entrada declara POR QUE é sintética, e não apenas o número: foi a
+     lista sem justificativa que deixou um dado real passar, porque "está na
+     lista" e "está demonstrado ser sintético" são afirmações diferentes. */
+  const SINT = new Set([
+    // Família 11.222.33x/0001-xx: derivada do exemplo público da Receita. DVs
+    // conferidos com o vC do próprio app, não a olho.
+    '11.222.333/0001-81', '11222333000181',
+    '11.222.334/0001-26', '11222334000126',
+    '11.222.335/0001-70', '11222335000170',
+    '11.222.336/0001-15', '11222336000115',
+    '11.222.337/0001-83', '11222337000183',
+    '11.222.338/0001-72', '11222338000172',
+    '12.345.678/0001-95', '12345678000195',
+    // Placeholders de zero e de dígito repetido: DV não fecha por construção,
+    // e é por isso que precisam estar declarados mesmo com o 2.B desligado.
+    '00.000.000/0000-00', '00000000000000',
+    '11.111.111/1111-11', '11111111111111',
+    '00.000.000/0001-91', '00000000000191',
+    '00.000.000/0000-04', '00000000000004',
+    // CNPJ com DV trocado, usado como "DV inválido" nos testes do 2.B e do
+    // smoke. Fica declarado porque o DV não fecha e o valor está no fonte.
+    '11.222.333/0001-03', '11222333000103',
+    // 13.126.789/2684-76 citado no comentário do rodar.mjs: 14 dígitos com DV
+    // INVÁLIDO, usado para provar que a comparação tolerante não pode valer
+    // para campo numérico. Declarado porque DV não fecha.
+    '13126789268476',
+    // Protocolo: 100.200.300.400.501 (sequência) e o de 15 dígitos do exemplo.
+    '100200300400501', '123456789012345', '123451234512345',
+    // Chaves de 44: as forjadas dos testes de estrutura (cUF 00, mês 00,
+    // modelo ≠ 55/65, a janela com DV válido e estrutura inválida) e as
+    // variantes de 43/45 dígitos que o vH tem de rejeitar.
+    '12345678901234567890123456789012345678901234',
+    '35260911222333000181550010000001231123456783',
+    '35268011222334000126550019000001011123456784',
+    '00260911222333000181550010000001231123456783',
+    '35260011222333000181550010000001231123456783',
+    '35260911222333000181500010000001231123456783',
     '52609112223330001815500100000012311234567835',
-    '43526091122233300018155001000000123112345678'];
-  const SINT_MASC = ['00.000.000/0000-00', '11.222.333/0001-81', '11.222.334/0001-26',
-    '11.222.337/0001-83', '11.222.338/0001-72', '12.345.678/0001-95'];
+    '43526091122233300018155001000000123112345678',
+  ]);
+  const ehSintetico = (v) => SINT.has(v) || SINT.has(String(v).replace(/\D/g, ''));
 
   if (!fs.existsSync(VERDADE)) {
     console.log('  ! sem verdade.json: cruzamento impossível; valida só os sintéticos conhecidos');
-    const fora = [...[...cnpjMasc.keys()].filter((x) => !SINT_MASC.includes(x)),
-      ...[...cnpjCru.keys()].filter((x) => !SINT_14.includes(x)),
-      ...[...protocolo.keys()].filter((x) => !SINT_15.includes(x)),
-      ...[...chave44.keys()].filter((x) => !SINT_44.includes(x))];
+    const fora = [...[...cnpjMasc.keys()].filter((x) => !ehSintetico(x)),
+      ...[...cnpjCru.keys()].filter((x) => !ehSintetico(x)),
+      ...[...protocolo.keys()].filter((x) => !ehSintetico(x)),
+      ...[...chave44.keys()].filter((x) => !ehSintetico(x))];
     ok('sem gabarito: todo CNPJ/protocolo/chave nos versionados é sintético conhecido',
-      fora.length === 0, fora.join(', ') || 'todos sintéticos');
+      fora.length === 0, fora.join(', ') || 'todos sintéticos (' + SINT.size + ' declarados)');
+    /* A lista é o que segura o clone, então a lista precisa estar sã: um
+       sintético declarado que NÃO existe no fonte é lista que cresce sozinha e
+       vira esconderijo — a próxima pessoa acrescenta "só mais um" e o gate
+       para de reprovar. Zero tolerância: quando apurei a lista, havia uma
+       entrada órfã (uma chave de 43 dígitos na lista de 44), que ninguém
+       notaria leyendo. É a mesma classe de erro da lista duplicada. */
+    const achados = [...cnpjMasc.keys(), ...cnpjCru.keys(), ...protocolo.keys(), ...chave44.keys()];
+    const orfaos = [...SINT].filter((s) => !achados.some((a) => a === s || a.replace(/\D/g, '') === s.replace(/\D/g, '')));
+    ok('sem gabarito: nenhum sintético declarado está órfão (a lista não infla sozinha)',
+      orfaos.length === 0,
+      orfaos.join(', ') || (SINT.size + ' declarados, todos no fonte'));
   } else {
     const t = JSON.parse(fs.readFileSync(VERDADE, 'utf8'));
     const notas = Array.isArray(t) ? t : Object.values(t);
@@ -296,15 +347,11 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
       const d1 = String(mod11(b12));
       return c14 === b12 + d1 + String(mod11(b12 + d1));
     };
-    /* sintéticos independentes do gabarito: os que o FONTE CORRETO usa como
-       exemplo. Uma lista viva aqui, e não importada, porque deriva do que está
-       escrito no index.html/README — que é o que este gate protege. */
-    const SINT_CNPJ = new Set(['00000000000000', '11222333000181', '11222334000126',
-      '11222335000170', '11222336000115', '11222337000183', '11222338000172',
-      '12345678000195', '00000000000191', '00000000000004', '11111111111111']);
+    /* A MESMA lista do ramo sem gabarito (acima), não uma segunda: foi ter duas
+       que o clone novo reprovou com 14 valores que aqui já eram aceitos. */
     const cnpjValidosNaoSinteticos = [...cnpjCru.keys()]
       .filter((x) => /^\d{14}$/.test(x))
-      .filter((x) => !SINT_CNPJ.has(x))
+      .filter((x) => !ehSintetico(x))
       .filter((x) => dvCnpjFecha(x))
       .map((x) => 'CNPJ ' + x + ' em ' + cnpjCru.get(x));
     ok('todo CNPJ de DV válido nos versionados é um sintético declarado',
