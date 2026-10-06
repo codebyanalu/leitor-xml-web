@@ -39,8 +39,14 @@ const arg = (nome, padrao) => {
   const a = process.argv.find((x) => x.startsWith('--' + nome + '='));
   return a ? a.slice(nome.length + 3) : padrao;
 };
-const SO = arg('so', '');
-const RAPIDO = process.argv.includes('--rapido');
+/* O filtro aceita as duas formas: `mutacao.mjs render` (posicional, o jeito que
+   se digita) e `--so=render`. A primeira versão só lia `--so=`, então o
+   `node mutacao.mjs render` documentado no cabeçalho rodava as CINCO famílias
+   e saía verde sem querer. Interface é gate: uma flag que não filtra é um
+   filtro que não existe. */
+const SO = arg('so', process.argv.slice(2).find((x) => !x.startsWith('--') && !['rapido', 'todos'].includes(x)) || '');
+const RAPIDO = process.argv.includes('--rapido') || process.argv.includes('rapido');
+const TODOS = process.argv.includes('--todos') || process.argv.includes('todos');
 const html = fs.readFileSync(IDX, 'utf8');
 const NL = html.includes('\r\n') ? '\r\n' : '\n';
 
@@ -61,11 +67,13 @@ function roda() {
   const falhou = (out.split('FALHAS:')[1] || '').split('\n')
     .map((l) => l.trim()).filter((l) => l.startsWith('✗'))
     .map((l) => l.slice(1, 96));
-  return { p, f, falhou, ok: f === 0 };
+  /* `f < 0` é "não rodou", e a primeira linha da saída é o sintoma (SyntaxError
+   do fonte mutado, ENOENT de um arquivo, etc.). */
+  return { p, f, falhou, ok: f === 0, aviso: m ? '' : out.trim().split('\n').slice(0, 2).join(' | ').slice(0, 160) };
 }
 
-function aplica(trocas) {
-  let src = fs.readFileSync(IDX, 'utf8');
+function aplica(trocas, base) {
+  let src = base !== undefined ? base : fs.readFileSync(IDX, 'utf8');
   for (const [de, para] of trocas) {
     if (!src.includes(de)) return { erro: 'trecho não encontrado: ' + JSON.stringify(de.slice(0, 60)) };
     src = src.split(de).join(para);
@@ -77,6 +85,31 @@ const L = (s) => s.split('\n').join(NL);
 // ═══════════════════════════════════════════════════════════════════════════
 // As famílias
 // ═══════════════════════════════════════════════════════════════════════════
+/* Um sintético declarado e ÓRFÃO, para o gate de órfão reprovar. O literal é
+   CONSTRUÍDO em runtime, e isso é a regra que fecha o bug: este harness é
+   `git ls-files`, entra no gate anti-vazamento, e um CNPJ escrito à mão aqui
+   viraria exatamente o que o `3a3209d` consertou — o clone passaria a reprovar
+   com o arquivo que existe para provar que o clone não reprova. (Foi o que
+   aconteceu na primeira versão: clone 555/1, e o próprio `npm run mutacao`
+   saía 1 com `GATE CEGO :: clone`.) O par [DV que fecha, DV que não fecha]
+   sai do `vC` do app — nenhum número escrito à mão em lugar nenhum. */
+function cnpjSintetico(base13) {
+  const vcsrc = html.match(/function vC\(c\)\{[\s\S]*?\n\}/)[0];
+  const sb = { d: (s) => (s || '').replace(/\D/g, '') };
+  vm.createContext(sb);
+  vm.runInContext(vcsrc, sb);
+  const vC = vm.runInContext('vC', sb);
+  let comDv = null, semDv = null;
+  for (let a = 0; a < 10 && !(comDv && semDv); a++) {
+    for (let b = 0; b < 10 && !(comDv && semDv); b++) {
+      const c = base13 + a + b;
+      if (vC(c) && !comDv) comDv = c;
+      if (!vC(c) && !semDv) semDv = c;
+    }
+  }
+  return { comDv, semDv };
+}
+
 const FAMILIAS = [
 
   // ── 1 · RENDER XML: o `esc` de um campo volta a ser cru ────────────────────
@@ -98,11 +131,21 @@ const FAMILIAS = [
         if (!/^esc\(/.test(expr)) continue;
         alvos.push({ expr, sem: expr.slice(4, -1) });
       }
-      /* Um por categoria: os 61 sao demais para rodar em cada `npm test`, e o
-         que importa e' que TODA interpolação com `esc` e' mutavel. A lista
-         completa roda com `node mutacao.mjs render --todos`. */
-      const amostra = alvos.filter((a, i) => i % 7 === 0);
-      return amostra.map((a) => ({
+      /* `g.` entra pelo mesmo motivo do grupo 15: o rodapé do NF-e lê
+         `g.itens[0].Arquivo_Origem`, e um filtro só de `p.`/`n.` o deixaria
+         de fora — que era o bug que a derivação do grupo 15 já pegou. */
+      const comG = [];
+      for (const m of bloco.matchAll(/\$\{([^}]*)\}/g)) {
+        const expr = m[1].trim();
+        if (!/\bg\./.test(expr) || !/^esc\(/.test(expr)) continue;
+        comG.push({ expr, sem: expr.slice(4, -1) });
+      }
+      for (const a of comG) if (!alvos.some((x) => x.expr === a.expr)) alvos.push(a);
+      /* Uma de cada sete por padrão: a lista toda custa minutos e o que
+         importa é que TODA interpolação com `esc` seja mutável. `--todos` roda
+         a lista inteira, e é o número que o README não publica. */
+      const lista = TODOS ? alvos : alvos.filter((a, i) => i % 7 === 0);
+      return lista.map((a) => ({
         nome: a.expr.replace(/\s+/g, ' ').slice(0, 54),
         trocas: [[a.expr, a.sem]],
         espero: 'reprovar',
@@ -228,21 +271,26 @@ if (!real) return [];
     },
   },
 
-  // ── 4 · SIDEBAR e CLONE ────────────────────────────────────────────────────
+  // ── 4 · CLONE LIMPO ───────────────────────────────────────────────────────
   {
     nome: 'clone',
     titulo: 'CLONE LIMPO — a regressão passa sem verdade.json',
     fonte: 'a lista de sintéticos é o que segura o clone; órfão nela é esconderijo',
-    casos: () => [{
-      nome: 'um sintético declarado que não existe no fonte (a lista infla sozinha)',
-      arquivo: REG,
-      trocas: [[
-        /const SINT = new Set\(\[[\s\S]*?\]\);/,
-        "const SINT = new Set(['55.555.555/5555-55', '55555555000555', '00000000000000', '11222333000181']);",
-      ]],
-      esperaRegex: true,
-      espero: 'reprovar',
-    }],
+    casos: () => {
+      const { comDv, semDv } = cnpjSintetico('987654320002');
+      if (!comDv || !semDv) return [];
+      const masc = comDv.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+      return [{
+        nome: 'um sintético declarado que não existe no fonte (a lista infla sozinha)',
+        arquivo: REG,
+        trocas: [[
+          /const SINT = new Set\(\[[\s\S]*?\]\);/,
+          "const SINT = new Set(['" + masc + "', '" + semDv + "', '00000000000000', '11222333000181']);",
+        ]],
+        esperaRegex: true,
+        espero: 'reprovar',
+      }];
+    },
   },
 ];
 
@@ -276,7 +324,7 @@ async function main() {
   const alvo = FAMILIAS.filter((f) => !SO || f.nome.includes(SO));
   if (!alvo.length) { console.log('nenhuma família casa com "' + SO + '". Disponíveis: ' + FAMILIAS.map((f) => f.nome).join(', ')); process.exit(1); }
 
-  let total = 0, mortos = 0, controlesOk = 0, controlesN = 0, gatesCegos = [];
+  let total = 0, mortos = 0, controlesOk = 0, controlesN = 0, gatesCegos = [], harnessQuebrou = [];
 
   for (const fam of alvo) {
     console.log('══ ' + fam.titulo);
@@ -286,12 +334,18 @@ async function main() {
       if (RAPIDO && c.caro) { console.log('   – ' + c.nome + '  (pulado: --rapido)'); continue; }
       const arquivo = c.arquivo || IDX;
       const original = pega(arquivo);
+      /* A mutação é montada a partir do ORIGINAL, sempre — inclusive no ramo
+         de string. A primeira versão relia do disco, e o invariante "toda
+         mutação parte do original" só se sustentava como efeito colateral do
+         `restaura` da iteração anterior: se uma família falhasse no meio, a
+         seguinte media lixo e o culpado era o gate errado. */
+      if (!fs.existsSync(arquivo)) { console.log('   !! arquivo ausente: ' + arquivo); continue; }
       let mutado;
       if (c.trocas[0][0] instanceof RegExp) {
         if (!c.trocas[0][0].test(original)) { console.log('   !! não encontrado: ' + c.nome); continue; }
         mutado = original.replace(c.trocas[0][0], c.trocas[0][1]);
       } else {
-        const r = aplica(c.trocas);
+        const r = aplica(c.trocas, original);
         if (r.erro) { console.log('   !! ' + r.erro + '  [' + c.nome + ']'); continue; }
         mutado = r.src;
       }
@@ -301,6 +355,15 @@ async function main() {
          regressão estourar: uma família que deixa o fonte mutado contamina as
          seguintes e o relatório final culpa o gate errado. */
       restaura(arquivo, original);
+      /* Três estados, não dois: `f < 0` é "a suíte NÃO RODOU" (o fonte mutado nem
+         compilou, ou o harness quebrou), e isso é reprovação do HARNESS, não um
+         gate que passou. Tratar "não rodou" como "não falhou" já denunciou um
+         gate cego que era um fonte quebrado. */
+      if (r.f < 0) {
+        harnessQuebrou.push(fam.nome + ' :: ' + c.nome);
+        console.log(`   ✗ NÃO RODOU  ${c.nome}` + (r.aviso ? '\n       ' + r.aviso : ''));
+        continue;
+      }
       total++;
       if (c.espero === 'passar') {
         controlesN++;
@@ -325,9 +388,10 @@ async function main() {
      mesmos casos lá — é onde o gate 2.B da família privacidade é exercitado
      de verdade, e onde a lista de sintéticos decide. */
   console.log('── no clone limpo (sem verdade.json) ──');
-  const CLONE = path.join(process.env.TEMP || '.', 'gcon-clone-limpo');
-  fs.rmSync(CLONE, { recursive: true, force: true });
-  fs.mkdirSync(CLONE, { recursive: true });
+  /* `mkdtempSync` e NÃO um caminho fixo: duas instâncias em paralelo (CI, dois
+     terminais) apagavam a mesma pasta uma da outra e escreviam no mesmo
+     `index.html`. */
+  const CLONE = fs.mkdtempSync(path.join(process.env.TEMP || '.', 'gcon-clone-limpo-'));
   execFileSync('git', ['clone', '-q', '--no-hardlinks', '--local', RAIZ, CLONE], { encoding: 'utf8' });
   for (const f of execFileSync('git', ['ls-files'], { cwd: RAIZ, encoding: 'utf8' }).split('\n').filter(Boolean)) {
     const dest = path.join(CLONE, f);
@@ -344,16 +408,24 @@ async function main() {
   const cb = rodaClone();
   console.log(`   clone sem gabarito: ${cb.p} asserções, ${cb.f} falha(s)`
     + (cb.f === 0 ? '  ✓ a promessa do README se verifica' : '  ✗ o clone reprova'));
-  if (cb.f !== 0) gatesCegos.push('clone :: a regressão passa em clone limpo');
+  /* `f < 0` aqui é o MESMO sinal: um clone que não rodou não é um clone que
+     passou. */
+  if (cb.f < 0) harnessQuebrou.push('clone :: a regressão nem rodou no clone');
+  else if (cb.f !== 0) gatesCegos.push('clone :: a regressão passa em clone limpo');
   fs.rmSync(CLONE, { recursive: true, force: true });
 
   console.log('═'.repeat(64));
   console.log(`mutações: ${mortos}/${total} morreu(m)`
-    + (controlesN ? `   controles: ${controlesOk}/${controlesN} passou(m)` : ''));
-  const temCego = gatesCegos.length > 0 || (controlesN > 0 && controlesOk < controlesN);
+    + (controlesN ? `   controles: ${controlesOk}/${controlesN} passou(m)` : '')
+    + (harnessQuebrou.length ? `   harness quebrou: ${harnessQuebrou.length}` : ''));
+  const temCego = gatesCegos.length > 0 || (controlesN > 0 && controlesOk < controlesN) || harnessQuebrou.length > 0;
   if (temCego) {
     console.log('\nGATE CEGO (passou com o defeito, ou reprovou o equivalente):');
     gatesCegos.forEach((g) => console.log('  ✗ ' + g));
+    if (harnessQuebrou.length) {
+      console.log('\nHARNESS QUEBROU (isto não é gate cego, é o instrumento):');
+      harnessQuebrou.forEach((g) => console.log('  ✗ ' + g));
+    }
   }
   console.log(temCego ? 'FALHA — um gate não mede o que diz medir' : 'OK — todo gate tem dente');
   process.exit(temCego ? 1 : 0);

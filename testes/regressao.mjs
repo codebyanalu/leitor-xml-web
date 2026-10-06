@@ -176,8 +176,13 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
      lista sem justificativa que deixou um dado real passar, porque "está na
      lista" e "está demonstrado ser sintético" são afirmações diferentes. */
   const SINT = new Set([
-    // Família 11.222.33x/0001-xx: derivada do exemplo público da Receita. DVs
-    // conferidos com o vC do próprio app, não a olho.
+    // Família 11.222.33x/0001-xx: derivada do exemplo público da Receita
+    // (11.222.333/0001-81) e dos CNPJs que o `index.html` usa como exemplo
+    // nos comentários do leitor. Conferido com o `vC` do próprio app: fecham
+    // '81', '26', '70' e '15'; '83' e '72' NÃO fecham — e é por isso que
+    // precisam de declaração no ramo sem gabarito, que exige para qualquer 14
+    // dígitos. Não reescreva nenhum destes números: o gate existe para barrar
+    // justamente o dado real que alguém copia daqui.
     '11.222.333/0001-81', '11222333000181',
     '11.222.334/0001-26', '11222334000126',
     '11.222.335/0001-70', '11222335000170',

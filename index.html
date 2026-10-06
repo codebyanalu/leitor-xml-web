@@ -163,17 +163,23 @@ const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
 function spansCodigoBarras(txt){return [...txt.matchAll(/\d(?:[\s\.\-]*\d){14,}/g)].map(m=>[m.index,m.index+m[0].length]);}
 function cnpjsNoTexto(txt){
   /* O span do código de barras é procurado em ORDEM, uma vez só, em vez de
-     `spans.some(...)` por candidato: com o texto de uma nota de 800 KB
-     (~4 mil candidatos e ~2 mil spans) isso é 8 milhões de comparações, e o
-     custo é O(candidatos × spans). Medido: eJ saía de 18,4 ms em 400 KB para
-     61,3 ms em 800 KB — 16x de entrada, 3,3x de tempo; o growth era
-     quadrático e a causa era esta varredura, não o regex.
+     `spans.some(...)` por candidato: o custo era O(candidatos × spans), e
+     com o texto de uma nota de 800 KB são ~7 mil candidatos contra ~185 spans.
 
-     O predicado é o mesmo (`candidato contido no span`), com `i` correndo
-     pelos spans e `j` pelos candidatos, ambos em ordem crescente de posição:
-     quando o span `i` passou o candidato, nenhum span depois dele pode conter
-     esse candidato — então avança `i`; quando o candidato passou o span,
-     nenhum candidato depois dele cabe nesse span — então avança `j`. */
+     O predicado é o MESMO ("candidato contido no span"), e o laço só
+     descarta spans que não poderiam conter nada: `i` avança enquanto o span
+     atual termina ANTES do candidato começar — daí em diante nenhum span
+     vigente serve, porque os spans vêm em ordem de início e não se sobrepõem
+     (é o que `matchAll` garante, e a única pré-condição do truque).
+
+     Medido com o termo do custo variando, que é o que prova a remoção dele:
+     a 400 KB fixos, subindo a densidade de spans de 93 para 1.479 (16x), o
+     `some` crescia 4,77x (fator por passo indo a 2,02 — o termo quadrático
+     aparecendo) e este laço ficava em 1,10x (fator 1,00-1,06). Com densidade
+     realista de PDF (~1 span por 4 KB) o ganho é 1,35x; o número maior só
+     aparece quando o texto é cheio de runs de dígito, e por isso o número é
+     do experimento, não do produto. Equivalência conferida por 3.000 casos
+     com semente fixa (gate 13.2) e por 20.000 casos adversariais à parte. */
   const spans=spansCodigoBarras(txt),out=[];
   let i=0;
   for(const m of txt.matchAll(new RegExp(RE_CNPJ.source,'g'))){
@@ -641,7 +647,11 @@ function finalizar(r,full,fonte,ocrTentado,ocrErro){
 
      `chaveConf` continua como está, porque é registro de auditoria: o export
      tem a coluna `ChaveConf` e o painel de debug mostra a confiança bruta. O que
-     muda é só a média, que é o que decide cor de badge e filtro. */
+     muda é só a média, que é o que decide cor de badge e filtro.
+
+     `confMedioComChaveInvalida` é a média sem a ponderação, e existe para o
+     gate comparar as duas — NÃO sai no export, e quem audita já tem as três
+     parcelas cruas (ChaveConf, NumeroConf, CnpjConf) para refazer a conta. */
   const pesoChave=r.chaveValida?(r.chaveConf||0):0;
   r.confMedio=Math.round((pesoChave+(r.cnpjConf||0)+(r.numeroConf||0))/3);
   r.confMedioComChaveInvalida=Math.round(((r.chaveConf||0)+(r.cnpjConf||0)+(r.numeroConf||0))/3);

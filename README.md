@@ -164,9 +164,13 @@ npm run mutacao:rapido   # sem os casos caros
 node mutacao.mjs render  # só uma família
 ```
 
-Hoje: **23 mutações, todas morrem**, e 1 **controle** passa — o controle é uma mutação *equivalente* (`i++` → `i+=1`) que **não pode** reprovar. Sem ele, o harness aceita a versão que fixa a forma do laço, que é o defeito que o gate do `cnpjsNoTexto` tinha (exigia `i++` no fonte). As famílias: `render` (o `esc` de um campo dos quatro renders, com a lista de sinks derivada do fonte), `conf` (a chave inválida pesando na confiança), `cnpj` (a varredura quadrática e as duas bordas), `privacidade` (um CNPJ real citado em comentário) e `clone` (a lista de sintéticos órfã). O harness ainda roda a regressão num **clone limpo** e confere a promessa de [clone-safety](#nenhum-dado-fiscal-da-cliente-no-repositório).
+Hoje **todas as famílias morrem**, e há 1 **controle** que passa — o controle é uma mutação *equivalente* (`i++` → `i+=1`) que **não pode** reprovar. Sem ele, o harness aceita a versão que fixa a forma do laço, que é o defeito que o gate do `cnpjsNoTexto` tinha (exigia `i++` no fonte). As famílias: `render` (o `esc` de um campo dos quatro renders, com a lista de sinks derivada do fonte), `conf` (a chave inválida pesando na confiança), `cnpj` (a varredura quadrática e as duas bordas), `privacidade` (um CNPJ real citado em comentário) e `clone` (a lista de sintéticos órfã). O harness ainda roda a regressão num **clone limpo** e confere a promessa de [clone-safety](#nenhum-dado-fiscal-da-cliente-no-repositório).
+
+`--todos` roda a lista inteira de sinks em vez de uma de cada sete, e o número sai no fim da execução — o README não publica contagem que envelhece (a regra que o grupo 15 já aplicou aos gates de célula).
 
 O harness devolve os arquivos ao estado original em **toda** saída, inclusive `Ctrl+C` — um harness que deixa o `index.html` mutado faz o próximo `npm test` medir um fonte que ninguém commitou.
+
+**Ele não entra no `npm test` e não pode rodar em paralelo.** Cada mutação deixa o fonte quebrado em disco por ~1 s enquanto a regressão roda; duas instâncias na mesma máquina (dois terminais, CI com matriz) escrevem no mesmo `index.html`. Rode com a árvore limpa e sem nada mais lendo o arquivo.
 
 Ou, de dentro de `testes/`:
 
