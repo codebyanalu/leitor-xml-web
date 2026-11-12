@@ -1220,6 +1220,32 @@ await (async () => {
     ok('a escape do CSV não é duplicada (nenhuma segunda implementação do prefixo de fórmula)',
       nDup === 1, nDup + ' ocorrência(s) de ' + ALVO);
     ok('o export do LOTE de CNPJ usa o helper compartilhado', /const q=window\.GCON\.csvCelula;/.test(html));
+    /* O terceiro caminho: o CSV de NF-e/NFS-e só duplicava aspas. Com o
+       infAdProd passando a vir preenchido (texto livre do emitente, até 500
+       caracteres), um "=HYPERLINK(...)" chegava cru ao Excel. */
+    ok('o export CSV de NF-e/NFS-e usa o helper compartilhado (sem escape feito à mão)',
+      /function exportCSV\(tipo\)\{[\s\S]{0,900}?cab\.map\(c=>window\.GCON\.csvCelula\(formatoBr\(row\[c\]\)\)\)/.test(html)
+      && !/function exportCSV\(tipo\)\{[\s\S]{0,600}?replace\(\/"\/g,'""'\);return\/\[;\\n"\]\//.test(html));
+    {
+      /* Executa o exportCSV REAL num vm, com um item cujo texto livre começa
+         com = e @, e mede o arquivo gerado. */
+      const ini = html.indexOf('function exportCSV(tipo){');
+      const fim = html.indexOf('\n}', ini) + 2;
+      let saida = '', erro = '';
+      try {
+        const sbx = { window: { GCON: {} }, Blob: function (p) { saida = p.join(''); }, URL: { createObjectURL: () => 'x', revokeObjectURL() {} },
+          document: { createElement: () => ({ click() {} }), body: { appendChild() {}, removeChild() {} } }, exportAviso() {},
+          formatoBr: (v) => (v == null ? '' : String(v)), HNFE: ['xProd', 'infAdProd', 'Veic_Chassi', 'vProd'], HNFSE: [],
+          DB: { nfe: [{ xProd: '=HYPERLINK("http://x")', infAdProd: '@SUM(1)', Veic_Chassi: '+1', vProd: '10,00' }], nfse: [], sessaoId: 't' } };
+        vm.createContext(sbx);
+        vm.runInContext(html.slice(html.indexOf('window.GCON={csvCelula:'), html.indexOf('\n', html.indexOf('window.GCON={csvCelula:'))), sbx);
+        vm.runInContext(html.slice(ini, fim) + ';exportCSV("nfe")', sbx);
+      } catch (e) { erro = e.message; }
+      const linha = saida.split('\n')[1] || '';
+      ok('CSV de NF-e: texto que começa com = @ + sai neutralizado com \' e entre aspas',
+        !erro && linha.includes('"\'=HYPERLINK(""http://x"")"') && linha.includes('"\'@SUM(1)"') && linha.includes('"\'+1"') && linha.includes('"10,00"'),
+        erro || linha);
+    }
     ok('o export do LEITOR DE PDF usa o helper compartilhado',
       /\.map\(window\.GCON\.csvCelula\)\.join\(';'\)/.test(html)
       && !/pdf_leitura[\s\S]{0,400}?replace\(\/"\/g,'""'\)/.test(html),
@@ -2825,6 +2851,16 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
       const r = vm.runInContext("[veicRot('tpComb','constructor'),veicRot('tpComb','__proto__'),veicRot('tpComb',''),veicRot('tpComb','99')]", sb);
       ok('código hostil no veicProd não resolve pelo protótipo (sai só o código)',
         r[0] === 'constructor' && r[1] === '__proto__' && r[2] === '' && r[3] === '99', JSON.stringify(r));
+    }
+    /* infAdProd é filho de <det> (irmão de <prod>). O extrator procurava dentro de
+       <prod> e a coluna saía SEMPRE vazia, em toda nota. */
+    ok('o extrator lê infAdProd de <det>, não de <prod>',
+      /infAdProd:t\(det,'infAdProd'\)/.test(html) && !/infAdProd:t\(prod,/.test(html));
+    {
+      const h1 = conta('nfe', 'renderNFE', [{ Chave_NFe: 'KA', Item: '1', xProd: 'CAMINHAO', Status_NFe: 'Autorizada', infAdProd: 'VW 9180 175cv 6M' }]).h || '';
+      const h2 = conta('nfe', 'renderNFE', [{ Chave_NFe: 'KB', Item: '1', xProd: 'FILTRO', Status_NFe: 'Autorizada' }]).h || '';
+      ok('as informações adicionais do item aparecem na linha do produto, sem abrir nada (e só quando existem)',
+        /Inf\. adicionais: VW 9180 175cv 6M<\/small><\/td>/.test(h1) && !/Inf\. adicionais/.test(h2), h1.slice(0, 160));
     }
     ok('o extrator lê o grupo veicProd de dentro de <prod>',
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));

@@ -28,8 +28,9 @@ window.GCON_CDN={};
 /* Celula de CSV, em UM lugar so. Injeção de fórmula: duplicar aspas neutraliza o
    delimitador, nao a fórmula. Um campo que comece com =, +, - ou @ é EXECUTADO
    pelo Excel ao abrir o .csv, e o prefixo ' é o escape padrão do CSV.
-   Os dois caminhos de exportacao usam esta função: o lote de CNPJ (que já
-   neutralizava) e o leitor de PDF (que nao neutralizava — e passou a alcançar
+   Os TRÊS caminhos de exportacao CSV usam esta função: o lote de CNPJ (que já
+   neutralizava), o CSV de NF-e/NFS-e (que só duplicava aspas, até a GMUD do
+   infAdProd) e o leitor de PDF (que nao neutralizava — e passou a alcançar
    `=HYPERLINK(...)` quando o eEndereco deixou de usar a classe [A-Z0-9 .,-]
    e o nome do participante passou a aceitar os tokens crus do texto do PDF).
    O XLSX nao precisa: o SheetJS escreve celula de texto como texto, e o Excel so
@@ -1553,7 +1554,7 @@ function extrairNFE(nome,texto){
       Item:det.getAttribute('nItem')||'',cProd:t(prod,'cProd'),cEAN:t(prod,'cEAN'),
       xProd:t(prod,'xProd'),NCM:t(prod,'NCM'),CEST:t(prod,'CEST'),CFOP:t(prod,'CFOP'),
       uCom:t(prod,'uCom'),qCom:t(prod,'qCom'),vUnCom:t(prod,'vUnCom'),vProd:t(prod,'vProd'),
-      vDesc_item:t(prod,'vDesc'),vFrete_item:t(prod,'vFrete'),vSeg_item:t(prod,'vSeg'),vOutro_item:t(prod,'vOutro'),infAdProd:t(prod,'infAdProd'),
+      vDesc_item:t(prod,'vDesc'),vFrete_item:t(prod,'vFrete'),vSeg_item:t(prod,'vSeg'),vOutro_item:t(prod,'vOutro'),infAdProd:t(det,'infAdProd'),
       indEscala:t(prod,'indEscala'),nFCI:t(prod,'nFCI'),
       ICMS_orig:'',ICMS_CST:'',ICMS_CSOSN:'',ICMS_modBC:'',ICMS_vBC:'',ICMS_pICMS:'',ICMS_vICMS:'',
       ICMS_vBCSTRet:'',ICMS_pST:'',ICMS_vICMSSubstituto:'',ICMS_vICMSSTRet:'',
@@ -1940,7 +1941,7 @@ function nfeItemDetalhe(p){
      `undefined` em `''`, não em `—`: campo ausente viraria a palavra
      `undefined` na tabela. */
   return `<tr>
-    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}${p.Veic_Chassi?`<br><small style="color:var(--text2)">Chassi: <strong>${esc(p.Veic_Chassi)}</strong></small>`:''}</td>
+    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}${p.Veic_Chassi?`<br><small style="color:var(--text2)">Chassi: <strong>${esc(p.Veic_Chassi)}</strong></small>`:''}${p.infAdProd?`<br><small style="color:var(--text2);overflow-wrap:anywhere">Inf. adicionais: ${esc(p.infAdProd)}</small>`:''}</td>
     <td>${esc(p.NCM||'—')}</td><td>${esc(p.CEST||'—')}</td><td>${esc(p.CFOP||'—')}</td>
     <td>${esc(p.qCom||'—')}</td><td>${esc(p.uCom||'—')}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
     <td>${esc(p.indEscala||'—')}</td><td>${esc(p.nFCI||'—')}</td>
@@ -1957,7 +1958,6 @@ function nfeItemDetalhe(p){
           <td>${moeda(p.vOutro_item)}</td>
           <td><strong>${moeda(f(p.vProd)-f(p.vDesc_item)+f(p.vFrete_item)+f(p.vSeg_item)+f(p.vOutro_item))}</strong></td>
         </tr></tbody></table>
-        ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${esc(p.infAdProd)}</div>`:''}
       </div>
     </div>
     ${veic?`<div class="det-section">
@@ -2289,7 +2289,11 @@ function exportCSV(tipo){
   if(!dados.length){exportAviso('Nada para exportar: importe XMLs ou PDFs primeiro.');return;}
   let csv='\ufeff'+cab.join(';')+'\n';
   for(const row of dados){
-    csv+=cab.map(c=>{const v=String(formatoBr(row[c])||'').replace(/"/g,'""');return/[;\n"]/.test(v)?`"${v}"`:v;}).join(';')+'\n';
+    /* Mesmo helper do lote de CNPJ e do leitor de PDF: aspas em toda célula e
+       prefixo ' em valor que começa com = + - @ (o Excel executaria como fórmula).
+       Antes só duplicava aspas, e texto livre do emitente (xProd, infAdProd,
+       veicProd) chegava cru ao .csv. */
+    csv+=cab.map(c=>window.GCON.csvCelula(formatoBr(row[c]))).join(';')+'\n';
   }
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
