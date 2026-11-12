@@ -3560,7 +3560,12 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
     var ativo=document.querySelector('.nav-btn.active');
     if(ativo&&ativo.lastElementChild&&ativo.lastElementChild.textContent)cur.textContent=ativo.lastElementChild.textContent.trim();
   }
-  window.GCON={theme:{isDark:isDark,apply:applyTheme,recolor:recolorCharts}};
+  /* ACRESCENTA ao GCON, não substitui: o primeiro script criou window.GCON.csvCelula
+     (proteção do CSV) e reatribuir o objeto inteiro aqui apagava a função. O CSV de
+     NF-e/NFS-e e o do leitor de PDF chamam o helper na hora de exportar e quebravam
+     com "csvCelula is not a function"; só o lote de CNPJ escapava, porque guarda a
+     função em variável no carregamento. */
+  window.GCON=Object.assign(window.GCON||{},{theme:{isDark:isDark,apply:applyTheme,recolor:recolorCharts}});
 })();
 </script>
 </body>
