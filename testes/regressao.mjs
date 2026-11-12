@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
+import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
 /* O gate anti-vazamento lê `git ls-files`: a lista de publicação é o índice do
    git, não uma lista escrita à mão aqui — que foi exatamente como o segundo
@@ -713,9 +714,36 @@ const hnfe = /const HNFE=\[([\s\S]*?)\];/.exec(html)[1];
 const hnfse = /const HNFSE=\[([\s\S]*?)\];/.exec(html)[1];
 const nHnfe = (hnfe.match(/'[^']+'/g) || []).length;
 const nHnfse = (hnfse.match(/'[^']+'/g) || []).length;
-ok('HNFE tem 93 campos', nHnfe === 93, 'achou ' + nHnfe);
+/* 93 colunas originais + 24 do grupo veicProd (veículo novo), anexadas no FIM. */
+ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe);
+{
+  const cols = (hnfe.match(/'[^']+'/g) || []).map((s) => s.slice(1, -1));
+  /* Quem lê a planilha por posição não pode ver coluna andar: as 93 antigas
+     continuam nas mesmas posições, terminando em Arquivo_Origem. */
+  /* Impressão digital das 93 colunas da versão anterior, NA ORDEM (sha256 da lista
+     separada por vírgula). Conferir só as pontas congelava o tamanho, não a ordem. */
+  ok('as 93 colunas antigas estão idênticas e na mesma ordem (impressão digital da lista)',
+    createHash('sha256').update(cols.slice(0, 93).join(',')).digest('hex') === '0dbeb787619b914eea24f5b315afbf04f81d610065d6b8dda132e03319047685');
+  ok('as 93 colunas antigas não mudaram de posição (a 93ª continua sendo Arquivo_Origem)',
+    cols[92] === 'Arquivo_Origem' && cols[0] === 'Tipo_Nota', 'col93=' + cols[92]);
+  {
+    const m = /const VEIC_CAMPOS=\[([\s\S]*?)\];/.exec(html);
+    const daTabela = m ? [...m[1].matchAll(/\['[^']+','([^']+)'\]/g)].map((x) => x[1]) : [];
+    ok('a tabela VEIC_CAMPOS e a cauda do HNFE são a mesma lista, na mesma ordem',
+      daTabela.length === 24 && daTabela.join() === cols.slice(93).join(), daTabela.join());
+  }
+  {
+    const readme = fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8');
+    const painel = fs.readFileSync(path.join(RAIZ, 'painel-gerencial.html'), 'utf8');
+    ok('README e painel não citam mais 93 como total de campos do XML',
+      !/XML (lê|extrai) \(?93\b/.test(readme + painel) && !/93 \+ 56/.test(painel));
+  }
+  ok('as 24 colunas do veicProd vêm depois, todas Veic_* e com o chassi',
+    cols.slice(93).length === 24 && cols.slice(93).every((c) => c.startsWith('Veic_')) && cols.includes('Veic_Chassi'),
+    cols.slice(93).join(','));
+}
 ok('HNFSE tem 56 campos', nHnfse === 56, 'achou ' + nHnfse);
-ok('README diz 93 colunas NF-e (bate com o código)', /93 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
+ok('README diz 117 colunas NF-e (bate com o código)', /117 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 // A asserção precisa ser "pulado OU conferido": o arquivo é gitignored, então
 // num clone novo lerOpcional devolve '' e o teste virava no-op (sempre verde).
 const regra = lerOpcional('workflow-rule.md');
@@ -2777,6 +2805,29 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
     /* A cobertura por construção vale sob a condição sintática da derivação:
        `p.X`/`n.X`. Um `g.itens[0].X` ou um destructuring escapariam dela — por
        isso `g.` também entra, e o campo do rodapé do NF-e é lido por `g.` */
+    /* ── veicProd (veículo novo) ─────────────────────────────────────────
+       Os campos Veic_* entram no fixture de XSS por construção (lidos como p.X
+       no render). Aqui: o chassi aparece na linha sem abrir nada, a seção
+       existe só para item de veículo, e o código hostil não resolve pelo
+       protótipo do mapa de descrições. */
+    ok('o universo do render inclui os campos do veicProd (o fixture de XSS os cobre)',
+      unicos.includes('Veic_Chassi') && unicos.includes('Veic_tpComb') && unicos.includes('Veic_cCorDENATRAN'));
+    {
+      const veic = { Chave_NFe: 'KV', Item: '1', xProd: 'CAMINHAO EXEMPLO', Status_NFe: 'Autorizada', Veic_Chassi: '9BWZZZ377VT004251', Veic_tpComb: '03', Veic_cCorDENATRAN: '04', Veic_tpVeic: '14', Veic_AnoFab: '2026', Veic_AnoMod: '2027' };
+      const pecaComum = { Chave_NFe: 'KP', Item: '1', xProd: 'FILTRO', Status_NFe: 'Autorizada' };
+      const hv = conta('nfe', 'renderNFE', [veic]).h || '';
+      const hp = conta('nfe', 'renderNFE', [pecaComum]).h || '';
+      ok('o chassi aparece na linha do produto, sem abrir o detalhe',
+        /Chassi: <strong>9BWZZZ377VT004251<\/strong>/.test(hv), hv.slice(0, 200));
+      ok('a seção "Veículo novo" existe só no item de veículo, com a descrição dos códigos',
+        /Veículo novo — chassi 9BWZZZ377VT004251/.test(hv) && /03 - Diesel/.test(hv) && /04 - Branca/.test(hv) && /14 - Caminhão/.test(hv)
+        && /2026\/2027/.test(hv) && !/Veículo novo/.test(hp) && !/Chassi:/.test(hp));
+      const r = vm.runInContext("[veicRot('tpComb','constructor'),veicRot('tpComb','__proto__'),veicRot('tpComb',''),veicRot('tpComb','99')]", sb);
+      ok('código hostil no veicProd não resolve pelo protótipo (sai só o código)',
+        r[0] === 'constructor' && r[1] === '__proto__' && r[2] === '' && r[3] === '99', JSON.stringify(r));
+    }
+    ok('o extrator lê o grupo veicProd de dentro de <prod>',
+      /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));
     ok('o universo inclui campo lido por `g.` (o rodapé de Arquivo_Origem do NF-e)',
       /\bg\./.test(fonteRender) && unicos.includes('Arquivo_Origem'));
   }
