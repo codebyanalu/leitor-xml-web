@@ -1219,6 +1219,24 @@ await (async () => {
     const nDup = html.split(ALVO).length - 1;
     ok('a escape do CSV não é duplicada (nenhuma segunda implementação do prefixo de fórmula)',
       nDup === 1, nDup + ' ocorrência(s) de ' + ALVO);
+    /* O helper só serve se SOBREVIVER ao carregamento inteiro: o script do tema
+       fazia window.GCON={theme:...} e apagava o csvCelula. A falha só aparecia
+       no navegador, ao exportar — o teste acima monta o GCON sozinho e passava.
+       Aqui: um único "window.GCON={" (a criação), e todo o resto acrescenta. */
+    ok('ninguém substitui window.GCON depois de criado (o tema acrescenta, não apaga o csvCelula)',
+      (html.match(/window\.GCON=\{/g) || []).length === 1
+      && /window\.GCON=Object\.assign\(window\.GCON\|\|\{\},\{theme:/.test(html),
+      (html.match(/window\.GCON=\{/g) || []).length + ' substituição(ões) de window.GCON');
+    {
+      /* E na prática: roda a criação do GCON e depois a linha do tema no MESMO
+         contexto, como o navegador faz, e confere que as duas coisas existem. */
+      const criar = html.slice(html.indexOf('window.GCON={csvCelula:'), html.indexOf('\n', html.indexOf('window.GCON={csvCelula:')));
+      const tema = (html.match(/window\.GCON=Object\.assign\([^\n]*/) || [''])[0];
+      const ctx = { window: {}, isDark() {}, applyTheme() {}, recolorCharts() {} };
+      let r = 'nao rodou';
+      try { vm.createContext(ctx); vm.runInContext(criar + ';' + tema + ';', ctx); r = typeof ctx.window.GCON.csvCelula + '/' + typeof ctx.window.GCON.theme; } catch (e) { r = e.message; }
+      ok('depois do tema, window.GCON ainda tem csvCelula E theme', r === 'function/object', r);
+    }
     ok('o export do LOTE de CNPJ usa o helper compartilhado', /const q=window\.GCON\.csvCelula;/.test(html));
     /* O terceiro caminho: o CSV de NF-e/NFS-e só duplicava aspas. Com o
        infAdProd passando a vir preenchido (texto livre do emitente, até 500
