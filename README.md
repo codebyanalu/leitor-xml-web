@@ -37,9 +37,10 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 - **Consultar CNPJ**: aba Ferramentas → consulta `publica.cnpj.ws` (grátis, CORS) — razão social, fantasia, situação, IE/contribuinte ICMS, Simples/MEI com datas, endereço, contato, sócios com faixa etária — cache local
 - **Consulta em Lote**: importa XLSX/CSV com coluna `CNPJ` e consulta **3 por minuto** (20 s entre uma e outra), com cache automático de 30 dias, barra de progresso, ETA, log por linha, painel de cota do navegador e exportação do resultado (CSV ou XLSX). Inclui um gerador de planilha modelo. O CSV neutraliza injeção de fórmula (um nome que comece com `=`, `+`, `-` ou `@` é prefixado com `'`)
 - **Painel gerencial**: `painel-gerencial.html` mostra o estado do projeto — o que foi entregue, o que os gates provam, o que depende de decisão de quem contrata, e onde o leitor roda. Aceita salvar/carregar um `painel-estado.json` pelo próprio navegador (sem servidor); no GitHub Pages o arquivo não é publicado, então a leitura automática é desabilitada e o caminho é o seletor de arquivo
+- **Veículo novo (veicProd)**: o item de NF-e de veículo traz chassi, série, motor, cor, combustível, ano, potência, pesos e os demais campos do grupo `veicProd`. O chassi aparece na linha do produto; o detalhe do item tem a seção "Veículo novo" com a descrição dos códigos; a exportação ganha 24 colunas `Veic_*` no fim (as 93 anteriores não mudam de posição) e a busca geral pelo chassi mostra o item do veículo (os outros itens da nota ficam escondidos pelo filtro, como em qualquer busca)
 - **Visualização NF-e/NFS-e**: cards com emitente/destinatário, itens, impostos detalhados (ICMS/IPI/PIS/COFINS/IBS/CBS/ISS/CSRF)
 - **Dashboard**: KPIs + 6 gráficos Chart.js
-- **Exportação**: CSV e XLSX completos (40 colunas PDF, 93 NF-e, 56 NFS-e)
+- **Exportação**: CSV e XLSX completos (40 colunas PDF, 117 NF-e, 56 NFS-e)
 - **Busca**: filtro por texto/CNPJ/confiança
 - **Interface**: tema claro/escuro persistente, breadcrumb de navegação, ícones SVG vetoriais (zero emoji) e layout responsivo (desktop/tablet/mobile)
 - **Menu lateral recolhível**: o botão no topo da sidebar reduz o menu a uma barra de 64px de ícones e volta a 240px; a escolha fica salva no navegador (`gcon-sidebar-v1`) e acompanha entre abas abertas. No celular o menu já é uma barra de ícones e o botão não aparece. `Esc` expande um menu recolhido, sem roubar a tecla de quem está digitando. Na barra estreita a marca some por inteiro e o nome de cada aba vem do `title` — **nada aparece ao lado da barra** (nenhum balão, nenhum card), e a largura do menu é 100% do que sobra da tela; o nome completo do sistema continua escrito no caminho de navegação, no topo
@@ -135,7 +136,7 @@ Colunas de auditoria na exportação: `Garantia`, `NumeroOk`, `CNPJ_Ok`, `CNPJ_F
 
 | Lacuna | Situação |
 |---|---|
-| Itens da nota (código, descrição, quantidade, valor unitário, CFOP, NCM, CST) | **não lidos** — o leitor extrai cabeçalho e totais, não as linhas do produto. O caminho XML lê (93 campos); o PDF não |
+| Itens da nota (código, descrição, quantidade, valor unitário, CFOP, NCM, CST) | **não lidos** — o leitor extrai cabeçalho e totais, não as linhas do produto. O caminho XML lê (117 campos); o PDF não |
 | Tributos por item (PIS, COFINS, ISS, IBS, CBS, CSRF) | **não lidos** — só base/valor de ICMS, ST e IPI |
 | Endereço do destinatário | CNPJ e razão social saem; endereço, CEP, município, UF e IE, não |
 | Endereço/nome do emitente no DANFE de layout padrão SEFAZ | voltam **vazios** (o texto chega achatado, com rótulo e valor na mesma linha) — vazio em vez de rótulo errado |

@@ -1451,7 +1451,10 @@ const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','
   'PIS_CST','PIS_vBC','PIS_pPIS','PIS_vPIS','PIS_qBCProd','PIS_vAliqProd',
   'COFINS_CST','COFINS_vBC','COFINS_pCOFINS','COFINS_vCOFINS','COFINS_qBCProd','COFINS_vAliqProd',
    'IBS_CST','cClassTrib','IBS_vBC','pIBSUF','vIBSUF','pIBSMun','vIBSMun','IBS_vIBS','pCBS','CBS_vCBS',
-   'Arquivo_Origem'];
+   'Arquivo_Origem',
+   /* Grupo veicProd (veículo novo): no FIM da lista, para não deslocar nenhuma
+      coluna de quem lê a planilha por posição. Vazio em item que não é veículo. */
+   'Veic_tpOp','Veic_Chassi','Veic_cCor','Veic_xCor','Veic_Pot','Veic_Cilin','Veic_PesoL','Veic_PesoB','Veic_nSerie','Veic_tpComb','Veic_nMotor','Veic_CMT','Veic_Dist','Veic_AnoMod','Veic_AnoFab','Veic_tpPint','Veic_tpVeic','Veic_espVeic','Veic_VIN','Veic_condVeic','Veic_cMod','Veic_cCorDENATRAN','Veic_Lota','Veic_tpRest'];
 const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
   'Data_Emissao','Data_Competencia','Municipio_Prestacao',
   'cTribNac','xDescServ','cNBS_DPS','Cod_Servico_Mun','Desc_Servico','Cod_Item_Lei116','Cod_NBS',
@@ -1464,6 +1467,12 @@ const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
   'UF_Prestador','Mun_Prestador','Email_Prestador','Simples_Nacional',
   'CNPJ_Tomador','IM_Tomador','Nome_Tomador','Mun_Tomador','UF_Tomador','Email_Tomador',
   'Arquivo_Origem'];
+
+/* Grupo veicProd (veículo novo): UMA tabela [tag do XML, coluna da exportação].
+   A inicialização do item e a leitura saem daqui; a cauda do HNFE acima repete
+   as colunas por extenso (a regressão conta o literal) e um teste confere que
+   as duas listas são iguais e na mesma ordem. */
+const VEIC_CAMPOS=[['tpOp','Veic_tpOp'],['chassi','Veic_Chassi'],['cCor','Veic_cCor'],['xCor','Veic_xCor'],['pot','Veic_Pot'],['cilin','Veic_Cilin'],['pesoL','Veic_PesoL'],['pesoB','Veic_PesoB'],['nSerie','Veic_nSerie'],['tpComb','Veic_tpComb'],['nMotor','Veic_nMotor'],['CMT','Veic_CMT'],['dist','Veic_Dist'],['anoMod','Veic_AnoMod'],['anoFab','Veic_AnoFab'],['tpPint','Veic_tpPint'],['tpVeic','Veic_tpVeic'],['espVeic','Veic_espVeic'],['VIN','Veic_VIN'],['condVeic','Veic_condVeic'],['cMod','Veic_cMod'],['cCorDENATRAN','Veic_cCorDENATRAN'],['lota','Veic_Lota'],['tpRest','Veic_tpRest']];
 
 // ═══ UTILITIES ═══
 function t(el,tag,def){if(!el)return def||'';const e=el.querySelector(tag);return e&&e.textContent?e.textContent.trim():def||''}
@@ -1556,6 +1565,11 @@ function extrairNFE(nome,texto){
       IBS_CST:'',cClassTrib:'',IBS_vBC:'',pIBSUF:'',vIBSUF:'',pIBSMun:'',vIBSMun:'',IBS_vIBS:'',pCBS:'',CBS_vCBS:'',
       Arquivo_Origem:nome
     };
+    for(const vc of VEIC_CAMPOS)base[vc[1]]='';
+    /* veicProd (veículo novo, filho de <prod>): chassi, cor, motor, ano etc.
+       Lido como está no XML; a descrição dos códigos é só da tela. */
+    const veic=prod.querySelector('veicProd');
+    if(veic)for(const vc of VEIC_CAMPOS)base[vc[1]]=t(veic,vc[0]);
     if(imp){
       const icms=imp.querySelector('ICMS');
       if(icms)for(const f of icms.children){
@@ -1823,6 +1837,19 @@ function cellsTable(cells){
   if(!cells.length)return'';
   return `<table><thead><tr>${cells.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody><tr>${cells.map(c=>`<td>${esc(c[1])}</td>`).join('')}</tr></tbody></table>`;
 }
+/* Descrição dos códigos do veicProd (Manual da NF-e e tabelas RENAVAM/DENATRAN).
+   hasOwnProperty: o código vem do XML, e 'constructor' resolveria pelo protótipo. */
+const VEIC_ROT={
+  tpOp:{'0':'Outros','1':'Venda concessionária','2':'Faturamento direto para consumidor final','3':'Venda direta para grandes consumidores'},
+  tpComb:{'01':'Álcool','02':'Gasolina','03':'Diesel','04':'Gasogênio','05':'Gás metano','06':'Elétrico/fonte interna','07':'Elétrico/fonte externa','08':'Gasolina/gás natural combustível','09':'Álcool/gás natural combustível','10':'Diesel/gás natural combustível','11':'Vide campo de observação','12':'Álcool/gás natural veicular','13':'Gasolina/gás natural veicular','14':'Diesel/gás natural veicular','15':'Gás natural veicular','16':'Álcool/gasolina','17':'Gasolina/álcool/gás natural veicular','18':'Gasolina/elétrico'},
+  tpVeic:{'02':'Ciclomotor','03':'Motoneta','04':'Motocicleta','05':'Triciclo','06':'Automóvel','07':'Micro-ônibus','08':'Ônibus','10':'Reboque','11':'Semirreboque','13':'Camioneta','14':'Caminhão','17':'Caminhão trator','18':'Trator de rodas','19':'Trator de esteiras','20':'Trator misto','21':'Quadriciclo','23':'Caminhonete','25':'Utilitário','26':'Motor-casa'},
+  espVeic:{'1':'Passageiro','2':'Carga','3':'Misto','4':'Corrida','5':'Tração','6':'Especial'},
+  VIN:{'R':'Remarcado','N':'Normal'},
+  condVeic:{'1':'Acabado','2':'Inacabado','3':'Semiacabado'},
+  tpRest:{'0':'Não há','1':'Alienação fiduciária','2':'Arrendamento mercantil','3':'Reserva de domínio','4':'Penhor de veículos','9':'Outras'},
+  cCorDENATRAN:{'01':'Amarela','02':'Azul','03':'Bege','04':'Branca','05':'Cinza','06':'Dourada','07':'Grená','08':'Laranja','09':'Marrom','10':'Prata','11':'Preta','12':'Rosa','13':'Roxa','14':'Verde','15':'Vermelha','16':'Fantasia'}
+};
+function veicRot(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return'';const m=VEIC_ROT[tab];const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return r?c+' - '+r:c;}
 function nfeItemDetalhe(p){
   const icmsCells=[];
   if(p.ICMS_orig)icmsCells.push(['Origem',p.ICMS_orig]);
@@ -1879,6 +1906,32 @@ function nfeItemDetalhe(p){
   if(p.pCBS)ibsCells.push(['Alíq. CBS',pct(p.pCBS)]);
   if(p.CBS_vCBS)ibsCells.push(['V.CBS',moeda(p.CBS_vCBS)]);
   const ibs=cellsTable(ibsCells);
+  /* Veículo novo: duas tabelas curtas (identificação e características). Os
+     valores entram em cellsTable, que escapa rótulo e valor. */
+  const vId=[],vCa=[];
+  if(p.Veic_Chassi)vId.push(['Chassi',p.Veic_Chassi]);
+  if(p.Veic_nSerie)vId.push(['Nº de série',p.Veic_nSerie]);
+  if(p.Veic_nMotor)vId.push(['Nº do motor',p.Veic_nMotor]);
+  if(p.Veic_VIN)vId.push(['VIN',veicRot('VIN',p.Veic_VIN)]);
+  if(p.Veic_cMod)vId.push(['Marca/modelo (RENAVAM)',p.Veic_cMod]);
+  if(p.Veic_AnoFab||p.Veic_AnoMod)vId.push(['Ano fab./modelo',(p.Veic_AnoFab||'—')+'/'+(p.Veic_AnoMod||'—')]);
+  if(p.Veic_condVeic)vId.push(['Condição',veicRot('condVeic',p.Veic_condVeic)]);
+  if(p.Veic_tpOp)vId.push(['Operação',veicRot('tpOp',p.Veic_tpOp)]);
+  if(p.Veic_tpRest)vId.push(['Restrição',veicRot('tpRest',p.Veic_tpRest)]);
+  if(p.Veic_tpVeic)vCa.push(['Tipo',veicRot('tpVeic',p.Veic_tpVeic)]);
+  if(p.Veic_espVeic)vCa.push(['Espécie',veicRot('espVeic',p.Veic_espVeic)]);
+  if(p.Veic_xCor||p.Veic_cCor)vCa.push(['Cor',[p.Veic_cCor,p.Veic_xCor].filter(Boolean).join(' / ')]);
+  if(p.Veic_cCorDENATRAN)vCa.push(['Cor DENATRAN',veicRot('cCorDENATRAN',p.Veic_cCorDENATRAN)]);
+  if(p.Veic_tpPint)vCa.push(['Pintura',p.Veic_tpPint]);
+  if(p.Veic_tpComb)vCa.push(['Combustível',veicRot('tpComb',p.Veic_tpComb)]);
+  if(p.Veic_Pot)vCa.push(['Potência (cv)',formatoBr(p.Veic_Pot)]);
+  if(p.Veic_Cilin)vCa.push(['Cilindrada (cm³)',formatoBr(p.Veic_Cilin)]);
+  if(p.Veic_PesoL)vCa.push(['Peso líquido (t)',formatoBr(p.Veic_PesoL)]);
+  if(p.Veic_PesoB)vCa.push(['Peso bruto (t)',formatoBr(p.Veic_PesoB)]);
+  if(p.Veic_CMT)vCa.push(['CMT (t)',formatoBr(p.Veic_CMT)]);
+  if(p.Veic_Dist)vCa.push(['Distância entre eixos',p.Veic_Dist]);
+  if(p.Veic_Lota)vCa.push(['Lotação',p.Veic_Lota]);
+  const veic=vId.length||vCa.length?cellsTable(vId)+cellsTable(vCa):'';
   /* Item vem do XML: `xProd`, `cEAN` e `NCM` são texto livre, e só `xProd` é
      truncado. O truncamento (`.slice(0,40)`) corta o payload sem cortar o
      escapamento — por isso o `esc` fica DENTRO do slice, ou seja aplicado ao
@@ -1887,7 +1940,7 @@ function nfeItemDetalhe(p){
      `undefined` em `''`, não em `—`: campo ausente viraria a palavra
      `undefined` na tabela. */
   return `<tr>
-    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}</td>
+    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}${p.Veic_Chassi?`<br><small style="color:var(--text2)">Chassi: <strong>${esc(p.Veic_Chassi)}</strong></small>`:''}</td>
     <td>${esc(p.NCM||'—')}</td><td>${esc(p.CEST||'—')}</td><td>${esc(p.CFOP||'—')}</td>
     <td>${esc(p.qCom||'—')}</td><td>${esc(p.uCom||'—')}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
     <td>${esc(p.indEscala||'—')}</td><td>${esc(p.nFCI||'—')}</td>
@@ -1907,6 +1960,10 @@ function nfeItemDetalhe(p){
         ${p.infAdProd?`<div style="margin-top:4px;font-size:10px;color:var(--text2)"><strong>Inf. Adicionais:</strong> ${esc(p.infAdProd)}</div>`:''}
       </div>
     </div>
+    ${veic?`<div class="det-section">
+      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">Veículo novo — chassi ${esc(p.Veic_Chassi||'não informado')}</div>
+      <div class="det-body">${veic}</div>
+    </div>`:''}
     ${icms?`<div class="det-section">
       <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">ICMS — Detalhamento completo</div>
       <div class="det-body">${icms}</div>
