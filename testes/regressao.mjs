@@ -1828,9 +1828,11 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     /<button id="btn-rail" type="button" aria-expanded="true" aria-controls="sidebar"/.test(html));
   /* O botão não tem <span> visível: o nome vem do aria-label/title que o JS
      reescreve a cada estado. Um span morto aqui era uma nona linha que não
-     cabia em 64px, além de uma regra CSS sem efeito. */
+     cabia em 64px, além de uma regra CSS sem efeito. Olha só o conteúdo do
+     botão (até o </button>): uma janela de N caracteres alcançava o <span> do
+     botão vizinho quando o arquivo vinha com LF (Linux/CI) em vez de CRLF. */
   ok('o toggle não tem span nem regra morta: o nome vem do aria-label do JS',
-    !/id="btn-rail"[^>]*>[\s\S]{0,200}?<span/.test(html)
+    !/<span/.test((/id="btn-rail"[^>]*>([\s\S]*?)<\/button>/.exec(html) || ['', '<span'])[1])
     && /btn\.setAttribute\('aria-label',txt\);btn\.setAttribute\('title',txt\);/.test(html)
     && !/#btn-rail>span\{/.test(css) && !/#sidebar\[data-rail="on"\] #btn-rail>span\{/.test(css));
   const titulosRail = [...html.matchAll(/class="nav-btn[^"]*" data-tab="[^"]+" title="([^"]+)"/g)].map((m) => m[1]);
