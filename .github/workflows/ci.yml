@@ -1,0 +1,99 @@
+# Testes do Leitor NF-e/NFS-e em todo push e pull request.
+# Cada job é uma frente de verificação; o PR só deve ser mergeado com todos verdes.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regressao:
+    name: regressão e painel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: regressão estrutural (renders, XSS, schema, contraste)
+        run: node testes/regressao.mjs
+      - name: painel gerencial (KPI bate com a regressão)
+        run: node testes/painel-check.mjs
+
+  mutacao:
+    name: mutação (os testes reprovam quando o código quebra)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: harness de mutação
+        run: node testes/mutacao.mjs
+
+  navegador:
+    name: navegador (smoke no Chrome)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: playwright-core (só o driver; o navegador é o Chrome do runner)
+        run: npm install --prefix "$RUNNER_TEMP/pw" --no-save --no-audit --no-fund playwright-core@1.47.2
+      - name: smoke do index.html no navegador real
+        env:
+          PLAYWRIGHT_PATH: ${{ runner.temp }}/pw/node_modules/playwright-core
+          EDGE_PATH: /usr/bin/google-chrome
+          SMOKE_SHOTS: ${{ runner.temp }}/smoke
+        run: node testes/smoke.cjs
+      - name: capturas de tela (quando falha)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-capturas
+          path: ${{ runner.temp }}/smoke
+          retention-days: 7
+
+  seguranca:
+    name: segurança (segredos e arquivos permitidos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: gitleaks (segredos no histórico)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # token automático do Actions, não é segredo cadastrado
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+      - name: só arquivos do sistema são versionados
+        run: |
+          # Lista do que pode existir no repositório. Qualquer outro arquivo
+          # (configuração de ferramenta local, dado de cliente, rascunho) reprova.
+          permitidos='^(index\.html|README\.md|\.gitignore|painel-gerencial\.html|testes/[^/]+\.(mjs|cjs|json)|\.github/workflows/[^/]+\.yml)$'
+          fora=$(git ls-files | grep -Ev "$permitidos" || true)
+          if [ -n "$fora" ]; then
+            echo "Arquivos fora da lista do sistema:"; echo "$fora"; exit 1
+          fi
+          echo "ok: $(git ls-files | wc -l) arquivos, todos permitidos"
+      - name: sem log de depuração no sistema
+        run: |
+          if grep -nE "console\.(log|warn|error|debug|info)\(" index.html; then
+            echo "console.* no index.html"; exit 1
+          fi
