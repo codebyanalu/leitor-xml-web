@@ -19,8 +19,7 @@ O que **não** é versionado (continua na máquina, sai do índice do git):
 |---|---|
 | `amostras/`, `testes/verdade.json`, `testes/chaves-verdade.json`, `testes/montar-verdade.mjs` | PDFs e XMLs reais da cliente |
 | `testes/node_modules/`, `testes/saidas/`, `*.traineddata`, `por.traineddata` | artefatos baixados / saída da bancada |
-| `previews/`, `screenshots/`, `.opencode/plans/` | mockups e notas de sessão locais |
-| `agente-*.md`, `conhecimento/*.md`, `.opencode/agent/`, `.opencode/command/`, `.opencode/skills/`, `workflow-rule.md`, `opencode.json` | documentação de processo: publicar só expõe a arquitetura interna de um sistema de cliente |
+| `previews/`, `screenshots/` | mockups locais |
 | `painel-estado.json` | estado do painel, gerado no navegador |
 
 A lista completa e comentada está no `.gitignore`. O `git rm --cached` mantém tudo funcionando na máquina; o conteúdo continua no histórico, que é inofensivo (nenhum dado fiscal nele).

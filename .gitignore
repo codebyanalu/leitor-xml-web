@@ -17,34 +17,10 @@ testes/montar-verdade.mjs
 # Mockups de UI (referência local)
 previews/
 
-# Notas de sessão/planos locais (podem citar dados de cliente)
-.opencode/plans/
-
-# Documentação de processo — NÃO é source code (regra do README.md)
-# São 7 arquivos por pasta, nas duas raízes, e publicá-los só expõe a
-# arquitetura interna de um sistema de cliente. `git rm --cached` mantém
-# tudo funcionando na máquina; o conteúdo continua no histórico, que é
-# inofensivo (nenhum dado fiscal neles).
-agente-*.md
-conhecimento/*.md
-.opencode/agent/
-.opencode/command/
-.opencode/skills/
-workflow-rule.md
-opencode.json
-
 # Estado salvo do painel (gerado no navegador, nunca versionado)
 painel-estado.json
 
-# Cache local de skills de terceiros (instaladas por npx skills / claude).
-# Configuração da máquina, não do projeto. `.opencode/skills/` acima também
-# não tem nada versionado — lá é a pasta do agente, que só existe na máquina.
-# O que É versionado em .opencode/ é só plugins/obsidian-sync.js.
-.agents/
-.claude/
-skills-lock.json
-
-# Ruído de ambiente (git check-ignore confirma que nada disso é rastreado)
+# Ruído de ambiente
 node_modules/
 .env
 .env.*

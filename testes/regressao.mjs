@@ -19,16 +19,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
 
-/* Documentação de processo (workflow-rule.md, agente-*.md, conhecimento/*.md)
-   saiu do índice do git: continua na máquina, mas não existe em clone novo nem
-   em CI. Ler esses arquivos sem guarda fazia o gate passar aqui e ESTOURAR lá,
-   com ENOENT, antes do primeiro teste. */
-const FORA_DO_GIT = ['workflow-rule.md', 'opencode.json', 'conhecimento/desenvolvedor.md'];
-function lerOpcional(nome) {
-  const p = path.join(RAIZ, nome);
-  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
-}
-
 let passou = 0, falhou = 0;
 const falhas = [];
 function ok(nome, cond, detalhe) {
@@ -744,21 +734,7 @@ ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe)
 }
 ok('HNFSE tem 56 campos', nHnfse === 56, 'achou ' + nHnfse);
 ok('README diz 117 colunas NF-e (bate com o código)', /117 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
-// A asserção precisa ser "pulado OU conferido": o arquivo é gitignored, então
-// num clone novo lerOpcional devolve '' e o teste virava no-op (sempre verde).
-const regra = lerOpcional('workflow-rule.md');
-if (regra) {
-  ok('nenhum texto fala 423 campos (README e doc de processo, arquivo presente)',
-    !/423/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')) && !/423/.test(regra));
-} else {
-  console.log('  (workflow-rule.md ausente — checagem de "423" pulada; arquivo é gitignored)');
-}
-FORA_DO_GIT.forEach((nome) => {
-  const p = path.join(RAIZ, nome);
-  let erro = '';
-  try { fs.readFileSync(p, 'utf8'); } catch (e) { erro = e.code || String(e); }
-  ok('leitura opcional tolera "' + nome + '" ausente (gitignored)', erro === '' || erro === 'ENOENT', p + ' -> ' + erro);
-});
+ok('README não fala 423 campos', !/423/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 ok('todo var(--x) usado está definido em :root',
   [...new Set([...html.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]))].every(v => claro[v]),
   [...new Set([...html.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]))].filter(v => !claro[v]).join(','));
@@ -780,9 +756,9 @@ ok('alturas de sidebar usam 100dvh com fallback 100vh', /height:100vh;height:100
   const readme = fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8');
   ok('README lista o que é versionado (index, painel, testes)',
     /\| `index\.html` \|/.test(readme) && /\| `painel-gerencial\.html` \|/.test(readme) && /\| `testes\/` \|/.test(readme));
-  ok('README reenumera os grupos ignorados pelo .gitignore (não só agente-*.md)',
-    /amostras\//.test(readme) && /testes\/node_modules\//.test(readme) && /\.opencode\/agent\//.test(readme)
-    && /painel-estado\.json/.test(readme) && /\.opencode\/plans\//.test(readme));
+  ok('README reenumera os grupos ignorados pelo .gitignore',
+    /amostras\//.test(readme) && /testes\/node_modules\//.test(readme)
+    && /painel-estado\.json/.test(readme) && /previews\//.test(readme));
   ok('README documenta a Consulta em Lote e o painel gerencial',
     /\*\*Consulta em Lote\*\*/.test(readme) && /\*\*Painel gerencial\*\*/.test(readme));
   ok('README tem a seção "Testes" com as três suítes e a ordem do npm test',
@@ -1196,7 +1172,7 @@ await (async () => {
 
   // ── B7: injeção de fórmula no CSV (um helper só, compartilhado) ──
   {
-    /* Passeio (DevSecOps): o escape do CSV do lote morava dentro da IIFE dele e o
+    /* Revisão de segurança: o escape do CSV do lote morava dentro da IIFE dele e o
        export do leitor de PDF nao escapava nada. Com o eEndereco deixando de usar
        a classe [A-Z0-9 .,-] e o nome do participante aceitando os tokens crus do
        texto do PDF, `=HYPERLINK("http://evil.tld","clique")` passou a chegar ao
@@ -2288,7 +2264,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
   grupo('13.2 · LEITOR DE PDF: os ramos que a bancada NÃO alcança');
   // ══════════════════════════════════════════════════════════════
   /* chaveValida=false é 0/14 nas notas reais, então a bancada de 2,5 min não alcança
-     nenhum destes ramos. O passeio (Tester) rodou as asserções do 13.1 contra 7
+     nenhum destes ramos. A revisão de testes rodou as asserções do 13.1 contra 7
      mutantes — cada correção revertida — e NENHUMA quebrou: os casos congelavam
      intenção, não comportamento. Aqui os seis casos são de comportamento, e cada um
      morre quando a correção que o motivou volta. Todos sintéticos, sem dado de
@@ -2520,10 +2496,10 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
   }
 
   // ══════════════════════════════════════════════════════════════
-  grupo('13.3 · CONTRATOS que o passeio estreitou');
+  grupo('13.3 · CONTRATOS que a revisão estreitou');
   // ══════════════════════════════════════════════════════════════
-  /* Cada linha aqui é um ponto em que um dos sete agentes encontrou um furo e a
-     correção não tinha caso: sem caso, o próximo passeio reintroduz. */
+  /* Cada linha aqui é um ponto em que uma revisão encontrou um furo e a
+     correção não tinha caso: sem caso, a próxima mudança reintroduz. */
   if (M) {
     const EMIT = '11222333000181';
     const CHAVE_OK = '35260911222333000181550010000001231123456783';
@@ -2538,7 +2514,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
 
     /* idxCnpj: o try/catch nao e a guarda. `new RegExp` so lanca em entrada
        invalida; metacaractere compila e devolve regex ERRADO em silencio
-       (medido no passeio: "6.0(2)0" virava regex com grupo). A guarda e o
+       (medido na revisão: "6.0(2)0" virava regex com grupo). A guarda e o
        /^\d{14}$/ sobre a entrada. */
     ok('idxCnpj recusa entrada que nao sao 14 dígitos (metacaractere não vira regex)',
       M.idxCnpj('TEXTO QUALQUER', '6.0(2)0') === -1 && M.idxCnpj('TEXTO', '1122233300018') === -1
@@ -2587,7 +2563,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
 // ══════════════════════════════════════════════════════════════
 grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade)');
 // ══════════════════════════════════════════════════════════════
-/* O passeio anterior consertou os sinks do LEITOR DE PDF e deixou o render XML
+/* A revisão anterior consertou os sinks do LEITOR DE PDF e deixou o render XML
    inteiro cru: `cellsTable`, `nfeItemDetalhe`, `renderNFE` e `renderNFSe`
    interpolavam o campo do XML direto no innerHTML. Medido aqui: 40 <img> no
    card de NF-e e 34 no de NFS-e com o payload em cada campo de texto.
@@ -2601,7 +2577,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
      (b) FONTE — a lista de campos vem do FONTE dos renders, não de um literal
          escrito à mão. Fixture escrita à mão é lista com buraco: campo novo
          entra no render, não entra no fixture, e o gate passa com o sink novo a
-        ceso. Medido no passeio: 3 sinks (`Item`, `UF_Prestador`,
+        ceso. Medido na revisão: 3 sinks (`Item`, `UF_Prestador`,
          `Mun_Prestador`) eram exatamente os campos que o fixture deixou de
          fora, e revertê-los mantinha a regressão verde.
 

@@ -134,7 +134,7 @@ function reparaChave(dig){
 
 
 /* Leitor de CNPJ do documento, em UM lugar so, com uma politica de ocorrencia so.
-   Passeio (Arquiteto): o mesmo literal de CNPJ mascarado vivia em eJ e em
+   Revisão de arquitetura: o mesmo literal de CNPJ mascarado vivia em eJ e em
    nomePertoCnpj, e o idxCnpj montava o dele — e as tres nao concordavam sobre
    "qual impressao deste CNPJ vale". A unica Regra agora e esta: CNPJ impresso que
    cai DENTRO de um span de 44+ digitos (o codigo de barras) e descartado, porque
@@ -274,7 +274,7 @@ function eProtocolo(full){
    DISTRITO CEP ROD QR 325 SN", natOp="ÇÃO". Valor ilegivel e devolvido vazio -
    a coluna de garantia e a auditoria existem para dizer o que faltou.
 
-   Passeio (QA): a lista e match de PREFIXO, e palavra de razao social pode comecar
+   Revisão de qualidade: a lista e match de PREFIXO, e palavra de razao social pode comecar
    com rotulo de tabela (EXCEL, EMISSORA, BANCO, TRANSPORTADORA) — o run do nome
    quebra e o nome volta vazio. Entao sao duas listas, por consumidor:
      - ehRotuloTabela: cabecalho de endereco/tabela. Vale para eEndereco e para o
@@ -294,7 +294,7 @@ function ehRotulo(t,lista){return(lista||ROTULO_TABELA).test(String(t||'').trim(
    e o indexOf dos 14 digitos crus nunca encontrava, o que zerava nomePrestador e
    nomeTomador em todas as notas com CNPJ formatado. Cada digito e literal e cada
    separador e uma classe de 1 caractere: sem quantificador aninhado, logo sem
-   ReDoS. Medido (passeio/DevSecOps): 1,5 ms no pior caso de 200 KB de entrada
+   ReDoS. Medido (revisão de segurança): 1,5 ms no pior caso de 200 KB de entrada
    (a real tem 3,4 KB e leva 0,006 ms); o try/catch NAO e a guarda — `new RegExp`
    so lanca em entrada invalida, e metacaractere compila e devolve regex errado em
    silencio, entao a guarda e o /^\d{14}$/ sobre a entrada. */
@@ -2857,7 +2857,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
    leitor é "vazio em vez de errado", então o vazio carrega o porquê no title.
    (O nome não pode ser `vazio`: já existe um `const vazio` em eBlocoValores.) */
 const celVazia=(txt,tip)=>`<span title="${esc(tip||'não lido nesta extração: o campo existe no PDF, mas o texto não foi lido sem ambiguidade')}" style="cursor:help">${esc(txt||'—')}</span>`;
-/* O badge verde só é verde com um segundo sinal. Passeio (Designer): "achei um CNPJ
+/* O badge verde só é verde com um segundo sinal. Revisão de design: "achei um CNPJ
    com DV válido e um número" não é "esse é o emitente" — e o defeito que a chave
    estrutural conserta era exatamente emitente trocado por tomador. */
 const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
@@ -2919,7 +2919,7 @@ const emitenteConfirmado=(r)=>r.cnpjFonte==='chave 44'||!!r.nomePrestador;
     const rows=lista.map((r,idx)=>{
       const i=DBpdf.indexOf(r);
       const confCls=r.confMedio>=70?'ok':r.confMedio>=45?'warn':'err';
-/* Badge de garantia. Passeio (Designer): o verde era "achei um CNPJ com DV válido
+/* Badge de garantia. Revisão de design: o verde era "achei um CNPJ com DV válido
    e um número", não "esse é o emitente". Com o caminho da chave fechado (a chave só
    vale com DV e estrutura), cnpjFonte só pode ser texto/OCR — e o defeito que esta
    mudança conserta era exatamente emitente trocado por tomador. Então o verde

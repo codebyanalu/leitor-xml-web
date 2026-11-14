@@ -27,8 +27,8 @@ const pdfOpts = {
   standardFontDataUrl: path.join(__dirname, 'node_modules', 'pdfjs-dist', 'standard_fonts') + path.sep,
 };
 
-/* Integridade do harness, verificada ANTES de qualquer leitura. O passeio
-   (Infraestrutura) reproduziu o modo silencioso: com os cmaps/fontes apontando
+/* Integridade do harness, verificada ANTES de qualquer leitura. A revisão
+   de infraestrutura reproduziu o modo silencioso: com os cmaps/fontes apontando
    para path inexistente, o pdf.js so emite warning no console, o tC devolve texto
    vazio, as 14 amostras caem no OCR e a bancada continua imprimindo 100% com
    exit 0. "Ausência de dado" e "quebra do instrumento" precisam de assertivo

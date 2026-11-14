@@ -168,7 +168,7 @@ const FAMILIAS = [
     fonte: 'a chave pesa zero sem `chaveValida`; a confiança crua continua na auditoria',
     casos: () => [
       {
-        nome: 'a chave volta a pesar o DV (a dívida que o passeio queria fechar)',
+        nome: 'a chave volta a pesar o DV (a dívida que a revisão queria fechar)',
         trocas: [['const pesoChave=r.chaveValida?(r.chaveConf||0):0;', 'const pesoChave=(r.chaveConf||0);']],
         espero: 'reprovar',
       },

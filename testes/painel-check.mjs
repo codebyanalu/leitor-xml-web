@@ -284,7 +284,7 @@ ok('norm de null devolve string vazia', norm(null) === '', JSON.stringify(norm(n
 const ITENS = [
   ['bloq', 'amostra nfs-e', 'Amostra de NFS-e em PDF'],
   ['bloq', 'st fcp icms substituicao', 'NF-e com ST e FCP'],
-  ['bloq', 'passeio sete agentes checklist', 'Passeio dos 7 agentes'],
+  ['bloq', 'revisao completa sete frentes checklist', 'Revisão completa (7 frentes)'],
   ['prox', 'paridade pdf xml itens ncm', 'Paridade PDF ↔ XML'],
   ['prox', 'escada convergencia ocr retry', 'Escada de convergência no OCR'],
   ['prox', 'corpus 84 pdfs scanner digital', 'Corpus de 84 PDFs na bancada'],
@@ -292,7 +292,7 @@ const ITENS = [
   ['feito', 'seguranca xss redos 138af48', 'Segurança'],
   ['feito', 'infraestrutura sri tesseract 11 mb c81933c', 'Infraestrutura'],
   ['feito', 'testes regressao estrutural f736ac3', 'Regressão e gate'],
-  ['feito', 'obsidian vault hook 11d2665', 'Vault do Obsidian'],
+  ['feito', 'notas vault hook 11d2665', 'Notas do projeto sincronizadas'],
 ];
 const texto = (t) => norm(t[1] + ' ' + t[2]);
 function visiveis(grupo, termo) {
