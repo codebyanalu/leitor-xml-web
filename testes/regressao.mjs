@@ -70,7 +70,7 @@ scripts.forEach((code, i) => {
 }
 
 // ══════════════════════════════════════════════════════════════
-grupo('2 · SEGURANÇA (bloqueios do DevSecOps)');
+grupo('2 · SEGURANÇA (bloqueios da revisão de segurança)');
 // ══════════════════════════════════════════════════════════════
 const consoles = [...html.matchAll(/console\.(log|warn|error)/g)];
 ok('nenhum console.log/warn/error', consoles.length === 0, 'achou ' + consoles.length);
@@ -99,7 +99,7 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
    (15) identificam nota e operação tanto quanto o CNPJ identifica empresa.
 
    O escopo é `git ls-files`, não uma lista escrita à mão — porque o segundo
-   vazamento (protocolo + natureza de operação, achado pelo DevSecOps depois do
+   vazamento (protocolo + natureza de operação, achado na revisão de segurança depois do
    push) entrou por `testes/regressao.mjs`, um arquivo que a primeira versão do
    gate não olhava. Sem verdade.json — clone novo — o gate cai na lista de
    sintéticos e NÃO reprova o fonte correto: falhar sem gabarito treina a
@@ -528,7 +528,7 @@ for (const cta of ['--primary-cta', '--primary-cta-h', '--sec-cta', '--sec-cta-h
 // --badge-on-cta é alpha no tema claro (sobre CTA escuro, medido 5.15:1) e sólido no
 // escuro. Alpha não é computável isoladamente, então o claro é verificado por forma.
 if (tema === 'claro') {
-  ok('badge sobre CTA no claro usa alpha (medido 5.15:1 na auditoria do Designer)',
+  ok('badge sobre CTA no claro usa alpha (medido 5.15:1 na auditoria de design)',
     /^rgba\(/.test(claro['--badge-on-cta']), claro['--badge-on-cta']);
 } else {
   const r = ratio('#ffffff', escuro['--badge-on-cta']);
@@ -1464,7 +1464,7 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
 }
 
 /* ══════════════════════════════════════════════════════════════
-   grupo('14 · ALVOS DE TOQUE, ESCALA E TOKENS (bloqueios do Designer)');
+   grupo('14 · ALVOS DE TOQUE, ESCALA E TOKENS (bloqueios da revisão de design)');
    ══════════════════════════════════════════════════════════════ */
 {
   /* .btn media 32,5px com o padding de 8px — abaixo do piso. Os 4 botões da
@@ -1689,7 +1689,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     'declaracoes=' + declRail.length + ' faltando=' + (faltando.join(' | ') || 'nenhuma'));
   ok('o rail do atributo tem o mesmo piso de toque de 44px do rail do celular',
     /min-height:\s*44px/.test(corpo('#sidebar[data-rail="on"] .nav-btn', css)[0] || ''));
-  ok('o toggle também tem alvo de 44px (o Designer mediu 42px nos botões do rail)',
+  ok('o toggle também tem alvo de 44px (a revisão de design mediu 42px nos botões do rail)',
     /#btn-rail\{[^}]*min-height:\s*44px/.test(css));
   ok('no celular o toggle some por display:none (nunca aria-hidden em focável)',
     !!mqRail && /#btn-rail\{display:none\}/.test(mqRail[1]));
@@ -1703,7 +1703,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     && !/#sidebar\[data-rail="on"\][^{]*::after\{/.test(css));
   ok('o item ativo continua marcado no rail (cor e borda, sem balão)',
     /\.nav-btn\.active\{[^}]*background:var\(--sidebar-active\)[^}]*border-right-color:var\(--accent\)/.test(css));
-  /* A marca some INTEIRA no rail (Designer): o primeiro item de uma coluna de
+  /* A marca some INTEIRA no rail (revisão de design): o primeiro item de uma coluna de
      8 ícones de mesmo peso não pode ser texto, e o fragmento herdava a cor mais
      saturada do topo. O nome completo continua no breadcrumb e no title de cada
      item. Isto também substitui o max-width/overflow que existia só para o
@@ -1758,7 +1758,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
        problema porque ela explica o problema é o gate mentindo. */
     && !/[:.][\w-]*disabled\{[^}]*opacity:\s*0?\.[0-9]/.test(semComentario)
     && !/\.btn:disabled\{opacity:\./.test(css));
-  /* O achado do Designer, que nenhum dos gates acima pegava: `border-color` não
+  /* O achado da revisão de design, que nenhum dos gates acima pegava: `border-color` não
      pinta nada quando o `border-style` herdado é `none`. A regra do desabilitado
      ficava certa no papel ("mais fraco na borda") e no browser sem CAIXA — e
      pior, o .btn-out desabilitado da MESMA linha tinha forma, porque declara
@@ -1856,7 +1856,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
   const src = /\(function\(\)\{\s*const CHAVE='gcon-sidebar-v1';[\s\S]*?\n\}\)\(\);/.exec(html);
   ok('a IIFE do toggle existe e é extraível', !!src);
   if (src) {
-    /* O 3º parâmetro existe por causa do Tester: sem ele, o stub de
+    /* O 3º parâmetro existe por causa da revisão de testes: sem ele, o stub de
        localStorage nunca lança e os caminhos de modo privado / quota cheia
        (onde o catch engole o erro e a UI funciona sem persistir nada) ficavam
        sem nenhum caso. `lanceEm` diz qual operação falha. */
@@ -1986,7 +1986,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
       && /if\(!ehCelular\(\)\)aplicar\(guardado===RAIL,false\)/.test(src[0]));
     /* guardar é usada no clique e no Esc, e é declarada ANTES dos dois (o
        inverso só funciona porque as chamadas são em listener — armadilha de
-       leitura que o QA apontou nesta rodada). */
+       leitura que a revisão de qualidade apontou nesta rodada). */
     ok('guardar é declarada antes de ser usada (sem TDZ por adiamento)',
       /const guardar=\(v\)=>\{[\s\S]{0,120}?\};\s*\n\s*const aplicar=[\s\S]*?btn\.addEventListener/.test(src[0])
       && src[0].indexOf('const guardar=') < src[0].indexOf('btn.addEventListener'));
@@ -2101,7 +2101,7 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     bEsc.doc._ls.keydown(ev(null, 'Escape'));
     ok('Esc com o rail já expandido é no-op (não alterna sozinho)',
       bEsc.els.sidebar.getAttribute('data-rail') === 'off');
-    /* Bloqueio do Arquiteto: em ≤768px o atributo está 'on' por LAYOUT, não por
+    /* Bloqueio da revisão de arquitetura: em ≤768px o atributo está 'on' por LAYOUT, não por
        escolha. Sem o guard, o Esc gravava "full" por conta própria (apagando a
        preferência de desktop) e anunciava "Menu expandido" sem expandir, porque
        a media query manteria os 64px. */
@@ -2550,7 +2550,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       M.nomePertoCnpj('DADOS DO EMITENTE NOME / RAZÃO SOCIAL EXEMPLO COMERCIO LTDA 11.222.333/0001-81', EMIT) === 'EXEMPLO COMERCIO LTDA',
       JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE NOME / RAZÃO SOCIAL EXEMPLO COMERCIO LTDA 11.222.333/0001-81', EMIT)));
 
-    /* A UI que o Designer apontou: badge verde exige segundo sinal, KPI conta o
+    /* A UI que a revisão de design apontou: badge verde exige segundo sinal, KPI conta o
        predicado do rótulo, e a célula vazia carrega o porquê. Aqui é contrato de
        fonte (o painel-check confere as afirmações do painel contra a fonte). */
     ok('o badge verde exige emitente confirmado (chave validada OU nome colado no CNPJ)',
@@ -2908,8 +2908,8 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
       ok('o item aberto aparece no painel lateral, não no meio da tabela',
         (h1.match(/class="dnf-painel"/g) || []).length === 1 && !/dnf-det/.test(h1) && !/class="dnf-painel"/.test(hf));
       ok('só um item aberto por vez (abrir outro substitui) e Esc fecha',
-        /function dnfAbreSo\(x,k(,foco)?\)\{const ant=\[\.\.\.x\.u\.abertos\]\[0\];x\.u\.abertos\.clear\(\);/.test(html) && /e\.key==='Escape'/.test(html));
-      /* Revisão do Desenvolvedor (DANFE completo): bordas do painel, executadas. */
+        /function dnfAbreSo\(x,k\)\{const ant=\[\.\.\.x\.u\.abertos\]\[0\];x\.u\.abertos\.clear\(\);/.test(html) && /e\.key==='Escape'/.test(html));
+      /* DANFE completo: bordas do painel, executadas. */
       {
         let r = null, erro = '';
         try {
@@ -2918,28 +2918,45 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             const pDup=dnfPainel(its,{abertos:new Set(['0'])});
             const pUm=dnfPainel([[{Item:'7',xProd:'S'},0]],{abertos:new Set(['0'])});
             const info={Chave_NFe:'KZ',Item:'1',xProd:'CAMINHAO',Status_NFe:'Autorizada'};
-            const u=dnfUI('KZ');u.abertos.clear();u.abertos.add('0');u.q='filtro-que-nao-casa';
-            const hFiltro=nfeDanfe('KZ',{info,itens:[info]});u.q='';
+            const u=dnfUI('KZ');u.abertos.clear();u.abertos.add('0');
             const hVisivel=nfeDanfe('KZ',{info,itens:[info]});u.abertos.clear();
+            /* clique fora: painel de mentira dentro de um cartão de mentira */
+            const card={dataset:{chave:'KZ'},isConnected:true,querySelector:()=>null};
+            const pn={closest:(s)=>s==='.nota-card[data-chave]'?card:null};
+            const alvo=(dentro,ligado)=>({isConnected:ligado,closest:(s)=>dentro&&s==='.dnf-painel'?pn:null});
+            const q0=document.querySelector;document.querySelector=(s)=>s==='.dnf-painel'?pn:q0.call(document,s);
+            const fora={};
+            u.abertos.add('0');dnfForaClique({target:alvo(true,true)});fora.dentro=u.abertos.size;
+            dnfForaClique({target:alvo(false,false)});fora.solto=u.abertos.size;
+            window.getSelection=()=>'trecho arrastado';dnfForaClique({target:alvo(false,true)});fora.selecao=u.abertos.size;delete window.getSelection;
+            const linha={isConnected:true,closest:(s)=>s==='.dnf-prod tbody tr.dnf-it'?{}:null};dnfForaClique({target:linha});fora.linha=u.abertos.size;
+            dnfForaClique({target:alvo(false,true)});fora.fora=u.abertos.size;
+            document.querySelector=q0;
             __DB.nfe=[];let lancou='';
-            try{dnfRepinta({ch:'KZ',card:{isConnected:true,querySelector:()=>{throw new Error('desenhou nota que saiu do DB')}},u},'.dnf-q');}catch(e){lancou=e.message;}
-            return {pDup,pUm,hFiltro,hVisivel,lancou};
+            try{dnfRepinta({ch:'KZ',card:{isConnected:true,querySelector:()=>{throw new Error('desenhou nota que saiu do DB')}},u});}catch(e){lancou=e.message;}
+            return {pDup,pUm,hVisivel,lancou,fora};
           })()`, sb);
         } catch (e) { erro = e.message; }
         ok('nItem repetido: o "próximo" do painel vai para a LINHA seguinte (índice 1), mesmo com o mesmo nItem',
           !erro && /data-ir="1"[^>]*>próximo/.test(r.pDup) && /<b>Item 1<\/b><span class="dnf-painel-nome">A<\/span>/.test(r.pDup), erro || (r && r.pDup.slice(0, 300)));
         ok('nota com 1 item: anterior e próximo desabilitados',
           !erro && (r.pUm.match(/disabled/g) || []).length === 2 && !/data-ir=/.test(r.pUm), erro);
-        ok('item aberto fora do filtro: sem painel e sem botão "Fechar item" órfão; volta ao limpar o filtro',
-          !erro && !/dnf-painel/.test(r.hFiltro) && !/dnf-fecha-todos/.test(r.hFiltro) && /dnf-painel/.test(r.hVisivel) && /dnf-fecha-todos/.test(r.hVisivel), erro);
-        ok('debounce do filtro com a nota já fora do DB não lança (dnfRepinta sai cedo)',
+        ok('sem barra de filtro acima dos produtos: nenhum campo de filtro',
+          !erro && /dnf-painel/.test(r.hVisivel) && !/dnf-filtro/.test(r.hVisivel) && !/class="dnf-q"/.test(r.hVisivel), erro);
+        ok('sem barra de filtro acima dos produtos: nem contagem nem texto de instrução',
+          !erro && !/Filtrar itens/.test(r.hVisivel) && !/\d+ de \d+ itens/.test(r.hVisivel), erro);
+        ok('o clique fora está ligado ao documento (sem a ligação, o handler nunca roda)',
+          /document\.addEventListener\('click',dnfForaClique\)/.test(html));
+        ok('clique fora do painel fecha o item; dentro do painel, em alvo já repintado ou ao fim de uma seleção de texto, não fecha',
+          !erro && r.fora.dentro === 1 && r.fora.solto === 1 && r.fora.selecao === 1 && r.fora.linha === 1 && r.fora.fora === 0, erro || JSON.stringify(r.fora));
+        ok('repintar com a nota já fora do DB não lança (dnfRepinta sai cedo)',
           !erro && r.lancou === '', erro || r.lancou);
         ok('Esc que fechou o item do DANFE não expande também o menu recolhido',
           /if\(e\.key!=='Escape'\)return;\s*if\(e\.defaultPrevented\)return;[^\n]*\n\s*if\(ehCelular\(\)\)return;\s*if\(sb\.getAttribute\('data-rail'\)/.test(html));
         ok('o Esc só age quando o painel está na tela',
           /x0\.card\.querySelector\('\.dnf-painel'\)/.test(html));
       }
-      /* Aviso do DevSecOps: a chave sintética de nota sem chave ('?'+índice) não pode
+      /* Aviso da revisão de segurança: a chave sintética de nota sem chave ('?'+índice) não pode
          colidir com um Id forjado no XML (ex.: Id="NFe?0" vira Chave_NFe '?0'). */
       {
         let g = null, erro = '';
@@ -2951,7 +2968,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         ok('nota com Id forjado "?0" não se funde com a nota sem chave (dois grupos, um item cada)',
           !erro && g.length === 2 && g.every((s) => !s.includes('+')), erro || JSON.stringify(g));
       }
-      /* Bloqueio do Tester (F1/F2): notas sem chave não se fundem, o filtro de
+      /* Bloqueio da revisão de testes (F1/F2): notas sem chave não se fundem, o filtro de
          CNPJ é por linha, e o item é a LINHA (índice), não o valor de nItem. */
       {
         let r = null, erro = '';
@@ -2970,7 +2987,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             const porLinha=cards(document.getElementById('nfe-list').innerHTML);document.getElementById('filtro-nfe-cnpj').value='';
             /* mesma nota, duas linhas com o mesmo nItem */
             const A={Chave_NFe:'KD',Item:'1',xProd:'PRIMEIRA',Status_NFe:'Autorizada'},B={Chave_NFe:'KD',Item:'1',xProd:'SEGUNDA',Status_NFe:'Autorizada'},C={Chave_NFe:'KD',Item:'2',xProd:'TERCEIRA',Status_NFe:'Autorizada'};
-            const u=dnfUI('KD');u.abertos.clear();u.q='';u.abertos.add('1');
+            const u=dnfUI('KD');u.abertos.clear();u.abertos.add('1');
             const hd=nfeDanfe('KD',{info:A,itens:[A,B,C]});
             /* setas de verdade: dnfTecla com um cartão de mentira (3 linhas) */
             __DB.nfe=[A,B,C];u.abertos.clear();u.abertos.add('0');
@@ -3004,7 +3021,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         ok('item sem nItem abre pela posição (painel com a linha certa)',
           !erro && /class="dnf-painel-nome">SEM NITEM</.test(r.hs), erro);
       }
-      /* Revisão do Arquiteto: um só painel na tela, corpo só da nota aberta,
+      /* Revisão de arquitetura: um só painel na tela, corpo só da nota aberta,
          e a tabela de impostos desenhada de uma lista só (DNF_TRIB). */
       {
         let r = null, erro = '';
@@ -3022,7 +3039,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         } catch (e) { erro = e.message; }
         ok('abrir item numa nota fecha o item aberto das outras (um painel fixo só)',
           !erro && r.so[0] === 0 && r.so[1] === 1
-          && /function dnfAbreSo\(x,k,foco\)\{[^\n]*if\(k!=null\)\{dnfFechaOutras\(x\.ch\);/.test(html), erro || JSON.stringify(r && r.so));
+          && /function dnfAbreSo\(x,k\)\{[^\n]*if\(k!=null\)\{dnfFechaOutras\(x\.ch\);/.test(html), erro || JSON.stringify(r && r.so));
         ok('nota fechada não desenha o DANFE (só o header); nota aberta desenha',
           !erro && /class="nota-card"/.test(r.fechada) && !/dnf-prod/.test(r.fechada) && /dnf-prod/.test(r.aberta), erro);
         ok('abrir a nota pelo header (clique e teclado) desenha o corpo',

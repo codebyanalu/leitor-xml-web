@@ -60,7 +60,7 @@ const NL = html.includes('\r\n') ? '\r\n' : '\n';
    relatório usa. */
 function roda() {
   let out = '';
-  try { out = execFileSync('node', [REG], { encoding: 'utf8', cwd: RAIZ }); }
+  try { out = execFileSync(process.execPath, [REG], { encoding: 'utf8', cwd: RAIZ }); }
   catch (e) { out = (e.stdout || '') + (e.stderr || ''); }
   const m = out.match(/REGRESSÃO: (\d+) passaram, (\d+) falharam/);
   const p = m ? +m[1] : -1;
@@ -401,7 +401,7 @@ async function main() {
   }
   const rodaClone = () => {
     let out = '';
-    try { out = execFileSync('node', [path.join(CLONE, 'testes', 'regressao.mjs')], { encoding: 'utf8', cwd: CLONE }); }
+    try { out = execFileSync(process.execPath, [path.join(CLONE, 'testes', 'regressao.mjs')], { encoding: 'utf8', cwd: CLONE }); }
     catch (e) { out = (e.stdout || '') + (e.stderr || ''); }
     const m = out.match(/REGRESSÃO: (\d+) passaram, (\d+) falharam/);
     return { p: m ? +m[1] : -1, f: m ? +m[2] : -1 };

@@ -13,7 +13,7 @@
      largura útil, aria-expanded, o par de ícones, o que é gravado, e se o
      estado volta depois de recarregar;
    - Esc expande um menu recolhido, não expande no celular (lá o rail é layout,
-     não escolha — achado do Arquiteto) e não expande com o foco num campo;
+     não escolha — achado da revisão de arquitetura) e não expande com o foco num campo;
    - a troca de largura: em ≤768px o rail manda, e ao voltar para desktop a
      preferência do usuário reassume (o bug que o primeiro smoke achou morava
      aqui: a mudança de largura lia a variável em memória, não o storage);
@@ -186,7 +186,7 @@ const MEDIR_MENU = `(() => {
       }
       const c = await page.evaluate(contraste);
       if (w === 1440) {
-        /* O Designer mediu --focus sobre --sidebar em 2,96:1 no claro: reprova
+        /* A revisão de design mediu --focus sobre --sidebar em 2,96:1 no claro: reprova
            3:1. No escuro o mesmo --focus dá 6,77:1, então o anel herdado passa
            lá. É por isso que o toggle tem seletor próprio com --sidebar-accent. */
         /* O anel herdado reprova 3:1 no claro, e isso é o motivo de o toggle
@@ -196,7 +196,7 @@ const MEDIR_MENU = `(() => {
           `${tema}: anel herdado (--focus) sobre --sidebar = ${c.crFoco}:1`
           + (c.crFoco >= 3 ? ' (passa 3:1)' : ' (reprova 3:1 — o toggle usa --sidebar-accent)'));
         ok(tema === 'escuro' ? c.crFoco >= 3 : c.crFoco < 3,
-          `${tema}: o anel herdado reprova SÓ no claro (${c.crFoco}:1), como o Designer mediu`);
+          `${tema}: o anel herdado reprova SÓ no claro (${c.crFoco}:1), como a revisão de design mediu`);
         ok(c.crAccent >= 3, `${tema}: --sidebar-accent sobre --sidebar = ${c.crAccent}:1 (o que o toggle usa)`);
       }
       const menu = await page.evaluate(MEDIR_MENU);
@@ -357,8 +357,8 @@ const MEDIR_MENU = `(() => {
     const cel = await medir();
     ok(cel.w === 64 && cel.rail === 'on' && cel.btnVisivel === false,
       `375px: rail obrigatório e toggle escondido mesmo com "full" salvo (visivel=${cel.btnVisivel}, ${cel.w}px)`);
-    /* E o Esc no celular não pode apagar a preferência de desktop: o achado do
-       Arquiteto. */
+    /* E o Esc no celular não pode apagar a preferência de desktop: o achado da
+       revisão de arquitetura. */
     await page.keyboard.press('Escape');
     await page.waitForTimeout(250);
     const celEsc = await medir();
@@ -428,7 +428,7 @@ const MEDIR_MENU = `(() => {
     ok(semCartao.invadindo === 0,
       `nenhum item da barra invade a área do conteúdo (${semCartao.invadindo} invadindo, conteúdo começa em ${semCartao.conteudoEsq}px)`);
 
-    /* A marca some inteira no rail (Designer): o primeiro item de uma coluna
+    /* A marca some inteira no rail (revisão de design): o primeiro item de uma coluna
        de 8 ícones não pode ser texto, e o fragmento herdava a cor mais
        saturada do topo. O que ainda tem que valer: nada vaza da barra, e o
        nome completo continua no breadcrumb do topo. */
