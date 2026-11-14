@@ -1,0 +1,15 @@
+# As actions dos workflows são fixadas por SHA (versão exata, à prova de troca
+# silenciosa). Uma vez por mês o GitHub confere se saiu versão nova e abre um
+# PR com o SHA atualizado; o CI roda nele antes de qualquer merge.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+    open-pull-requests-limit: 2
