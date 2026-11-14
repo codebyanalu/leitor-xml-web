@@ -25,6 +25,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import vm from 'vm';
 import { execFileSync } from 'child_process';
@@ -391,7 +392,7 @@ async function main() {
   /* `mkdtempSync` e NÃO um caminho fixo: duas instâncias em paralelo (CI, dois
      terminais) apagavam a mesma pasta uma da outra e escreviam no mesmo
      `index.html`. */
-  const CLONE = fs.mkdtempSync(path.join(process.env.TEMP || '.', 'gcon-clone-limpo-'));
+  const CLONE = fs.mkdtempSync(path.join(os.tmpdir(), 'gcon-clone-limpo-'));
   execFileSync('git', ['clone', '-q', '--no-hardlinks', '--local', RAIZ, CLONE], { encoding: 'utf8' });
   for (const f of execFileSync('git', ['ls-files'], { cwd: RAIZ, encoding: 'utf8' }).split('\n').filter(Boolean)) {
     const dest = path.join(CLONE, f);
