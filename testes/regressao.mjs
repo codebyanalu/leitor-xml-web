@@ -418,8 +418,12 @@ ok('focus visível tem override de cor na sidebar', /\.nav-btn:focus-visible/.te
 ok('theme-btn tem aria-pressed estático no HTML', /id="theme-btn"[^>]*aria-pressed="false"/.test(html));
 ok('dropzone de XML é alcançável por teclado', /id="upload-area" role="button" tabindex="0"/.test(html));
 ok('dropzone de PDF é alcançável por teclado', /id="pdfiso-upload" role="button" tabindex="0"/.test(html));
-ok('header de nota é botão acessível', (html.match(/class="header" role="button" tabindex="0" aria-expanded="false"/g) || []).length >= 2);
-ok('det-title é botão acessível', (html.match(/class="det-title" role="button" tabindex="0" aria-expanded="false"/g) || []).length >= 9);
+/* DANFE completo: o header da NF-e nasce com aria-expanded do estado (nota aberta
+   continua aberta ao redesenhar), e o toggleNota mantém o atributo. */
+ok('header de nota é botão acessível', (html.match(/class="header" role="button" tabindex="0" aria-expanded="/g) || []).length >= 2);
+ok('o toggleNota atualiza aria-expanded', /function toggleNota\(el\)\{[\s\S]{0,300}?el\.setAttribute\('aria-expanded'/.test(html));
+/* DANFE completo: os det-title que restam são os do NFS-e (CSRF e IBS/CBS). */
+ok('det-title é botão acessível', (html.match(/class="det-title" role="button" tabindex="0" aria-expanded="false"/g) || []).length >= 2);
 ok('Enter/Espaço dispara o toggle (nota)', /addEventListener\('keydown'[\s\S]{0,600}?toggleNota/.test(html));
 ok('Enter/Espaço dispara o toggle (det)', /addEventListener\('keydown'[\s\S]{0,600}?toggleDet/.test(html));
 ok('Enter/Espaço abre a dropzone', /upload-area'\)\.addEventListener\('keydown'/.test(html));
@@ -2566,7 +2570,7 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
 grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade)');
 // ══════════════════════════════════════════════════════════════
 /* A revisão anterior consertou os sinks do LEITOR DE PDF e deixou o render XML
-   inteiro cru: `cellsTable`, `nfeItemDetalhe`, `renderNFE` e `renderNFSe`
+   inteiro cru: `cellsTable`, o detalhe do item da NF-e (hoje `nfeDanfe`/`dnfItemAberto`), `renderNFE` e `renderNFSe`
    interpolavam o campo do XML direto no innerHTML. Medido aqui: 40 <img> no
    card de NF-e e 34 no de NFS-e com o payload em cada campo de texto.
 
@@ -2598,9 +2602,10 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
   const PAY = '"><img src=x onerror="window.__XSS=1">';
   const BENIGNO = 'EXEMPLO';
 
-  /* Os 4 renders, do fonte, sem depender de ninguém saber onde começam: é o
-     trecho de `cellsTable` até o fim de `renderNFSe`. */
-  const iniRender = html.indexOf('function cellsTable(');
+  /* Os renders, do fonte: é o trecho do DANFE (a partir de `DNF_COLS`, a primeira
+     declaração dele) até o fim de `renderNFSe`. A âncora antiga (`cellsTable`) saiu
+     do código com o DANFE; âncora em função removida zerava o universo. */
+  const iniRender = html.indexOf('const DNF_COLS=[');
   /* O fim dos 4 renders é o marcador da seção seguinte, não um `}`: procurar
      `\n}\n` não acha (o arquivo tem CRLF) e o fallback "até o fim do arquivo"
      fazia o universo de campos vazar para o módulo de CNPJ e de PDF — o gate
@@ -2698,7 +2703,11 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
     const conta = (alvo, fn, registros) => {
       const id = alvo + '-list';
       try {
-        vm.runInContext(`(()=>{__DB.${alvo}=${JSON.stringify(registros)};${fn}()})()`, sb);
+        /* O corpo da NF-e (o DANFE) só é desenhado com a nota aberta: o gate abre
+           todas as notas antes, senão mediria só o header e o payload do corpo
+           passaria sem ser lido. */
+        const abre = alvo === 'nfe' ? 'for(const p of __DB.nfe)dnfUI(p.Chave_NFe||"?").nota=true;' : '';
+        vm.runInContext(`(()=>{__DB.${alvo}=${JSON.stringify(registros)};${abre}${fn}()})()`, sb);
       } catch (e) { return { erro: e.message }; }
       return { h: vm.runInContext(`document.getElementById('${id}').innerHTML`, sb) };
     };
@@ -2739,7 +2748,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
     });
 
     /* O `catch` do renderNFE é um sink com `esc` e o caminho nunca era
-       exercitado: `nfeItemDetalhe` não lança, e o `conta` engole erro. Um
+       exercitado: o desenho do DANFE (`nfeDanfe`) não lança, e o `conta` engole erro. Um
        objeto com `toString` hostil força a exceção de verdade — e tem de entrar
        pelo sandbox, porque serializado o `toString` customizado vira `{}`. */
     {
@@ -2772,14 +2781,20 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         'nfe=' + v1.slice(0, 90));
     }
 
-    /* cellsTable é o sink que cobre as células de imposto do item (ICMS, IPI,
-       PIS, COFINS, IBS/CBS). O caminho que a justificativa do comentário cita é
-       `formatoBr`, que devolve a string CRUA quando não casa com
-       `^\d+\.?\d*$` — e seus 3 chamadores estavam fora do fixture escrito à mão.
-       Aqui vêm do fonte. O nome do gate não conta as células: contagem em nome
-       de gate envelhece (era "~40", eram 45). */
-    ok('cellsTable escapa rótulo e valor (o sink das células de imposto do item)',
-      /function cellsTable\(cells\)\{[\s\S]{0,320}?cells\.map\(c=>`<th>\$\{esc\(c\[0\]\)\}<\/th>`\)[\s\S]{0,160}?cells\.map\(c=>`<td>\$\{esc\(c\[1\]\)\}<\/td>`\)/.test(html));
+    /* dnfVal é o sink que cobre as células do DANFE (tabela de itens, painel de
+       impostos, produto, financeiro, veículo): todas leem p[c] por ele. EXECUTADO,
+       não regex de forma: o valor hostil passa por cada tipo e tem de sair como
+       texto escapado — em 't' e 'v:' o dado volta inteiro (não sumiu); em 'm'/'p'/'q'
+       o número formatado não pode carregar tag. */
+    {
+      const tipos = ['t', 'v:tpComb', 'm', 'p', 'q'];
+      const saida = tipos.map((tp) => [tp, vm.runInContext('dnfVal(' + JSON.stringify(PAY) + ',' + JSON.stringify(tp) + ').h', sb)]);
+      const escPay = vm.runInContext('esc(' + JSON.stringify(PAY) + ')', sb);
+      const cru = saida.filter(([, h]) => /<|"/.test(h));
+      ok('dnfVal escapa o valor hostil em todo tipo (o sink das células do DANFE)',
+        cru.length === 0 && saida[0][1] === escPay && saida[1][1].includes(escPay),
+        cru.map(([tp, h]) => tp + '=' + h.slice(0, 40)).join(' | ') || saida.map(([tp, h]) => tp + '=' + h.slice(0, 30)).join(' | '));
+    }
     /* Regra NEGATIVA, não literal positivo: "todo `.slice(` de dado de arquivo
        tem o `esc` DENTRO". Listar `xProd` e `xDescServ` (e esquecer
        `Desc_Servico`, que tem o mesmo formato) trava refactor legítimo e
@@ -2803,7 +2818,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         return true;
       });
       ok('todo truncamento de dado de arquivo tem o esc DENTRO do slice (nenhum por fora)',
-        slices.length >= 3 && sliceFora.length === 0,
+        slices.length >= 2 && sliceFora.length === 0, /* DANFE completo: a descrição deixou de ser cortada; restam os slices do NFS-e */
         sliceFora.join(' | ') || (slices.length + ' slice(s) no fonte'));
     }
     /* `dataBr` escapa, e por isso não pode aparecer em export: lá o `&`
@@ -2811,7 +2826,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
      o gate é para o dia em que alguém plugar. */
     ok('nenhum export usa dataBr (escapar no CSV/XLSX mudaria o arquivo da cliente)',
       !/function export(CSV|XLSX)\(tipo\)\{[\s\S]{0,900}?\bdataBr\(/.test(html)
-      && (html.match(/dataBr\(/g) || []).length === 6, /* 1 definição + 5 consumidores de render */
+      && (html.match(/dataBr\(/g) || []).length === 5, /* 1 definição + 4 consumidores de render (o DANFE usa dnfData, que também escapa) */
       (html.match(/dataBr\(/g) || []).length + ' ocorrência(s) de dataBr');
     /* dataBr com data legítima: escapa não pode virar "escapa a data também". */
     ok('dataBr devolve a data, não a entidade',
@@ -2832,18 +2847,42 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
        no render). Aqui: o chassi aparece na linha sem abrir nada, a seção
        existe só para item de veículo, e o código hostil não resolve pelo
        protótipo do mapa de descrições. */
-    ok('o universo do render inclui os campos do veicProd (o fixture de XSS os cobre)',
-      unicos.includes('Veic_Chassi') && unicos.includes('Veic_tpComb') && unicos.includes('Veic_cCorDENATRAN'));
+    /* DANFE completo: as colunas da tabela de itens saem de DNF_COLS e são lidas
+       como p[c] — fora do universo p.X acima. Por isso aqui o DANFE é desenhado
+       com o payload em TODOS os campos da exportação (HNFE) e comparado com o
+       render benigno: mesma forma, nenhuma tag nova, nenhum handler. */
+    {
+      const camposHNFE = (/const HNFE=\[([\s\S]*?)\];/.exec(html)[1].match(/'[^']+'/g) || []).map((s) => s.slice(1, -1));
+      const montar = (v) => { const r = {}; camposHNFE.forEach((c) => { r[c] = v; }); r.Chave_NFe = 'K'; r.Item = '1'; return r; };
+      let fp = null, fb = null, erro = '';
+      try {
+        vm.runInContext('__R=' + JSON.stringify({ p: montar(PAY), b: montar('1') }), sb);
+        // o item aberto é onde todos os campos aparecem: abre antes de desenhar
+        vm.runInContext('dnfUI("K").abertos.add("0")', sb); // identidade do item = posição na nota
+        fp = forma(vm.runInContext('nfeDanfe("K",{info:__R.p,itens:[__R.p]})', sb));
+        fb = forma(vm.runInContext('nfeDanfe("K",{info:__R.b,itens:[__R.b]})', sb));
+      } catch (e) { erro = e.message; }
+      ok('DANFE completo: payload em todos os ' + camposHNFE.length + ' campos não vira tag nem handler (mesma forma do benigno)',
+        !erro && fp.tags === fb.tags && fp.handler === 0 && fp.script === 0 && fp.img === 0 && fp.escapado > 0,
+        erro || `payload ${fp && fp.tags}/${fp && fp.handler} vs benigno ${fb && fb.tags}`);
+      const colunas = vm.runInContext('DNF_COLS.reduce((a,g)=>a.concat(g[1].map(c=>c[0])),[])', sb);
+      const daNota = ['Tipo_Nota', 'Chave_NFe', 'Numero_NFe', 'Serie_NFe', 'Mod_NFe', 'NatOp', 'Tp_NF', 'Data_Emissao', 'CNPJ_Emitente', 'Nome_Emitente', 'NomeFantasia_Emit', 'IE_Emitente', 'UF_Emitente', 'Mun_Emitente', 'CNPJ_Destinatario', 'CPF_Destinatario', 'Nome_Destinatario', 'IE_Destinatario', 'UF_Destinatario', 'Mun_Destinatario', 'Status_NFe', 'Motivo_Status_NFe', 'vFrete', 'vSeg', 'vDesc', 'vOutro', 'vNF', 'vTotTrib', 'infCpl', 'Arquivo_Origem'];
+      const falta = camposHNFE.filter((c) => !colunas.includes(c) && !daNota.includes(c));
+      ok('o DANFE cobre os ' + camposHNFE.length + ' campos da exportação (colunas dos itens + cabeçalho da nota)', falta.length === 0, falta.join(','));
+      const fonte = html.slice(html.indexOf('function nfeDanfe('), html.indexOf('function renderNFE('));
+      ok('cada campo do cabeçalho da nota está no DANFE', daNota.every((c) => fonte.includes('n.' + c)), daNota.filter((c) => !fonte.includes('n.' + c)).join(','));
+    }
     {
       const veic = { Chave_NFe: 'KV', Item: '1', xProd: 'CAMINHAO EXEMPLO', Status_NFe: 'Autorizada', Veic_Chassi: '9BWZZZ377VT004251', Veic_tpComb: '03', Veic_cCorDENATRAN: '04', Veic_tpVeic: '14', Veic_AnoFab: '2026', Veic_AnoMod: '2027' };
       const pecaComum = { Chave_NFe: 'KP', Item: '1', xProd: 'FILTRO', Status_NFe: 'Autorizada' };
+      vm.runInContext('dnfUI("KV").abertos.add("0");dnfUI("KP").abertos.add("0")', sb);
       const hv = conta('nfe', 'renderNFE', [veic]).h || '';
       const hp = conta('nfe', 'renderNFE', [pecaComum]).h || '';
-      ok('o chassi aparece na linha do produto, sem abrir o detalhe',
-        /Chassi: <strong>9BWZZZ377VT004251<\/strong>/.test(hv), hv.slice(0, 200));
-      ok('a seção "Veículo novo" existe só no item de veículo, com a descrição dos códigos',
-        /Veículo novo — chassi 9BWZZZ377VT004251/.test(hv) && /03 - Diesel/.test(hv) && /04 - Branca/.test(hv) && /14 - Caminhão/.test(hv)
-        && /2026\/2027/.test(hv) && !/Veículo novo/.test(hp) && !/Chassi:/.test(hp));
+      ok('o chassi aparece embaixo da descrição, na coluna fixa',
+        /Chassi: <b>9BWZZZ377VT004251<\/b>/.test(hv) && !/Chassi: <b>/.test(hp), hv.slice(0, 200));
+      ok('o item aberto traz o veículo com a descrição dos códigos; item comum diz que não consta',
+        /03 - Diesel/.test(hv) && /04 - Branca/.test(hv) && /14 - Caminhão/.test(hv) && /<dd[^>]*>2026<\/dd>/.test(hv)
+        && !/Diesel|Caminhão/.test(hp) && /Veículo novo: não consta/.test(hp) && !/Veículo novo: não consta/.test(hv));
       const r = vm.runInContext("[veicRot('tpComb','constructor'),veicRot('tpComb','__proto__'),veicRot('tpComb',''),veicRot('tpComb','99')]", sb);
       ok('código hostil no veicProd não resolve pelo protótipo (sai só o código)',
         r[0] === 'constructor' && r[1] === '__proto__' && r[2] === '' && r[3] === '99', JSON.stringify(r));
@@ -2853,10 +2892,159 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
     ok('o extrator lê infAdProd de <det>, não de <prod>',
       /infAdProd:t\(det,'infAdProd'\)/.test(html) && !/infAdProd:t\(prod,/.test(html));
     {
+      vm.runInContext('dnfUI("KA").abertos.add("0");dnfUI("KB").abertos.add("0")', sb);
       const h1 = conta('nfe', 'renderNFE', [{ Chave_NFe: 'KA', Item: '1', xProd: 'CAMINHAO', Status_NFe: 'Autorizada', infAdProd: 'VW 9180 175cv 6M' }]).h || '';
       const h2 = conta('nfe', 'renderNFE', [{ Chave_NFe: 'KB', Item: '1', xProd: 'FILTRO', Status_NFe: 'Autorizada' }]).h || '';
-      ok('as informações adicionais do item aparecem na linha do produto, sem abrir nada (e só quando existem)',
-        /Inf\. adicionais: VW 9180 175cv 6M<\/small><\/td>/.test(h1) && !/Inf\. adicionais/.test(h2), h1.slice(0, 160));
+      ok('as informações adicionais do item aparecem no item aberto (— quando não vêm no XML)',
+        /<dt>Inf\. adicionais do item<\/dt><dd[^>]*>VW 9180 175cv 6M<\/dd>/.test(h1)
+        && /<dt>Inf\. adicionais do item<\/dt><dd[^>]*>—<\/dd>/.test(h2) && !/VW 9180/.test(h2), h1.slice(0, 160));
+      ok('os dados adicionais da nota vêm depois dos produtos',
+        h1.indexOf('Dados dos produtos') > 0 && h1.indexOf('Dados adicionais') > h1.indexOf('Dados dos produtos'));
+      const hf = conta('nfe', 'renderNFE', [{ Chave_NFe: 'KF', Item: '1', xProd: 'X', Status_NFe: 'Autorizada' }]).h || '';
+      ok('item fechado não desenha o detalhe; item aberto desenha a tabela de impostos',
+        hf.includes('dnf-it') && !/dnf-trib/.test(hf) && /class="dnf-trib"/.test(h1) && /aria-expanded="true"/.test(h1));
+      /* Painel lateral: o item aberto vai para um painel ao lado (um só), nada
+         cresce no meio da tabela, e abrir outro item troca o conteúdo do painel. */
+      ok('o item aberto aparece no painel lateral, não no meio da tabela',
+        (h1.match(/class="dnf-painel"/g) || []).length === 1 && !/dnf-det/.test(h1) && !/class="dnf-painel"/.test(hf));
+      ok('só um item aberto por vez (abrir outro substitui) e Esc fecha',
+        /function dnfAbreSo\(x,k(,foco)?\)\{const ant=\[\.\.\.x\.u\.abertos\]\[0\];x\.u\.abertos\.clear\(\);/.test(html) && /e\.key==='Escape'/.test(html));
+      /* Revisão do Desenvolvedor (DANFE completo): bordas do painel, executadas. */
+      {
+        let r = null, erro = '';
+        try {
+          r = vm.runInContext(`(()=>{
+            const its=[{Item:'1',xProd:'A'},{Item:'1',xProd:'A2'},{Item:'2',xProd:'B'}].map((p,i)=>[p,i]);
+            const pDup=dnfPainel(its,{abertos:new Set(['0'])});
+            const pUm=dnfPainel([[{Item:'7',xProd:'S'},0]],{abertos:new Set(['0'])});
+            const info={Chave_NFe:'KZ',Item:'1',xProd:'CAMINHAO',Status_NFe:'Autorizada'};
+            const u=dnfUI('KZ');u.abertos.clear();u.abertos.add('0');u.q='filtro-que-nao-casa';
+            const hFiltro=nfeDanfe('KZ',{info,itens:[info]});u.q='';
+            const hVisivel=nfeDanfe('KZ',{info,itens:[info]});u.abertos.clear();
+            __DB.nfe=[];let lancou='';
+            try{dnfRepinta({ch:'KZ',card:{isConnected:true,querySelector:()=>{throw new Error('desenhou nota que saiu do DB')}},u},'.dnf-q');}catch(e){lancou=e.message;}
+            return {pDup,pUm,hFiltro,hVisivel,lancou};
+          })()`, sb);
+        } catch (e) { erro = e.message; }
+        ok('nItem repetido: o "próximo" do painel vai para a LINHA seguinte (índice 1), mesmo com o mesmo nItem',
+          !erro && /data-ir="1"[^>]*>próximo/.test(r.pDup) && /<b>Item 1<\/b><span class="dnf-painel-nome">A<\/span>/.test(r.pDup), erro || (r && r.pDup.slice(0, 300)));
+        ok('nota com 1 item: anterior e próximo desabilitados',
+          !erro && (r.pUm.match(/disabled/g) || []).length === 2 && !/data-ir=/.test(r.pUm), erro);
+        ok('item aberto fora do filtro: sem painel e sem botão "Fechar item" órfão; volta ao limpar o filtro',
+          !erro && !/dnf-painel/.test(r.hFiltro) && !/dnf-fecha-todos/.test(r.hFiltro) && /dnf-painel/.test(r.hVisivel) && /dnf-fecha-todos/.test(r.hVisivel), erro);
+        ok('debounce do filtro com a nota já fora do DB não lança (dnfRepinta sai cedo)',
+          !erro && r.lancou === '', erro || r.lancou);
+        ok('Esc que fechou o item do DANFE não expande também o menu recolhido',
+          /if\(e\.key!=='Escape'\)return;\s*if\(e\.defaultPrevented\)return;[^\n]*\n\s*if\(ehCelular\(\)\)return;\s*if\(sb\.getAttribute\('data-rail'\)/.test(html));
+        ok('o Esc só age quando o painel está na tela',
+          /x0\.card\.querySelector\('\.dnf-painel'\)/.test(html));
+      }
+      /* Aviso do DevSecOps: a chave sintética de nota sem chave ('?'+índice) não pode
+         colidir com um Id forjado no XML (ex.: Id="NFe?0" vira Chave_NFe '?0'). */
+      {
+        let g = null, erro = '';
+        try {
+          g = vm.runInContext(`(()=>{const ant=__DB.nfe;
+            __DB.nfe=[{Chave_NFe:'',Arquivo_Origem:'a.xml',Item:'1',xProd:'SEM CHAVE'},{Chave_NFe:'?0',Arquivo_Origem:'b.xml',Item:'1',xProd:'FORJADA'}];
+            const t=dnfGrupos(),r=Object.keys(t).map(k=>k+':'+t[k].itens.map(p=>p.xProd).join('+'));__DB.nfe=ant;return r;})()`, sb);
+        } catch (e) { erro = e.message; }
+        ok('nota com Id forjado "?0" não se funde com a nota sem chave (dois grupos, um item cada)',
+          !erro && g.length === 2 && g.every((s) => !s.includes('+')), erro || JSON.stringify(g));
+      }
+      /* Bloqueio do Tester (F1/F2): notas sem chave não se fundem, o filtro de
+         CNPJ é por linha, e o item é a LINHA (índice), não o valor de nItem. */
+      {
+        let r = null, erro = '';
+        try {
+          r = vm.runInContext(`(()=>{
+            const cards=(h)=>(h.match(/class="nota-card"/g)||[]).length;
+            __DB.nfe=[{Chave_NFe:'',Arquivo_Origem:'a.xml',CNPJ_Emitente:'11',Numero_NFe:'1',Item:'1',xProd:'DA NOTA A',Status_NFe:'Autorizada'},
+                      {Chave_NFe:'',Arquivo_Origem:'b.xml',CNPJ_Emitente:'22',Numero_NFe:'2',Item:'1',xProd:'DA NOTA B',Status_NFe:'Autorizada'}];
+            const grupos=Object.keys(dnfGrupos());
+            renderNFE();const dois=cards(document.getElementById('nfe-list').innerHTML);
+            document.getElementById('filtro-nfe-cnpj').value='22';renderNFE();
+            const hc=document.getElementById('nfe-list').innerHTML;
+            /* filtro por LINHA: a mesma chave em linhas de emitentes diferentes (DB permite) — a 2ª linha basta */
+            __DB.nfe=[{Chave_NFe:'KM',CNPJ_Emitente:'33',Numero_NFe:'7',Item:'1',Status_NFe:'Autorizada'},{Chave_NFe:'KM',CNPJ_Emitente:'44',Numero_NFe:'7',Item:'2',Status_NFe:'Autorizada'}];
+            document.getElementById('filtro-nfe-cnpj').value='44';renderNFE();
+            const porLinha=cards(document.getElementById('nfe-list').innerHTML);document.getElementById('filtro-nfe-cnpj').value='';
+            /* mesma nota, duas linhas com o mesmo nItem */
+            const A={Chave_NFe:'KD',Item:'1',xProd:'PRIMEIRA',Status_NFe:'Autorizada'},B={Chave_NFe:'KD',Item:'1',xProd:'SEGUNDA',Status_NFe:'Autorizada'},C={Chave_NFe:'KD',Item:'2',xProd:'TERCEIRA',Status_NFe:'Autorizada'};
+            const u=dnfUI('KD');u.abertos.clear();u.q='';u.abertos.add('1');
+            const hd=nfeDanfe('KD',{info:A,itens:[A,B,C]});
+            /* setas de verdade: dnfTecla com um cartão de mentira (3 linhas) */
+            __DB.nfe=[A,B,C];u.abertos.clear();u.abertos.add('0');
+            const corpo={innerHTML:'',childElementCount:1};
+            const linhas=['0','1','2'].map(k=>({dataset:{it:k}}));
+            const card={dataset:{chave:'KD'},isConnected:true,querySelector:(s)=>s==='.body-detail'?corpo:null,querySelectorAll:(s)=>s==='tr.dnf-it'?linhas:[]};
+            document.activeElement={tagName:'BUTTON',closest:()=>card};
+            const tecla=(key)=>{dnfTecla({key,preventDefault(){}});return [...u.abertos][0];};
+            const seq=[tecla('ArrowDown'),tecla('ArrowDown'),tecla('ArrowDown'),tecla('ArrowUp')];
+            document.activeElement=null;u.abertos.clear();
+            /* item sem nItem: abre pela posição */
+            const S={Chave_NFe:'KS',xProd:'SEM NITEM',Status_NFe:'Autorizada'};
+            const us=dnfUI('KS');us.abertos.clear();us.abertos.add('0');
+            const hs=nfeDanfe('KS',{info:S,itens:[S]});us.abertos.clear();
+            __DB.nfe=[];
+            return {grupos,dois,hc,porLinha,hd,seq,hs};
+          })()`, sb);
+        } catch (e) { erro = e.message; }
+        ok('duas notas sem chave de acesso viram 2 cards (não se fundem em "?")',
+          !erro && r.dois === 2 && r.grupos.length === 2, erro || JSON.stringify(r && r.grupos));
+        ok('filtro por CNPJ do emitente da 2ª nota sem chave mostra a 2ª',
+          !erro && (r.hc.match(/class="nota-card"/g) || []).length === 1 && /DA NOTA B|— 2/.test(r.hc) && !/— 1 /.test(r.hc), erro || (r && r.hc.slice(0, 300)));
+        ok('filtro por CNPJ olha as linhas da nota, não só a 1ª (g.info)',
+          !erro && r.porLinha === 1, erro || ('cards=' + (r && r.porLinha)));
+        ok('mesmo nItem em duas linhas: abrir a 2ª mostra a 2ª no painel e só uma linha fica aberta',
+          !erro && /class="dnf-painel-nome">SEGUNDA</.test(r.hd) && (r.hd.match(/class="dnf-it[^"]*aberto"/g) || []).length === 1
+          && /data-it="1"[^>]*>[\s\S]{0,400}?aria-expanded="true"/.test(r.hd) && /data-ir="2"[^>]*>próximo/.test(r.hd) && /data-ir="0"[^>]*>◂ anterior/.test(r.hd),
+          erro || (r && r.hd.slice(0, 200)));
+        ok('↓ ↓ ↓ ↑ percorre as linhas pela posição (0→1→2, para no fim, volta para 1)',
+          !erro && JSON.stringify(r.seq) === '["1","2","2","1"]', erro || JSON.stringify(r && r.seq));
+        ok('item sem nItem abre pela posição (painel com a linha certa)',
+          !erro && /class="dnf-painel-nome">SEM NITEM</.test(r.hs), erro);
+      }
+      /* Revisão do Arquiteto: um só painel na tela, corpo só da nota aberta,
+         e a tabela de impostos desenhada de uma lista só (DNF_TRIB). */
+      {
+        let r = null, erro = '';
+        try {
+          r = vm.runInContext(`(()=>{
+            const a=dnfUI('KX1'),b=dnfUI('KX2');a.abertos.clear();b.abertos.clear();a.abertos.add('1');b.abertos.add('3');
+            dnfFechaOutras('KX2');
+            const so=[a.abertos.size,b.abertos.size];a.abertos.clear();b.abertos.clear();
+            __DB.nfe=[{Chave_NFe:'KL',Item:'1',xProd:'X',Status_NFe:'Autorizada'}];dnfUI('KL').nota=false;renderNFE();
+            const fechada=document.getElementById('nfe-list').innerHTML;
+            dnfUI('KL').nota=true;renderNFE();
+            const aberta=document.getElementById('nfe-list').innerHTML;dnfUI('KL').nota=false;__DB.nfe=[];
+            return {so,fechada,aberta};
+          })()`, sb);
+        } catch (e) { erro = e.message; }
+        ok('abrir item numa nota fecha o item aberto das outras (um painel fixo só)',
+          !erro && r.so[0] === 0 && r.so[1] === 1
+          && /function dnfAbreSo\(x,k,foco\)\{[^\n]*if\(k!=null\)\{dnfFechaOutras\(x\.ch\);/.test(html), erro || JSON.stringify(r && r.so));
+        ok('nota fechada não desenha o DANFE (só o header); nota aberta desenha',
+          !erro && /class="nota-card"/.test(r.fechada) && !/dnf-prod/.test(r.fechada) && /dnf-prod/.test(r.aberta), erro);
+        ok('abrir a nota pelo header (clique e teclado) desenha o corpo',
+          (html.match(/toggleNota\(h\);if\(id==='nfe-list'\)dnfGaranteCorpo\(h\);/g) || []).length === 2 && !/dnfSinc/.test(html));
+        /* Cobertura por construção: todo campo de imposto do item está em DNF_TRIB... */
+        const trib = vm.runInContext('JSON.stringify(DNF_TRIB)', sb);
+        const imp = vm.runInContext("DNF_COLS.filter(g=>['ICMS','IPI','PIS','COFINS','IBS / CBS'].includes(g[0])).reduce((a,g)=>a.concat(g[1].map(c=>c[0])),[])", sb);
+        const foraTrib = imp.filter((c) => !trib.includes('"' + c + '"'));
+        ok('todo campo de imposto do DNF_COLS (ICMS/IPI/PIS/COFINS/IBS-CBS) está no DNF_TRIB', imp.length >= 45 && foraTrib.length === 0, foraTrib.join(','));
+        /* ...e o que está em DNF_TRIB é o que sai na tela: cada campo, sozinho com
+           um valor-marcador, aparece dentro da tabela de impostos desenhada. */
+        const naoDesenha = vm.runInContext(`(()=>{const out=[];for(const c of ${JSON.stringify(imp)}){
+            const h=dnfItemAberto({Item:'1',[c]:'7777'});const t=(h.match(/<table class="dnf-trib">[\\s\\S]*?<\\/table>/)||[''])[0].replace(/<tr class="tot">[\\s\\S]*?<\\/tr>/,'');
+            if(!/7\\.?777/.test(t))out.push(c);}return out;})()`, sb);
+        ok('cada campo de imposto aparece na tabela de impostos desenhada (dnfItemAberto lê o DNF_TRIB)',
+          naoDesenha.length === 0 && /DNF_TRIB\.map\(/.test(html), naoDesenha.join(','));
+        ok('o aviso de veículo ausente conta os campos da lista (sem número escrito à mão)',
+          /\(\$\{veic\.length\} campos zerados\)/.test(html) && !/24 campos zerados/.test(html));
+        ok('o painel usa variáveis de tema para topo e sombra (declaradas no claro e no escuro)',
+          /\.dnf-painel\{[^}]*top:var\(--painel-topo\)[^}]*box-shadow:var\(--shadow-painel\)/.test(html)
+          && (html.match(/--shadow-painel:/g) || []).length === 2);
+      }
     }
     ok('o extrator lê o grupo veicProd de dentro de <prod>',
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));

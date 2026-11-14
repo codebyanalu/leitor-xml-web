@@ -119,7 +119,7 @@ const FAMILIAS = [
     titulo: 'RENDER XML — dado de arquivo no DOM',
     fonte: 'deriva os sinks do FONTE dos 4 renders, como o grupo 15',
     casos: () => {
-      const ini = html.indexOf('function cellsTable(');
+      const ini = html.indexOf('const DNF_COLS=['); // mesma âncora do grupo 15 (cellsTable saiu com o DANFE)
       const fim = html.indexOf('// ═══ EVENT DELEGATION', html.indexOf('function renderNFSe('));
       const bloco = html.slice(ini, fim);
       /* Só as interpolações cujo embrulho é `esc(` — é o que este gate
@@ -151,8 +151,8 @@ const FAMILIAS = [
         trocas: [[a.expr, a.sem]],
         espero: 'reprovar',
       })).concat([{
-        nome: 'cellsTable valor cru (o sink de ~45 células de imposto)',
-        trocas: [[L('<td>${esc(c[1])}</td>'), L('<td>${c[1]}</td>')]],
+        nome: 'dnfVal texto cru (o sink das células do DANFE)',
+        trocas: [["return {h:dnfTem(v)?esc(v):'—',z:!dnfTem(v)};", "return {h:dnfTem(v)?String(v):'—',z:!dnfTem(v)};"]],
         espero: 'reprovar',
       }, {
         nome: 'dataBr sem esc (truncar sem escapar abre tag)',

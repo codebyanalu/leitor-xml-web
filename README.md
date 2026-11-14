@@ -38,8 +38,9 @@ Abra `index.html` no navegador ou acesse via GitHub Pages.
 - **Consulta em Lote**: importa XLSX/CSV com coluna `CNPJ` e consulta **3 por minuto** (20 s entre uma e outra), com cache automático de 30 dias, barra de progresso, ETA, log por linha, painel de cota do navegador e exportação do resultado (CSV ou XLSX). Inclui um gerador de planilha modelo. O CSV neutraliza injeção de fórmula (um nome que comece com `=`, `+`, `-` ou `@` é prefixado com `'`)
 - **Painel gerencial**: `painel-gerencial.html` mostra o estado do projeto — o que foi entregue, o que os gates provam, o que depende de decisão de quem contrata, e onde o leitor roda. Aceita salvar/carregar um `painel-estado.json` pelo próprio navegador (sem servidor); no GitHub Pages o arquivo não é publicado, então a leitura automática é desabilitada e o caminho é o seletor de arquivo
 - **Veículo novo (veicProd)**: o item de NF-e de veículo traz chassi, série, motor, cor, combustível, ano, potência, pesos e os demais campos do grupo `veicProd`. O chassi aparece na linha do produto; o detalhe do item tem a seção "Veículo novo" com a descrição dos códigos; a exportação ganha 24 colunas `Veic_*` no fim (as 93 anteriores não mudam de posição) e a busca geral pelo chassi mostra o item do veículo (os outros itens da nota ficam escondidos pelo filtro, como em qualquer busca)
-- **Informações adicionais do item (infAdProd)**: o texto aparece na linha do produto, embaixo da descrição (e do chassi, quando houver), sem precisar abrir o detalhe. O campo é lido de `<det>`, onde o leiaute o coloca; antes era procurado dentro de `<prod>` e a coluna `infAdProd` da exportação saía sempre vazia. A busca geral também passa a encontrar esse texto
-- **Visualização NF-e/NFS-e**: cards com emitente/destinatário, itens, impostos detalhados (ICMS/IPI/PIS/COFINS/IBS/CBS/ISS/CSRF)
+- **Informações adicionais do item (infAdProd)**: o texto aparece no item aberto (painel lateral do DANFE, bloco "Produto", em "Inf. adicionais do item") e o filtro de itens da nota também o encontra. O campo é lido de `<det>`, onde o leiaute o coloca; antes era procurado dentro de `<prod>` e a coluna `infAdProd` da exportação saía sempre vazia. A busca geral também passa a encontrar esse texto
+- **Visualização NF-e/NFS-e**: cards por nota; a NF-e aberta mostra o DANFE (ver abaixo) e a NFS-e mostra prestador/tomador, serviço e impostos detalhados (ISS/CSRF/IBS/CBS)
+- **Visualização NF-e em formato DANFE**: a nota aberta é um DANFE completo com todos os campos que o leitor tem (os da exportação) — o que não vem no XML aparece como 0,00 (valor) ou — (texto). A tabela de produtos segue o padrão DANFE, com IBS e CBS a mais. Clicar no item abre um painel lateral, à direita, com os impostos padronizados (uma linha por imposto: CST, base, alíquota, valor e detalhes), os demais campos do produto, o financeiro do item e o veículo novo; ↑ ↓ trocam de item e `Esc` fecha. Há filtro de itens (código, descrição, NCM, CFOP, CST, GTIN, CEST, chassi) e os dados adicionais ficam no fim. O corpo da nota só é desenhado ao abri-la (centenas de notas ou notas de muitos itens não pesam na lista)
 - **Dashboard**: KPIs + 6 gráficos Chart.js
 - **Exportação**: CSV e XLSX completos (40 colunas PDF, 117 NF-e, 56 NFS-e)
 - **Busca**: filtro por texto/CNPJ/confiança
@@ -63,8 +64,8 @@ XML e PDF são entrada de terceiro: o conteúdo do arquivo aparece na tela, e um
 | `cnpjCell()` | CNPJ da tabela do PDF |
 | `fmtCNPJ()` / `fmtChave()` | reformatam **e escapam** |
 | `dataBr()` | trunca a data **e escapa** — truncar não impede o ataque (ver abaixo) |
-| `cellsTable()` | rótulo e valor das ~40 células de imposto do item (ICMS, IPI, PIS, COFINS, IBS/CBS) |
-| `nfeItemDetalhe()` / `renderNFE()` / `renderNFSe()` | o card da nota inteiro, campo a campo |
+| `dnfVal()` | toda célula do DANFE (tabela de itens, impostos, produto, financeiro, veículo) — valor, percentual, quantidade, código com descrição e texto |
+| `nfeDanfe()` / `dnfItemAberto()` / `dnfPainel()` / `renderNFE()` / `renderNFSe()` | o card da nota inteiro, campo a campo |
 
 **Por que `onclick` inline com o dado dentro é proibido.** Um CNPJ em `onclick="abrirConsultaCNPJ('…')"` cai num contexto de JavaScript, e o escape de HTML não protege lá: uma aspa simples sobrevive ao `esc` e fecha o argumento da chamada. Por isso o link da tabela do PDF usa `data-cnpj` com `esc()` mais um `addEventListener` — o mesmo padrão dos botões `.pdfiso-debug` e `.pdfiso-copy` ao lado.
 

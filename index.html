@@ -698,6 +698,8 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
   --shadow-md:0 4px 12px rgba(0,0,0,.08);
   --shadow-lg:0 8px 24px rgba(0,0,0,.12);
   --shadow-err:0 2px 8px rgba(185,28,28,.25);
+  /* Painel do item do DANFE: sombra à esquerda (ele encosta na direita) e o topo abaixo da barra */
+  --shadow-painel:-8px 0 24px rgba(0,0,0,.18);--painel-topo:60px;
   --radius:10px;--radius-sm:6px;--radius-lg:14px;--radius-pill:20px;
   --primary-cta:#1a4b8c;--primary-cta-h:#17427b;--primary-ink:#1a4b8c;
   --primary-ring:rgba(26,75,140,.35);--focus:#2563af;
@@ -757,6 +759,7 @@ return{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH};
   --shadow-md:0 4px 12px rgba(0,0,0,.45);
   --shadow-lg:0 8px 24px rgba(0,0,0,.5);
   --shadow-err:0 2px 8px rgba(0,0,0,.4);
+  --shadow-painel:-8px 0 24px rgba(0,0,0,.5);
   --err-line:#7f2e2e;--warn-line:#92700f;
   --err-soft-bg:rgba(248,113,113,.15);--err-soft-bg-h:rgba(248,113,113,.25);
   --badge-on-cta:#1f4066;
@@ -929,6 +932,96 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .det-section .det-body table{font-size:10px;margin-bottom:0}
 .det-section .det-body table th{font-size:9px;background:var(--primary-dark);color:#fff;padding:4px 7px}
 .det-section .det-body table td{padding:4px 7px}
+/* ── NF-e no formato DANFE completo (teste) ── só tokens; escopo .dnf */
+.dnf{font-size:14.5px}
+.dnf .dim{color:var(--text2)}
+.dnf-l{display:grid;margin-top:-1px}
+.dnf-cx{border:1px solid var(--border);padding:4px 8px 5px;margin-left:-1px;min-width:0;min-height:46px;background:var(--card)}
+.dnf-cx .r{display:block;font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.2px;line-height:1.3}
+.dnf-cx .r.sep{margin-top:4px}
+.dnf-cx .v{display:block;font-weight:600;overflow-wrap:anywhere}
+.dnf-cx .v.n{text-align:right;font-variant-numeric:tabular-nums}
+.dnf-cx .v.z{color:var(--text3);font-weight:400}
+.dnf-cx .v.grande{font-size:15px}
+.dnf-cx .v.mono{font-family:var(--font-mono)}
+.dnf-cab{grid-template-columns:2.2fr 1fr 2fr}
+.dnf-id{text-align:center}
+.dnf-id .t{display:block;font-size:18px;font-weight:700;letter-spacing:.5px}
+.dnf-id .dim{display:block;font-size:12px}
+.dnf .g3{grid-template-columns:repeat(3,1fr)}
+.dnf .g5{grid-template-columns:3fr 1fr 1fr 1fr 1.2fr}
+.dnf .g7{grid-template-columns:repeat(7,1fr)}
+.dnf .adic{grid-template-columns:2fr 1fr}
+.dnf .adic .v{font-weight:400;white-space:pre-wrap}
+.dnf-sec{font-size:12.5px;font-weight:700;text-transform:uppercase;margin:10px 0 3px;color:var(--text)}
+.dnf-filtro{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:6px 0}
+.dnf-filtro input::placeholder{color:var(--text3)}
+.dnf-filtro input{flex:1 1 280px;min-height:44px;padding:6px 10px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit}
+.nota-card .dnf-prod{border:1px solid var(--border);overflow-x:auto}
+.nota-card .dnf-prod table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;margin:0}
+.nota-card .dnf-prod th{position:sticky;background:var(--card-2);color:var(--text2);font-size:12px;text-transform:uppercase;font-weight:600;letter-spacing:0;padding:6px 9px;border:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border-light);border-radius:0;white-space:nowrap;z-index:2;text-align:left}
+.nota-card .dnf-prod thead tr:first-child th{top:0;text-align:center;color:var(--primary-ink)}
+.nota-card .dnf-prod th.n{text-align:right}
+.nota-card .dnf-prod td{padding:7px 9px;border:0;border-bottom:1px solid var(--border-light);border-right:1px solid var(--border-light);white-space:nowrap;vertical-align:top;background:var(--card)}
+.nota-card .dnf-prod > table > tbody > tr.dnf-it.par td{background:var(--zebra)}
+.nota-card .dnf-prod > table > tbody > tr.dnf-it.aberto td{background:var(--card-2)}
+#nfe-list .nota-card{overflow:clip}
+.dnf-painel{position:fixed;top:var(--painel-topo);right:0;bottom:0;width:min(780px,52vw);z-index:60;background:var(--card);border-left:3px solid var(--primary-cta);box-shadow:var(--shadow-painel);display:flex;flex-direction:column}
+.dnf-painel .dnf-aberto{grid-template-columns:1fr}
+.dnf-painel .dnf-ab-imp{order:-1}
+.dnf-painel .dnf-veic .dnf-lst{grid-template-columns:auto 1fr auto 1fr}
+@media (max-width:900px){.dnf-painel{width:100vw}}
+/* a barra do topo muda de altura no celular (padding menor, quebra de linha): ali o painel ocupa a tela toda */
+@media (max-width:767.98px){.dnf-painel{top:0}.dnf-painel-cab .dnf-dica-tecla{display:none}}
+@media (max-width:600px){.dnf-painel .dnf-veic .dnf-lst{grid-template-columns:auto 1fr}}
+/* transform na animação de entrada prende o painel fixo dentro da aba; aqui só esmaece */
+#tab-nfe.tab-content,#nfe-list .nota-card .body-detail.open{animation-name:dnfSurge}
+@keyframes dnfSurge{from{opacity:0}to{opacity:1}}
+.dnf-painel-cab{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 10px;background:var(--card-2);border-bottom:1px solid var(--border)}
+.dnf-painel-cab b{font-size:15px}
+.dnf-painel-nome{font-weight:600;flex:1 1 200px}
+.dnf-ir-item,.dnf-fecha-todos{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+.dnf-ir-item:disabled{color:var(--text3);cursor:default}
+.dnf-painel-corpo{flex:1;overflow:auto;padding:10px 12px}
+.nota-card .dnf-prod > table > tbody > tr.dnf-it:hover td{background:var(--row-hover)}
+.nota-card .dnf-prod td.n{text-align:right;font-variant-numeric:tabular-nums}
+.nota-card .dnf-prod td.z{color:var(--text3)}
+.nota-card .dnf-prod td.d{white-space:normal;min-width:180px;font-weight:600}
+.nota-card .dnf-prod .dnf-tg{width:52px;text-align:center;padding:4px}
+.nota-card .dnf-prod > table > thead th{white-space:normal;vertical-align:bottom;line-height:1.25;padding:6px 7px}
+.nota-card .dnf-prod > table > tbody > tr.dnf-it > td,.nota-card .dnf-prod > table > tfoot td{padding:7px 7px}
+.nota-card .dnf-prod > table > thead th.dnf-tg,.nota-card .dnf-prod > table > tbody > tr.dnf-it > td.dnf-tg,.nota-card .dnf-prod > table > tfoot td:first-child{padding:4px;width:52px}
+.dnf-abre{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--primary-ink);cursor:pointer}
+.dnf-abre svg{transform:rotate(-90deg)}
+.dnf-abre[aria-expanded="true"]{background:var(--card-2);border-color:var(--primary-cta)}
+.dnf-abre[aria-expanded="true"] svg{transform:none}
+.nota-card .dnf-prod tbody tr.dnf-it{cursor:pointer}
+.nota-card .dnf-prod tbody tr.dnf-it.aberto td{background:var(--card-2);border-bottom-color:var(--card-2);box-shadow:inset 0 2px 0 var(--primary-cta),inset 0 -2px 0 var(--primary-cta)}
+.dnf-aberto{display:grid;grid-template-columns:minmax(260px,30%) 1fr;gap:12px;align-items:start}
+.dnf-ab-prod,.dnf-ab-imp{background:var(--card);border:1px solid var(--border)}
+.dnf-sub{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--primary-ink);background:var(--card-2);padding:5px 10px;border-bottom:1px solid var(--border-light)}
+.dnf-lst{display:grid;grid-template-columns:auto 1fr;margin:0;font-size:14px}
+.dnf-lst dt{color:var(--text2);padding:4px 10px;border-bottom:1px solid var(--border-light);white-space:nowrap}
+.dnf-lst dd{margin:0;padding:4px 10px;border-bottom:1px solid var(--border-light);text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dnf-lst dd.txt{text-align:left}
+.dnf-lst dd.z{color:var(--text3)}
+.nota-card table.dnf-trib{border-collapse:collapse;margin:0;width:100%;font-size:15px}
+.nota-card table.dnf-trib td,.nota-card table.dnf-trib th{border:0;border-bottom:1px solid var(--border-light)}
+.nota-card table.dnf-trib td.n{text-align:right;font-variant-numeric:tabular-nums}
+.nota-card table.dnf-trib th{position:static;background:var(--card-2);color:var(--primary-ink);font-size:12.5px;text-transform:uppercase;padding:6px 10px;border-right:0;text-align:left}
+.nota-card table.dnf-trib th.n{text-align:right}
+.nota-card table.dnf-trib td{background:var(--card);padding:7px 10px;border-right:0;white-space:nowrap}
+.nota-card table.dnf-trib td.nome{font-weight:700}
+.nota-card table.dnf-trib td.det{white-space:normal;font-size:13.5px;color:var(--text2)}
+.nota-card table.dnf-trib .z{color:var(--text3)}
+.nota-card table.dnf-trib tr.tot td{background:var(--card-2);font-weight:700}
+.dnf-veic .dnf-lst{grid-template-columns:auto 1fr auto 1fr auto 1fr}
+.dnf-veic{background:var(--card);border:1px solid var(--border);margin-top:10px}
+.dnf-nada{margin:8px 0 0;color:var(--text2);font-size:13.5px}
+@media (max-width:1000px){.dnf-aberto{grid-template-columns:1fr}.dnf-veic .dnf-lst{grid-template-columns:auto 1fr}}
+.nota-card .dnf-prod td.d small{display:block;color:var(--text2);font-size:12.5px;font-weight:400}
+.nota-card .dnf-prod tfoot td{position:sticky;bottom:0;background:var(--card-2);font-weight:700;border-top:1px solid var(--border);z-index:2}
+@media (max-width:760px){.dnf-cab,.dnf .g3,.dnf .g5,.dnf .g7,.dnf .adic{grid-template-columns:1fr 1fr}}
 
 /* ═══════════════════════════════════════════════════════════
    8 · DASHBOARD E FILTROS
@@ -1485,8 +1578,11 @@ function parseXML(texto){
   return doc;
 }
 function f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\-.]/g,'');if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.');}const n=parseFloat(s);return isNaN(n)?0:n}
-function moeda(v){return `R$ ${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
-function pct(v){return `${f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%`}
+/* Número no formato brasileiro com 2 casas (até `max` casas, para alíquota de 4). Fonte única
+   do formato: moeda, pct e o DANFE passam por aqui. Não escapa — quem põe no HTML escapa. */
+function num2(v,max){return f(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:max||2});}
+function moeda(v){return `R$ ${num2(v)}`}
+function pct(v){return `${num2(v)}%`}
 /* dataBr ESCAPA além de truncar: a data vem do XML e o `.slice(0,10)` não
    impede o ataque — `"><img src=x onerror=...>` truncado nos 10 primeiros
    caracteres ainda abre uma tag (`"><img src`), que é o que a prova mediu
@@ -1823,21 +1919,9 @@ function populateFilters(){
 }
 
 // ═══ RENDER NF-e (COMPLETO) ═══
-/* Tabela de rótulo/valor (ICMS, IPI, PIS, COFINS, IBS). Os dois lados escapam:
-   o rótulo é literal do app, mas o VALOR vem do XML. Escapar aqui cobre ~40
-   células de uma vez. Para `moeda`/`pct` o escape é inofensivo (nenhum dos dois
-   emite `&<>"'`); para `formatoBr` ele é a ÚNICA camada, porque `formatoBr`
-   devolve a string crua quando ela não casa com `^\d+\.?\d*$`.
-
-   Não é a única tabela do render — RESUMO FINANCEIRO, CSRF, IBS/CBS, "Financeiro
-   do Item" e a tabela de itens também são tabelas rótulo/valor. O motivo de não
-   virem por aqui é que recebem `moeda`/`pct`/literal (a única exceção é
-   `cClassTrib`, que já chega escapado). O gate 15 cobre todas assim mesmo: o
-   universo de campos vem do FONTE dos quatro renders, não deste helper. */
-function cellsTable(cells){
-  if(!cells.length)return'';
-  return `<table><thead><tr>${cells.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody><tr>${cells.map(c=>`<td>${esc(c[1])}</td>`).join('')}</tr></tbody></table>`;
-}
+/* O sink das células de imposto do item (ICMS, IPI, PIS, COFINS, IBS/CBS) é o
+   dnfVal: todo valor do DANFE sai dele já escapado (texto, código descrito,
+   número). O gate 15 cobre o resto: o universo de campos vem do FONTE dos renders. */
 /* Descrição dos códigos do veicProd (Manual da NF-e e tabelas RENAVAM/DENATRAN).
    hasOwnProperty: o código vem do XML, e 'constructor' resolveria pelo protótipo. */
 const VEIC_ROT={
@@ -1851,140 +1935,144 @@ const VEIC_ROT={
   cCorDENATRAN:{'01':'Amarela','02':'Azul','03':'Bege','04':'Branca','05':'Cinza','06':'Dourada','07':'Grená','08':'Laranja','09':'Marrom','10':'Prata','11':'Preta','12':'Rosa','13':'Roxa','14':'Verde','15':'Vermelha','16':'Fantasia'}
 };
 function veicRot(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return'';const m=VEIC_ROT[tab];const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return r?c+' - '+r:c;}
-function nfeItemDetalhe(p){
-  const icmsCells=[];
-  if(p.ICMS_orig)icmsCells.push(['Origem',p.ICMS_orig]);
-  if(p.ICMS_CST)icmsCells.push(['CST',p.ICMS_CST]);
-  if(p.ICMS_CSOSN)icmsCells.push(['CSOSN',p.ICMS_CSOSN]);
-  if(p.ICMS_modBC)icmsCells.push(['Mod.BC',p.ICMS_modBC]);
-  if(p.ICMS_qBCMonoRet)icmsCells.push(['BC Mono',formatoBr(p.ICMS_qBCMonoRet)]);
-  if(p.ICMS_adRemICMSRet)icmsCells.push(['Alíq. Mono (R$/un)',moeda(p.ICMS_adRemICMSRet)]);
-  if(p.ICMS_vICMSMonoRet)icmsCells.push(['V.ICMS Mono',moeda(p.ICMS_vICMSMonoRet)]);
-  if(p.ICMS_vBC)icmsCells.push(['BC ICMS',moeda(p.ICMS_vBC)]);
-  if(p.ICMS_pICMS)icmsCells.push(['Alíq. ICMS',pct(p.ICMS_pICMS)]);
-  if(p.ICMS_vICMS)icmsCells.push(['V.ICMS',moeda(p.ICMS_vICMS)]);
-  if(p.ICMS_vBCSTRet)icmsCells.push(['BC ST Ret.',moeda(p.ICMS_vBCSTRet)]);
-  if(p.ICMS_pST)icmsCells.push(['Alíq. ST',pct(p.ICMS_pST)]);
-  if(p.ICMS_vICMSSubstituto)icmsCells.push(['V.ICMS Subst.',moeda(p.ICMS_vICMSSubstituto)]);
-  if(p.ICMS_vICMSSTRet)icmsCells.push(['V.ICMS ST Ret.',moeda(p.ICMS_vICMSSTRet)]);
-  if(p.ICMS_pRedBCEfet)icmsCells.push(['% Red.BC',pct(p.ICMS_pRedBCEfet)]);
-  if(p.ICMS_vBCEfet)icmsCells.push(['BC Efetiva',moeda(p.ICMS_vBCEfet)]);
-  if(p.ICMS_pICMSEfet)icmsCells.push(['Alíq. Efetiva',pct(p.ICMS_pICMSEfet)]);
-  if(p.ICMS_vICMSEfet)icmsCells.push(['V.ICMS Efet.',moeda(p.ICMS_vICMSEfet)]);
-  const icms=cellsTable(icmsCells);
-  const ipiCells=[];
-  if(p.IPI_cEnq)ipiCells.push(['Cód.Enq.',p.IPI_cEnq]);
-  if(p.IPI_CST)ipiCells.push(['CST',p.IPI_CST]);
-  if(p.IPI_vBC)ipiCells.push(['BC IPI',moeda(p.IPI_vBC)]);
-  if(p.IPI_pIPI)ipiCells.push(['Alíq. IPI',pct(p.IPI_pIPI)]);
-  if(p.IPI_vIPI)ipiCells.push(['V.IPI',moeda(p.IPI_vIPI)]);
-  const ipi=cellsTable(ipiCells);
-  const pisCells=[];
-  if(p.PIS_CST)pisCells.push(['CST',p.PIS_CST]);
-  if(p.PIS_vBC)pisCells.push(['BC PIS',moeda(p.PIS_vBC)]);
-  if(p.PIS_pPIS)pisCells.push(['Alíq. PIS',pct(p.PIS_pPIS)]);
-  if(p.PIS_qBCProd)pisCells.push(['Qtd. Base',formatoBr(p.PIS_qBCProd)]);
-  if(p.PIS_vAliqProd)pisCells.push(['Alíq. (R$/un)',moeda(p.PIS_vAliqProd)]);
-  if(p.PIS_vPIS)pisCells.push(['V.PIS',moeda(p.PIS_vPIS)]);
-  const pis=cellsTable(pisCells);
-  const cofCells=[];
-  if(p.COFINS_CST)cofCells.push(['CST',p.COFINS_CST]);
-  if(p.COFINS_vBC)cofCells.push(['BC COFINS',moeda(p.COFINS_vBC)]);
-  if(p.COFINS_pCOFINS)cofCells.push(['Alíq. COFINS',pct(p.COFINS_pCOFINS)]);
-  if(p.COFINS_qBCProd)cofCells.push(['Qtd. Base',formatoBr(p.COFINS_qBCProd)]);
-  if(p.COFINS_vAliqProd)cofCells.push(['Alíq. (R$/un)',moeda(p.COFINS_vAliqProd)]);
-  if(p.COFINS_vCOFINS)cofCells.push(['V.COFINS',moeda(p.COFINS_vCOFINS)]);
-  const cofins=cellsTable(cofCells);
-  const ibsCells=[];
-  if(p.IBS_CST)ibsCells.push(['CST',p.IBS_CST]);
-  if(p.cClassTrib)ibsCells.push(['Class.Trib.',p.cClassTrib]);
-  if(p.IBS_vBC)ibsCells.push(['BC IBS',moeda(p.IBS_vBC)]);
-  if(p.pIBSUF)ibsCells.push(['Alíq. IBS UF',pct(p.pIBSUF)]);
-  if(p.vIBSUF)ibsCells.push(['V.IBS UF',moeda(p.vIBSUF)]);
-  if(p.pIBSMun)ibsCells.push(['Alíq. IBS Mun.',pct(p.pIBSMun)]);
-  if(p.vIBSMun)ibsCells.push(['V.IBS Mun.',moeda(p.vIBSMun)]);
-  if(p.IBS_vIBS)ibsCells.push(['V.IBS',moeda(p.IBS_vIBS)]);
-  if(p.pCBS)ibsCells.push(['Alíq. CBS',pct(p.pCBS)]);
-  if(p.CBS_vCBS)ibsCells.push(['V.CBS',moeda(p.CBS_vCBS)]);
-  const ibs=cellsTable(ibsCells);
-  /* Veículo novo: duas tabelas curtas (identificação e características). Os
-     valores entram em cellsTable, que escapa rótulo e valor. */
-  const vId=[],vCa=[];
-  if(p.Veic_Chassi)vId.push(['Chassi',p.Veic_Chassi]);
-  if(p.Veic_nSerie)vId.push(['Nº de série',p.Veic_nSerie]);
-  if(p.Veic_nMotor)vId.push(['Nº do motor',p.Veic_nMotor]);
-  if(p.Veic_VIN)vId.push(['VIN',veicRot('VIN',p.Veic_VIN)]);
-  if(p.Veic_cMod)vId.push(['Marca/modelo (RENAVAM)',p.Veic_cMod]);
-  if(p.Veic_AnoFab||p.Veic_AnoMod)vId.push(['Ano fab./modelo',(p.Veic_AnoFab||'—')+'/'+(p.Veic_AnoMod||'—')]);
-  if(p.Veic_condVeic)vId.push(['Condição',veicRot('condVeic',p.Veic_condVeic)]);
-  if(p.Veic_tpOp)vId.push(['Operação',veicRot('tpOp',p.Veic_tpOp)]);
-  if(p.Veic_tpRest)vId.push(['Restrição',veicRot('tpRest',p.Veic_tpRest)]);
-  if(p.Veic_tpVeic)vCa.push(['Tipo',veicRot('tpVeic',p.Veic_tpVeic)]);
-  if(p.Veic_espVeic)vCa.push(['Espécie',veicRot('espVeic',p.Veic_espVeic)]);
-  if(p.Veic_xCor||p.Veic_cCor)vCa.push(['Cor',[p.Veic_cCor,p.Veic_xCor].filter(Boolean).join(' / ')]);
-  if(p.Veic_cCorDENATRAN)vCa.push(['Cor DENATRAN',veicRot('cCorDENATRAN',p.Veic_cCorDENATRAN)]);
-  if(p.Veic_tpPint)vCa.push(['Pintura',p.Veic_tpPint]);
-  if(p.Veic_tpComb)vCa.push(['Combustível',veicRot('tpComb',p.Veic_tpComb)]);
-  if(p.Veic_Pot)vCa.push(['Potência (cv)',formatoBr(p.Veic_Pot)]);
-  if(p.Veic_Cilin)vCa.push(['Cilindrada (cm³)',formatoBr(p.Veic_Cilin)]);
-  if(p.Veic_PesoL)vCa.push(['Peso líquido (t)',formatoBr(p.Veic_PesoL)]);
-  if(p.Veic_PesoB)vCa.push(['Peso bruto (t)',formatoBr(p.Veic_PesoB)]);
-  if(p.Veic_CMT)vCa.push(['CMT (t)',formatoBr(p.Veic_CMT)]);
-  if(p.Veic_Dist)vCa.push(['Distância entre eixos',p.Veic_Dist]);
-  if(p.Veic_Lota)vCa.push(['Lotação',p.Veic_Lota]);
-  const veic=vId.length||vCa.length?cellsTable(vId)+cellsTable(vCa):'';
-  /* Item vem do XML: `xProd`, `cEAN` e `NCM` são texto livre, e só `xProd` é
-     truncado. O truncamento (`.slice(0,40)`) corta o payload sem cortar o
-     escapamento — por isso o `esc` fica DENTRO do slice, ou seja aplicado ao
-     texto já truncado. Cortar depois de escapar produziria `&l` sozinho, que é
-     lixo visível na tela. `Item` precisa do `||'—'` porque `esc` mapeia
-     `undefined` em `''`, não em `—`: campo ausente viraria a palavra
-     `undefined` na tabela. */
-  return `<tr>
-    <td>${esc(p.Item||'—')}</td><td>${esc(p.cProd||'—')}</td><td>${esc(p.cEAN||'—')}</td><td>${esc((p.xProd||'').slice(0,40))}${p.Veic_Chassi?`<br><small style="color:var(--text2)">Chassi: <strong>${esc(p.Veic_Chassi)}</strong></small>`:''}${p.infAdProd?`<br><small style="color:var(--text2);overflow-wrap:anywhere">Inf. adicionais: ${esc(p.infAdProd)}</small>`:''}</td>
-    <td>${esc(p.NCM||'—')}</td><td>${esc(p.CEST||'—')}</td><td>${esc(p.CFOP||'—')}</td>
-    <td>${esc(p.qCom||'—')}</td><td>${esc(p.uCom||'—')}</td><td>${moeda(p.vUnCom)}</td><td><strong>${moeda(p.vProd)}</strong></td>
-    <td>${esc(p.indEscala||'—')}</td><td>${esc(p.nFCI||'—')}</td>
-  </tr>
-  <tr style="background:var(--card-2)!important"><td colspan="13" style="padding:4px 6px">
-    <div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">Financeiro do Item</div>
-      <div class="det-body">
-        <table><thead><tr><th>V.Produto</th><th>Desconto</th><th>Frete</th><th>Seguro</th><th>Outras Desp.</th><th>V.Líquido Item</th></tr></thead><tbody><tr>
-          <td><strong>${moeda(p.vProd)}</strong></td>
-          <td style="color:var(--err)">${f(p.vDesc_item)?`- ${moeda(p.vDesc_item)}`:moeda(p.vDesc_item)}</td>
-          <td>${moeda(p.vFrete_item)}</td>
-          <td>${moeda(p.vSeg_item)}</td>
-          <td>${moeda(p.vOutro_item)}</td>
-          <td><strong>${moeda(f(p.vProd)-f(p.vDesc_item)+f(p.vFrete_item)+f(p.vSeg_item)+f(p.vOutro_item))}</strong></td>
-        </tr></tbody></table>
-      </div>
-    </div>
-    ${veic?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">Veículo novo — chassi ${esc(p.Veic_Chassi||'não informado')}</div>
-      <div class="det-body">${veic}</div>
-    </div>`:''}
-    ${icms?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">ICMS — Detalhamento completo</div>
-      <div class="det-body">${icms}</div>
-    </div>`:''}
-    ${ipi?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">IPI — Detalhamento</div>
-      <div class="det-body">${ipi}</div>
-    </div>`:''}
-    ${pis?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">PIS — Detalhamento</div>
-      <div class="det-body">${pis}</div>
-    </div>`:''}
-    ${cofins?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">COFINS — Detalhamento</div>
-      <div class="det-body">${cofins}</div>
-    </div>`:''}
-    ${ibs?`<div class="det-section">
-      <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">IBS/CBS — Detalhamento (Reforma Tributária)</div>
-      <div class="det-body">${ibs}</div>
-    </div>`:''}
-  </td></tr>`;
+/* ═══ NF-e no formato DANFE completo (teste) ═══
+   A nota aberta mostra o DANFE com TODOS os campos que o leitor tem (as colunas
+   da exportação): o que não veio no XML aparece como 0,00 (valor) ou — (texto).
+   Os itens ficam numa tabela no padrão DANFE (com IBS/CBS); os
+   demais campos aparecem no painel lateral do item. Todo dado do XML passa por esc(). */
+const DNF_COLS=[
+  ['Produto',[['Item','Item','t'],['cProd','Código','t'],['xProd','Descrição','t'],['cEAN','GTIN','t'],['NCM','NCM','t'],['CEST','CEST','t'],['CFOP','CFOP','t'],['uCom','Un','t'],['qCom','Qtd','q'],['vUnCom','V. unit.','m'],['vProd','V. total','m'],['indEscala','Escala','t'],['nFCI','FCI','t'],['infAdProd','Inf. adicionais do item','t']]],
+  ['Financeiro do item',[['vDesc_item','Desconto','m'],['vFrete_item','Frete','m'],['vSeg_item','Seguro','m'],['vOutro_item','Outras','m']]],
+  ['ICMS',[['ICMS_orig','Orig.','t'],['ICMS_CST','CST','t'],['ICMS_CSOSN','CSOSN','t'],['ICMS_modBC','Mod. BC','t'],['ICMS_vBC','BC ICMS','m'],['ICMS_pICMS','Alíq.','p'],['ICMS_vICMS','V. ICMS','m'],['ICMS_vBCSTRet','BC ST','m'],['ICMS_pST','Alíq. ST','p'],['ICMS_vICMSSubstituto','ICMS subst.','m'],['ICMS_vICMSSTRet','V. ICMS ST','m'],['ICMS_qBCMonoRet','BC mono','q'],['ICMS_adRemICMSRet','Alíq. mono R$/un','m'],['ICMS_vICMSMonoRet','V. ICMS mono','m'],['ICMS_pRedBCEfet','% red. BC efet.','p'],['ICMS_vBCEfet','BC efetiva','m'],['ICMS_pICMSEfet','Alíq. efetiva','p'],['ICMS_vICMSEfet','ICMS efetivo','m']]],
+  ['IPI',[['IPI_cEnq','Enq.','t'],['IPI_CST','CST','t'],['IPI_vBC','BC IPI','m'],['IPI_pIPI','Alíq.','p'],['IPI_vIPI','V. IPI','m']]],
+  ['PIS',[['PIS_CST','CST','t'],['PIS_vBC','BC','m'],['PIS_pPIS','Alíq.','p'],['PIS_qBCProd','Qtd. BC','q'],['PIS_vAliqProd','Alíq. R$/un','m'],['PIS_vPIS','V. PIS','m']]],
+  ['COFINS',[['COFINS_CST','CST','t'],['COFINS_vBC','BC','m'],['COFINS_pCOFINS','Alíq.','p'],['COFINS_qBCProd','Qtd. BC','q'],['COFINS_vAliqProd','Alíq. R$/un','m'],['COFINS_vCOFINS','V. COFINS','m']]],
+  ['IBS / CBS',[['IBS_CST','CST','t'],['cClassTrib','cClassTrib','t'],['IBS_vBC','BC IBS/CBS','m'],['pIBSUF','Alíq. IBS UF','p'],['vIBSUF','V. IBS UF','m'],['pIBSMun','Alíq. IBS mun.','p'],['vIBSMun','V. IBS mun.','m'],['IBS_vIBS','V. IBS','m'],['pCBS','Alíq. CBS','p'],['CBS_vCBS','V. CBS','m']]],
+  ['Veículo novo',[['Veic_Chassi','Chassi','t'],['Veic_nSerie','Série','t'],['Veic_nMotor','Motor','t'],['Veic_VIN','VIN','v:VIN'],['Veic_cMod','Marca/modelo','t'],['Veic_AnoFab','Ano fab.','t'],['Veic_AnoMod','Ano mod.','t'],['Veic_condVeic','Condição','v:condVeic'],['Veic_tpOp','Operação','v:tpOp'],['Veic_tpRest','Restrição','v:tpRest'],['Veic_tpVeic','Tipo','v:tpVeic'],['Veic_espVeic','Espécie','v:espVeic'],['Veic_cCor','Cód. cor','t'],['Veic_xCor','Cor','t'],['Veic_cCorDENATRAN','Cor DENATRAN','v:cCorDENATRAN'],['Veic_tpPint','Pintura','t'],['Veic_tpComb','Combust.','v:tpComb'],['Veic_Pot','Pot. (cv)','q'],['Veic_Cilin','Cilind.','q'],['Veic_PesoL','Peso líq.','q'],['Veic_PesoB','Peso bruto','q'],['Veic_CMT','CMT','q'],['Veic_Dist','Entre eixos','t'],['Veic_Lota','Lotação','t']]]
+];
+/* Tabela de impostos do item aberto: UMA linha por imposto, e é desta lista que o
+   painel desenha (o gate de cobertura lê a mesma lista). Formato:
+   [nome, campo CST|null, [base,tipo]|null, [alíquota,tipo]|null, campo valor, detalhes [[rótulo,campo,tipo]], nota] */
+const DNF_TRIB=[['ICMS','ICMS_CST',['ICMS_vBC','m'],['ICMS_pICMS','p'],'ICMS_vICMS',[['Origem','ICMS_orig','t'],['CSOSN','ICMS_CSOSN','t'],['Mod. BC','ICMS_modBC','t']]],
+  ['ICMS ST',null,['ICMS_vBCSTRet','m'],['ICMS_pST','p'],'ICMS_vICMSSTRet',[['ICMS do substituto','ICMS_vICMSSubstituto','m']]],
+  ['ICMS monofásico',null,['ICMS_qBCMonoRet','q'],['ICMS_adRemICMSRet','m'],'ICMS_vICMSMonoRet',[],'base em quantidade · alíquota em R$/un'],
+  ['ICMS efetivo',null,['ICMS_vBCEfet','m'],['ICMS_pICMSEfet','p'],'ICMS_vICMSEfet',[['% redução da BC','ICMS_pRedBCEfet','p']]],
+  ['IPI','IPI_CST',['IPI_vBC','m'],['IPI_pIPI','p'],'IPI_vIPI',[['Enquadramento','IPI_cEnq','t']]],
+  ['PIS','PIS_CST',['PIS_vBC','m'],['PIS_pPIS','p'],'PIS_vPIS',[['Qtd. base','PIS_qBCProd','q'],['R$/un','PIS_vAliqProd','m']]],
+  ['COFINS','COFINS_CST',['COFINS_vBC','m'],['COFINS_pCOFINS','p'],'COFINS_vCOFINS',[['Qtd. base','COFINS_qBCProd','q'],['R$/un','COFINS_vAliqProd','m']]],
+  ['IBS UF','IBS_CST',['IBS_vBC','m'],['pIBSUF','p'],'vIBSUF',[['cClassTrib','cClassTrib','t']]],
+  ['IBS município',null,['IBS_vBC','m'],['pIBSMun','p'],'vIBSMun',[]],
+  ['IBS total',null,null,null,'IBS_vIBS',[]],
+  ['CBS',null,['IBS_vBC','m'],['pCBS','p'],'CBS_vCBS',[]]];
+const DNF_UI=new Map();
+function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={q:'',abertos:new Set(),nota:false};DNF_UI.set(ch,u);}return u;}
+/* Agrupamento das linhas de DB.nfe por nota (uma nota = info + itens). Object.create(null):
+   a chave vem do XML e não pode resolver pelo protótipo.
+   A chave do GRUPO é a Chave_NFe; sem ela, notas diferentes não podem se fundir num
+   '?' só (o filtro por CNPJ escondia a 2ª e o item de uma abria o da outra). Sem
+   chave, a nota é identificada por arquivo + emitente + número, e o grupo leva o
+   nome '?'+índice da 1ª linha (estável: DB.nfe só cresce no fim e o dedup mantém a ordem).
+   A chave EXIBIDA continua sendo o Chave_NFe (vazio → —). */
+/* Cache: o agrupamento só é refeito quando DB.nfe muda. A importação troca o array
+   (o dedup faz DB.nfe=DB.nfe.filter(...)) e o limpar também; um push no mesmo array
+   muda o comprimento. Sem o cache, cada tecla no filtro de itens reagrupava o DB inteiro. */
+let dnfGruposCache={ref:null,n:-1,t:null};
+function dnfGrupos(){const c=dnfGruposCache;if(c.ref===DB.nfe&&c.n===DB.nfe.length)return c.t;
+  const t=Object.create(null),sem=new Map();DB.nfe.forEach((p,i)=>{let k=p.Chave_NFe;if(k&&k[0]==='?')k='?'+k; /* chave real que começa com ? ganha mais um ?: nunca colide com a sintética ?+índice */
+  if(!k){const id=[p.Arquivo_Origem,p.CNPJ_Emitente,p.Numero_NFe,p.Serie_NFe].map(v=>String(v==null?'':v)).join('\u0001');if(!sem.has(id))sem.set(id,'?'+i);k=sem.get(id);}
+  if(!t[k])t[k]={info:p,itens:[]};t[k].itens.push(p);});dnfGruposCache={ref:DB.nfe,n:DB.nfe.length,t};return t;}
+function dnfGrupo(ch){return dnfGrupos()[ch]||{info:null,itens:[]};}
+function dnfTem(v){return v!==''&&v!=null;}
+/* Texto para busca: sem acento e em minúsculas (filtro de itens do DANFE). */
+function semAcento(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+/* Regra pedida: o que não está no XML vem ZERADO (valor) ou "—" (texto). Devolve {h: html escapado, z: está vazio/zerado}. */
+function dnfVal(v,tp){
+  if(tp==='m')return {h:esc(num2(v)),z:!dnfTem(v)||f(v)===0};
+  if(tp==='p')return {h:esc(num2(v,4)),z:!dnfTem(v)||f(v)===0};
+  if(tp==='q')return {h:dnfTem(v)?esc(f(v).toLocaleString('pt-BR',{maximumFractionDigits:4})):'0',z:!dnfTem(v)};
+  if(tp&&tp.indexOf('v:')===0)return {h:dnfTem(v)?esc(veicRot(tp.slice(2),v)):'—',z:!dnfTem(v)};
+  return {h:dnfTem(v)?esc(v):'—',z:!dnfTem(v)};
+}
+function dnfDoc(c){const d=String(c||'').replace(/\D/g,'');if(d.length===14)return esc(d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'));if(d.length===11)return esc(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'));return dnfTem(c)?esc(c):'—';}
+function dnfData(d){const s=String(d||'');const m=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);return m?esc(m[3]+'/'+m[2]+'/'+m[1]+(m[4]?' '+m[4]+':'+m[5]:'')):(s?esc(s):'—');}
+function dnfCx(rot,html,num,zero){return `<div class="dnf-cx"><span class="r">${esc(rot)}</span><span class="v${num?' n':''}${zero?' z':''}">${html}</span></div>`;}
+function dnfCampo(rot,v,tp){const r=dnfVal(v,tp||'t');return dnfCx(rot,r.h,tp==='m'||tp==='p',r.z);}
+function nfeDanfe(ch,g){
+  const n=g.info,u=dnfUI(ch),it=g.itens;
+  const S=(k)=>it.reduce((a,p)=>a+f(p[k]),0);
+  const soma=(rot,k)=>{const v=S(k);return dnfCx(rot,esc(num2(v)),true,!v);};
+  const tp={'0':'0 - Entrada','1':'1 - Saída'}[String(n.Tp_NF)]||n.Tp_NF;
+  const t=semAcento(u.q).split(/\s+/).filter(Boolean);
+  /* Identidade do item = POSIÇÃO da linha na nota (índice em g.itens, não no filtrado).
+     O nItem é só rótulo: pode repetir ou faltar, e abrir pelo valor abria a linha errada. */
+  const todos=it.map((p,i)=>[p,i]);
+  const its=t.length?todos.filter(([p])=>{const a=semAcento([p.cProd,p.xProd,p.NCM,p.CFOP,p.ICMS_CST,p.Veic_Chassi,p.cEAN,p.CEST,p.cClassTrib,p.infAdProd].join(' '));return t.every(w=>a.includes(w));}):todos;
+  /* Colunas da tabela, como num DANFE impresso (+ IBS e CBS). Todo o resto do item
+     aparece ao abrir a linha. */
+  const TAB=[['Item','Item','t'],['cProd','Código','t'],['xProd','Descrição','t'],['NCM','NCM','t'],['ICMS_CST','CST','cst'],['CFOP','CFOP','t'],['uCom','Un','t'],['qCom','Qtd','q'],['vUnCom','V. unit.','m'],['vProd','V. total','m'],['ICMS_vBC','BC ICMS','m'],['ICMS_vICMS','V. ICMS','m'],['IPI_vIPI','V. IPI','m'],['ICMS_pICMS','Alíq. ICMS','p'],['IPI_pIPI','Alíq. IPI','p'],['IBS_vIBS','V. IBS','m'],['CBS_vCBS','V. CBS','m']];
+  const num=(tp2)=>tp2==='m'||tp2==='p'||tp2==='q';
+  const cab='<tr><th class="dnf-tg"><span class="visually-hidden">Abrir item</span></th>'+TAB.map(([c,r,tp2])=>`<th class="${num(tp2)?'n':''}">${esc(r)}</th>`).join('')+'</tr>';
+  const linha=([p,ix],i)=>{const k=String(ix),ab=u.abertos.has(k),par=i%2?' par':'';
+    const tds=TAB.map(([c,r,tp2])=>{
+      if(c==='xProd')return `<td class="d">${esc(p.xProd||'—')}${dnfTem(p.Veic_Chassi)?`<small>Chassi: <b>${esc(p.Veic_Chassi)}</b></small>`:''}</td>`;
+      if(tp2==='cst'){const o=dnfVal(p.ICMS_orig,'t'),s2=dnfVal(p.ICMS_CST||p.ICMS_CSOSN,'t');return `<td>${o.z?'':o.h+' '}${s2.h}</td>`;}
+      const v=dnfVal(p[c],tp2);return `<td class="${num(tp2)?'n':''}${v.z?' z':''}">${v.h}</td>`;}).join('');
+    return `<tr class="dnf-it${par}${ab?' aberto':''}" data-it="${k}"><td class="dnf-tg"><button type="button" class="dnf-abre" data-abre="${k}" aria-expanded="${ab}" aria-controls="dnf-painel-item" aria-label="${ab?'Fechar':'Abrir'} o item ${esc(p.Item)}"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></button></td>${tds}</tr>`
+      ;};
+  const corpo=its.map(linha).join('');
+  const rod='<tr><td></td>'+TAB.map(([c,r,tp2],i)=>{let v='';if(c==='xProd')v='Total dos itens';else if(tp2==='m'&&c!=='vUnCom')v=esc(num2(its.reduce((a,[p])=>a+f(p[c]),0)));return `<td class="${num(tp2)?'n':''}">${v}</td>`;}).join('')+'</tr>';
+  const vnf=f(n.vNF),ibscbs=S('IBS_vIBS')+S('CBS_vCBS');
+  return `<div class="dnf">
+  <div class="dnf-l dnf-cab">
+    <div class="dnf-cx"><span class="r">Emitente</span><span class="v grande">${esc(n.Nome_Emitente||'—')}</span><span class="dim">Fantasia: ${dnfVal(n.NomeFantasia_Emit,'t').h} · ${dnfVal(n.Mun_Emitente,'t').h} / ${dnfVal(n.UF_Emitente,'t').h}</span></div>
+    <div class="dnf-cx dnf-id"><span class="t">DANFE</span><span class="dim">${esc(n.Tipo_Nota||'NF-e')} · modelo ${dnfVal(n.Mod_NFe,'t').h}</span><span class="v">${esc(tp||'—')}</span><span class="v">Nº ${dnfVal(n.Numero_NFe,'t').h} · Série ${dnfVal(n.Serie_NFe,'t').h}</span></div>
+    <div class="dnf-cx"><span class="r">Chave de acesso</span><span class="v mono">${dnfVal(n.Chave_NFe,'t').h}</span><span class="r sep">Situação</span><span class="v">${dnfVal(n.Status_NFe,'t').h} · ${dnfVal(n.Motivo_Status_NFe,'t').h}</span></div>
+  </div>
+  <div class="dnf-l g3">${dnfCampo('Natureza da operação',n.NatOp)}${dnfCx('Data de emissão',dnfData(n.Data_Emissao))}${dnfCampo('Arquivo de origem',n.Arquivo_Origem)}</div>
+  <div class="dnf-l g3">${dnfCx('CNPJ do emitente',dnfDoc(n.CNPJ_Emitente))}${dnfCampo('Inscrição estadual do emitente',n.IE_Emitente)}${dnfCx('Inscrição estadual do subst. trib.','—',false,true)}</div>
+  <div class="dnf-sec">Destinatário / remetente</div>
+  <div class="dnf-l g5">${dnfCampo('Nome / razão social',n.Nome_Destinatario)}${dnfCx('CNPJ',dnfDoc(n.CNPJ_Destinatario),false,!dnfTem(n.CNPJ_Destinatario))}${dnfCx('CPF',dnfDoc(n.CPF_Destinatario),false,!dnfTem(n.CPF_Destinatario))}${dnfCampo('Município',n.Mun_Destinatario)}${dnfCampo('UF',n.UF_Destinatario)}</div>
+  <div class="dnf-l g3">${dnfCampo('Inscrição estadual',n.IE_Destinatario)}<div class="dnf-cx"></div><div class="dnf-cx"></div></div>
+  <div class="dnf-sec">Cálculo do imposto</div>
+  <div class="dnf-l g7">${soma('Base de cálc. do ICMS','ICMS_vBC')}${soma('Valor do ICMS','ICMS_vICMS')}${soma('Base de cálc. ICMS ST','ICMS_vBCSTRet')}${soma('Valor do ICMS ST','ICMS_vICMSSTRet')}${soma('ICMS do substituto','ICMS_vICMSSubstituto')}${soma('ICMS monofásico','ICMS_vICMSMonoRet')}${soma('ICMS efetivo','ICMS_vICMSEfet')}</div>
+  <div class="dnf-l g7">${soma('Valor total dos produtos','vProd')}${dnfCampo('Valor do frete',n.vFrete,'m')}${dnfCampo('Valor do seguro',n.vSeg,'m')}${dnfCampo('Desconto',n.vDesc,'m')}${dnfCampo('Outras despesas',n.vOutro,'m')}${soma('Valor do IPI','IPI_vIPI')}${dnfCampo('Valor total da nota',n.vNF,'m')}</div>
+  <div class="dnf-l g7">${soma('Valor do PIS','PIS_vPIS')}${soma('Valor da COFINS','COFINS_vCOFINS')}${soma('Base IBS/CBS','IBS_vBC')}${soma('IBS UF','vIBSUF')}${soma('IBS município','vIBSMun')}${soma('Valor do IBS','IBS_vIBS')}${soma('Valor da CBS','CBS_vCBS')}</div>
+  <div class="dnf-l g3">${dnfCampo('Tributos aproximados (Lei 12.741)',n.vTotTrib,'m')}${dnfCx('IBS + CBS',esc(num2(ibscbs)),true,!ibscbs)}${dnfCx('Total com IBS/CBS',esc(num2(vnf+ibscbs)),true,false)}</div>
+  <div class="dnf-sec">Dados dos produtos / serviços</div>
+  <div class="dnf-filtro"><label class="visually-hidden" for="dnfq-${esc(ch)}">Filtrar itens</label><input type="search" class="dnf-q" id="dnfq-${esc(ch)}" value="${esc(u.q)}" placeholder="Filtrar itens: código, descrição, NCM, CFOP, CST, GTIN, CEST, chassi"><span class="dim">${its.length} de ${it.length} itens · clique no item para ver todos os impostos e campos no painel ao lado · ↑ ↓ passam de item · Esc fecha</span>${its.some(([,ix])=>u.abertos.has(String(ix)))?`<button type="button" class="dnf-fecha-todos">Fechar item</button>`:''}</div>
+  <div class="dnf-prod" tabindex="0" role="region" aria-label="Itens da nota"><table><thead>${cab}</thead><tbody>${corpo||`<tr><td colspan="${TAB.length+1}" class="dim">Nenhum item encontrado.</td></tr>`}</tbody><tfoot>${rod}</tfoot></table></div>
+  ${dnfPainel(its,u)}
+  <div class="dnf-sec">Dados adicionais</div>
+  <div class="dnf-l adic">${dnfCampo('Informações complementares',n.infCpl)}${dnfCx('Reservado ao fisco','—',false,true)}</div>
+  </div>`;
+}
+/* Painel lateral fixo, à direita da tela: fica no lugar enquanto se percorre a
+   tabela; só troca de conteúdo. its = [[linha, índice na nota], ...] já filtrado;
+   o item aberto é o índice (não o nItem). */
+function dnfPainel(its,u){const k=[...u.abertos][0];if(k==null)return '';const i=its.findIndex(([,ix])=>String(ix)===k);if(i<0)return '';const p=its[i][0];
+  const ant=i>0?its[i-1][1]:null,prx=i<its.length-1?its[i+1][1]:null;
+  return `<div class="dnf-painel" id="dnf-painel-item" role="region" aria-label="Impostos do item ${esc(p.Item)}"><div class="dnf-painel-cab">
+  <button type="button" class="dnf-ir-item" ${ant==null?'disabled':`data-ir="${esc(ant)}"`} aria-label="Item anterior">◂ anterior</button>
+  <b>Item ${esc(p.Item)}</b><span class="dnf-painel-nome">${esc(p.xProd||'—')}</span>
+  <button type="button" class="dnf-ir-item" ${prx==null?'disabled':`data-ir="${esc(prx)}"`} aria-label="Próximo item">próximo ▸</button>
+  <span class="dim dnf-dica-tecla">↑ ↓ passam de item · Esc fecha</span><button type="button" class="dnf-fecha-todos">Fechar <span aria-hidden="true">✕</span></button></div>
+  <div class="dnf-painel-corpo">${dnfItemAberto(p)}</div></div>`;}
+/* Item aberto: impostos numa tabela padronizada (um por linha, mesmas colunas,
+   lidas do DNF_TRIB) e os demais campos do produto, o financeiro e o veículo.
+   Todo campo do item aparece; o que não veio no XML sai 0,00 ou —. */
+function dnfItemAberto(p){
+  const lst=(pares)=>'<dl class="dnf-lst">'+pares.map(([c,r,tp2])=>{const v=dnfVal(p[c],tp2);return `<dt>${esc(r)}</dt><dd class="${tp2==='t'||(tp2||'').indexOf('v:')===0?'txt':''}${v.z?' z':''}">${v.h}</dd>`;}).join('')+'</dl>';
+  const cel=(c,tp2)=>{if(!c)return '<td class="n z">—</td>';const v=dnfVal(p[c],tp2);return `<td class="n${v.z?' z':''}">${v.h}</td>`;};
+  const cst=(c)=>{if(!c)return '<td class="z">—</td>';const v=dnfVal(p[c],'t');return `<td${v.z?' class="z"':''}>${v.h}</td>`;};
+  const det=(pares)=>pares.map(([r,c,tp2])=>{const v=dnfVal(p[c],tp2);return esc(r)+' '+(v.z?'<span class="z">'+v.h+'</span>':'<b>'+v.h+'</b>');}).join(' · ');
+  const tot=['ICMS_vICMS','ICMS_vICMSSTRet','ICMS_vICMSMonoRet','IPI_vIPI','PIS_vPIS','COFINS_vCOFINS','IBS_vIBS','CBS_vCBS'].reduce((a,c)=>a+f(p[c]),0);
+  const trib='<table class="dnf-trib"><thead><tr><th>Imposto</th><th>CST</th><th class="n">Base</th><th class="n">Alíquota</th><th class="n">Valor</th><th>Detalhes</th></tr></thead><tbody>'
+    +DNF_TRIB.map(([nome,c,b,a,v,d,nota])=>`<tr><td class="nome">${esc(nome)}</td>${cst(c)}${b?cel(b[0],b[1]):'<td class="n z">—</td>'}${a?cel(a[0],a[1]):'<td class="n z">—</td>'}${cel(v,'m')}<td class="det">${d.length?det(d):esc(nota||'')}</td></tr>`).join('')
+    +`<tr class="tot"><td>Total de impostos do item</td><td></td><td></td><td></td><td class="n">${esc(num2(tot))}</td><td class="det">ICMS, ST, monofásico, IPI, PIS, COFINS, IBS e CBS</td></tr></tbody></table>`;
+  const prod=DNF_COLS[0][1].filter(([c])=>!['Item','cProd','xProd'].includes(c));
+  const fin=DNF_COLS[1][1],veic=DNF_COLS[DNF_COLS.length-1][1];
+  const vei=dnfTem(p.Veic_Chassi)?`<div class="dnf-sub">Veículo novo</div><div class="dnf-veic">${lst(veic)}</div>`:`<p class="dnf-nada">Veículo novo: não consta no XML (${veic.length} campos zerados).</p>`;
+  return `<div class="dnf-aberto"><div class="dnf-ab-prod"><div class="dnf-sub">Produto</div>${lst(prod)}<div class="dnf-sub">Financeiro do item</div>${lst(fin)}</div><div class="dnf-ab-imp">${trib}</div></div>${vei}`;
 }
 function renderNFE(){
   try{
@@ -1992,87 +2080,85 @@ function renderNFE(){
   if(!c)return;
   const filtro=document.getElementById('filtro-nfe').value.toLowerCase();
   const fc=document.getElementById('filtro-nfe-cnpj').value;
-  let d=DB.nfe;
-  if(filtro)d=d.filter(p=>Object.values(p).some(v=>String(v).toLowerCase().includes(filtro)));
-  if(fc)d=d.filter(p=>p.CNPJ_Emitente===fc);
-  document.getElementById('nfe-count').textContent=`${d.length} registro(s)`;
-  if(!d.length){c.innerHTML='<div class="empty-state"><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
-  const grp={};for(const p of d){const k=p.Chave_NFe||'?';if(!grp[k])grp[k]={info:p,itens:[]};grp[k].itens.push(p);}
+  /* A nota é agrupada do DB INTEIRO (o DANFE mostra a nota toda); a busca geral
+     decide quais notas aparecem. */
+  const todas=dnfGrupos();
+  /* Filtros por LINHA, como antes do DANFE: a nota aparece se alguma linha dela
+     bate o CNPJ e a busca ao mesmo tempo (não só a 1ª linha, g.info). */
+  const vis=Object.entries(todas).filter(([k,g])=>(!fc&&!filtro)||g.itens.some(p=>(!fc||p.CNPJ_Emitente===fc)&&(!filtro||Object.values(p).some(v=>String(v).toLowerCase().includes(filtro)))));
+  const nIt=vis.reduce((a,[k,g])=>a+g.itens.length,0);
+  document.getElementById('nfe-count').textContent=`${vis.length} nota(s) · ${nIt} item(ns)`;
+  if(!vis.length){c.innerHTML='<div class="empty-state"><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
+  const abertas=new Set([...c.querySelectorAll?c.querySelectorAll('.nota-card[data-chave] > .body-detail.open'):[]].map(b=>b.parentElement.dataset.chave));
   let html='';
-  for(const [chave,g] of Object.entries(grp)){
-    const n=g.info;
-    const itensBody=g.itens.map(p=>nfeItemDetalhe(p)).join('');
-    const tProd=g.itens.reduce((s,p)=>s+f(p.vProd),0);
-    const tICMS=g.itens.reduce((s,p)=>s+f(p.ICMS_vICMS),0);
-    const tIPI=g.itens.reduce((s,p)=>s+f(p.IPI_vIPI),0);
-    const tPIS=g.itens.reduce((s,p)=>s+f(p.PIS_vPIS),0);
-    const tCOFINS=g.itens.reduce((s,p)=>s+f(p.COFINS_vCOFINS),0);
-    const tIBS=g.itens.reduce((s,p)=>s+f(p.IBS_vIBS),0);
-    const tCBS=g.itens.reduce((s,p)=>s+f(p.CBS_vCBS),0);
-    const tBCST=g.itens.reduce((s,p)=>s+f(p.ICMS_vBCSTRet),0);
-    const tICMSST=g.itens.reduce((s,p)=>s+f(p.ICMS_vICMSSTRet),0);
-    const totLinhas=[`<strong>${moeda(tProd)}</strong>`,moeda(tICMS),moeda(tIPI),moeda(tPIS),moeda(tCOFINS),moeda(tIBS),moeda(tCBS),moeda(tBCST),moeda(tICMSST)];
-    const totHeaders=['Total Prod.','ICMS','IPI','PIS','COFINS','IBS','CBS','BC ST','ICMS ST'];
-    html+=`<div class="nota-card">
-      <div class="header" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">
+  /* O DANFE (corpo) só é desenhado para a nota aberta: com centenas de notas ou
+     notas de muitos itens, desenhar as fechadas era o custo inteiro do render.
+     Abrir a nota desenha o corpo (toggleNota → dnfGaranteCorpo). */
+  for(const [chave,g] of vis){
+    const n=g.info,ab=abertas.has(chave)||dnfUI(chave).nota;
+    html+=`<div class="nota-card" data-chave="${esc(chave)}">
+      <div class="header" role="button" tabindex="0" aria-expanded="${ab}" style="cursor:pointer">
         <span class="info"><strong>NF-e</strong> — ${esc(n.Numero_NFe||'?')}${n.Serie_NFe?' Série '+esc(n.Serie_NFe):''} — ${esc(n.Nome_Emitente||'?')} <span class="badge">${g.itens.length} itens</span> ${n.Status_NFe==='Cancelada'?'<span class="badge err"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg> CANCELADA</span>':n.Status_NFe==='Autorizada'?'<span class="badge ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg> AUTORIZADA</span>':''}</span>
-        <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
+        <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle${ab?' open':''}"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
       </div>
-      <div class="body-detail">
-        <div class="info-grid">
-          <div class="info-box"><h4>Emitente</h4>
-            <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Emitente||'-')}</span></div>
-            <div class="row"><span class="lbl">Razão:</span><span>${esc(n.Nome_Emitente||'-')}</span></div>
-            <div class="row"><span class="lbl">Fantasia:</span><span>${esc(n.NomeFantasia_Emit||'-')}</span></div>
-            <div class="row"><span class="lbl">IE:</span><span>${esc(n.IE_Emitente||'-')}</span></div>
-            <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Emitente||'-')}</span></div>
-            <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Emitente||'-')}</span></div>
-          </div>
-          <div class="info-box"><h4>Destinatário</h4>
-            <div class="row"><span class="lbl">CNPJ/CPF:</span><span>${esc(n.CNPJ_Destinatario||n.CPF_Destinatario||'-')}</span></div>
-            <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Destinatario||'-')}</span></div>
-            <div class="row"><span class="lbl">IE:</span><span>${esc(n.IE_Destinatario||'-')}</span></div>
-            <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Destinatario||'-')}</span></div>
-            <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Destinatario||'-')}</span></div>
-          </div>
-        </div>
-        <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
-          <span><strong>Chave:</strong> ${esc(n.Chave_NFe||'-')}</span>
-          <span><strong>Série:</strong> ${esc(n.Serie_NFe||'-')}</span>
-          <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
-          <span><strong>NatOp:</strong> ${esc(n.NatOp||'-')}</span>
-          <span><strong>Mod:</strong> ${esc(n.Mod_NFe||'-')}</span>
-          <span><strong>TpNF:</strong> ${esc(n.Tp_NF||'-')}</span>
-        </div>
-        ${n.infCpl?`<div style="margin-bottom:8px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2);border-left:3px solid var(--info)"><strong>Descrição:</strong> ${esc(n.infCpl)}</div>`:''}
-        ${totLinhas.length?`<div class="det-section">
-          <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer;font-weight:700;color:var(--text)">RESUMO FINANCEIRO DA NOTA</div>
-          <div class="det-body open">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:6px;font-size:11px">
-              <div><span style="color:var(--text2)">Produtos</span><br><strong>${moeda(tProd)}</strong></div>
-              <div><span style="color:var(--text2)">Desconto</span><br><strong style="color:var(--err)">${f(n.vDesc)?`- ${moeda(n.vDesc)}`:moeda(n.vDesc)}</strong></div>
-              <div><span style="color:var(--text2)">Frete</span><br><strong>${moeda(n.vFrete)}</strong></div>
-              <div><span style="color:var(--text2)">Seguro</span><br><strong>${moeda(n.vSeg)}</strong></div>
-              <div><span style="color:var(--text2)">Outras Desp.</span><br><strong>${moeda(n.vOutro)}</strong></div>
-              <div><span style="color:var(--text2)">V.Líquido NF</span><br><strong style="font-size:14px;color:var(--primary)">${moeda(n.vNF)}</strong></div>
-            </div>
-            <table style="font-size:10px"><thead><tr>${totHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody><tr>${totLinhas.map(v=>`<td>${v}</td>`).join('')}</tr></tbody></table>
-            ${n.vTotTrib?`<div style="margin-top:4px;font-size:10px;color:var(--text2)">Tributos Totais: ${moeda(n.vTotTrib)}</div>`:''}
-          </div>
-        </div>`:''}
-        <div class="table-wrap">
-          <table><thead><tr>
-            <th>Item</th><th>Código</th><th>Cód. Barras</th><th>Descrição</th><th>NCM</th><th>CEST</th><th>CFOP</th>
-            <th>Qtd</th><th>Un</th><th>V.Unit</th><th>V.Total</th><th>Escala</th><th>FCI</th>
-          </tr></thead><tbody>${itensBody}</tbody></table>
-        </div>
-        <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${esc(g.itens[0].Arquivo_Origem||'-')}</div>
-      </div>
+      <div class="body-detail${ab?' open':''}">${ab?nfeDanfe(chave,g):''}</div>
     </div>`;
   }
   c.innerHTML=html;
   }catch(e){document.getElementById('nfe-list').innerHTML='<div style="color:var(--err-ink);padding:20px">Erro ao renderizar: '+esc(String(e.message||e))+'</div>';}
 }
+/* ── itens que abrem (por nota) ── */
+function dnfCartao(el){const card=el&&el.closest?el.closest('.nota-card[data-chave]'):null;return card?{card,ch:card.dataset.chave,u:dnfUI(card.dataset.chave)}:null;}
+/* Nota da lista de NF-e aberta ou fechada pelo header: guarda o estado (o render
+   seguinte mantém aberta) e desenha o corpo na primeira abertura. */
+function dnfGaranteCorpo(h){const x=dnfCartao(h);if(!x)return;const b=x.card.querySelector('.body-detail');if(!b)return;
+  x.u.nota=b.classList.contains('open');if(x.u.nota&&!b.childElementCount)dnfRepinta(x);}
+function dnfRepinta(x,foco){const ch=x.ch,g=dnfGrupo(ch);
+  /* a nota saiu do DB (limpar/reimportar) com o debounce do filtro pendente: não há o que desenhar */
+  if(!g.info||!x.card.isConnected)return;
+  x.card.querySelector('.body-detail').innerHTML=nfeDanfe(ch,g);
+  if(foco){const q=x.card.querySelector(foco);if(q){q.focus();if(q.setSelectionRange&&q.value!=null)q.setSelectionRange(q.value.length,q.value.length);}}}
+function dnfClique(e){
+  const x=dnfCartao(e.target);if(!x)return;
+  const ir=e.target.closest('.dnf-ir-item');if(ir){if(ir.dataset.ir!=null)dnfAbreSo(x,ir.dataset.ir);return;}
+  if(e.target.closest('.dnf-fecha-todos')){x.u.abertos.clear();dnfRepinta(x,'.dnf-q');return;}
+  const tr=e.target.closest('.dnf-prod tbody tr.dnf-it');if(!tr)return;
+  if(window.getSelection&&String(window.getSelection())&&!e.target.closest('.dnf-abre'))return;
+  const k=tr.dataset.it;dnfAbreSo(x,x.u.abertos.has(k)?null:k);
+}
+/* Um só painel na tela: o item aberto é estado POR NOTA, e o painel é fixo — abrir
+   um item numa nota fecha o item aberto das outras (e repinta as que estão desenhadas). */
+function dnfFechaOutras(ch){for(const [k,u] of DNF_UI){if(k===ch||!u.abertos.size)continue;u.abertos.clear();
+  const card=[...document.querySelectorAll('#nfe-list .nota-card[data-chave]')].find(c=>c.dataset.chave===k);
+  const b=card&&card.querySelector('.body-detail');if(b&&b.childElementCount)dnfRepinta({card,ch:k,u});}}
+/* Rolagem ao trocar de item pelo teclado: a linha aberta fica visível. A borda de
+   cima desconta a barra fixa do topo (~60px) e a de baixo deixa uma folga para a
+   linha não colar no fim da janela. */
+const DNF_ROLA_TOPO=70,DNF_ROLA_TOPO_FOLGA=90,DNF_ROLA_FUNDO=8,DNF_ROLA_FUNDO_FOLGA=40;
+/* Um item aberto por vez (abrir outro substitui). Ao fechar, o foco volta para o
+   botão da linha que estava aberta (ou para o filtro, se foi de lá que veio o Esc)
+   — o innerHTML novo derrubava o foco no <body> e o teclado perdia o lugar na tabela. */
+function dnfAbreSo(x,k,foco){const ant=[...x.u.abertos][0];x.u.abertos.clear();if(k!=null){dnfFechaOutras(x.ch);x.u.abertos.add(String(k));}dnfRepinta(x,foco);
+  if(foco)return;const alvo=k!=null?String(k):ant;const b=alvo==null?null:[...x.card.querySelectorAll('.dnf-abre')].find(z=>z.dataset.abre===alvo);if(!b)return;b.focus({preventScroll:true});
+  if(k==null)return;const r=b.closest('tr').getBoundingClientRect(),lim=innerHeight;
+  const sc=document.getElementById('content')||window; /* quem rola é #content (o body tem overflow:hidden) */
+  if(r.top<DNF_ROLA_TOPO)sc.scrollBy(0,r.top-DNF_ROLA_TOPO_FOLGA);else if(r.bottom>lim-DNF_ROLA_FUNDO)sc.scrollBy(0,r.bottom-lim+DNF_ROLA_FUNDO_FOLGA);}
+/* Esc fecha o item só quando o painel está na tela (item escondido pelo filtro não
+   rouba o Esc do campo de busca). preventDefault: o Esc do menu lateral respeita. */
+function dnfEsc(e){const a0=document.activeElement,x0=dnfCartao(a0);if(!x0||!x0.card.querySelector('.dnf-painel'))return;
+  e.preventDefault();dnfAbreSo(x0,null,a0.classList&&a0.classList.contains('dnf-q')?'.dnf-q':null);}
+/* ↑ ↓ passam de item (fora de campo de texto). data-it é o índice da linha na nota:
+   único, então a vizinha na tela é o próximo/anterior. */
+function dnfTecla(e){if(e.key==='Escape'){dnfEsc(e);return;}
+  if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;const a=document.activeElement;
+  if(!a||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;const x=dnfCartao(a);if(!x||!x.u.abertos.size)return;
+  const ks=[...x.card.querySelectorAll('tr.dnf-it')].map(t=>t.dataset.it),i=ks.indexOf([...x.u.abertos][0]),j=i+(e.key==='ArrowDown'?1:-1);
+  if(i<0||j<0||j>=ks.length)return;e.preventDefault();dnfAbreSo(x,ks[j]);}
+document.addEventListener('keydown',dnfTecla);
+let dnfTq=0;
+function dnfEntrada(e){const x=dnfCartao(e.target);if(!x)return;
+  if(e.target.classList.contains('dnf-q')){clearTimeout(dnfTq);dnfTq=setTimeout(()=>{x.u.q=e.target.value;dnfRepinta(x,'.dnf-q');},150);}}
+
 function toggleDet(el){
   const b=el.nextElementSibling;
   if(!b)return;
@@ -2185,22 +2271,26 @@ function renderNFSe(){
 // ═══ EVENT DELEGATION (em vez de onclick em innerHTML) ═══
 function toggleNota(el){
   const b=el.nextElementSibling;const t=el.querySelector('.toggle');
-  if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');}
+  if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');el.setAttribute('aria-expanded',b.classList.contains('open')?'true':'false');}
 }
 ['nfe-list','nfse-list'].forEach(id=>{
   const raiz=document.getElementById(id);
   raiz.addEventListener('click',e=>{
     const h=e.target.closest('.nota-card>.header');
-    if(h){toggleNota(h);return;}
+    if(h){toggleNota(h);if(id==='nfe-list')dnfGaranteCorpo(h);return;}
     const d=e.target.closest('.det-title');
     if(d){toggleDet(d);return;}
+    if(id==='nfe-list')dnfClique(e);
   });
+  if(id==='nfe-list'){
+    raiz.addEventListener('input',e=>{if(e.target.classList.contains('dnf-q'))dnfEntrada(e);});
+  }
   /* Teclado: os alvos são div/span clicáveis — sem isto, são inalcançáveis por Tab (2.1.1) */
   raiz.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
     const h=e.target.closest?.('.nota-card>.header');
     const d=e.target.closest?.('.det-title');
-    if(h){e.preventDefault();toggleNota(h);return;}
+    if(h){e.preventDefault();toggleNota(h);if(id==='nfe-list')dnfGaranteCorpo(h);return;}
     if(d){e.preventDefault();toggleDet(d);}
   });
 });
@@ -2404,6 +2494,7 @@ document.getElementById('btn-fechar').addEventListener('click',()=>{if(confirm('
      sem ter expandido nada, porque a media query manteria os 64px. */
   document.addEventListener('keydown',(e)=>{
     if(e.key!=='Escape')return;
+    if(e.defaultPrevented)return; /* o Esc já foi usado (ex.: fechou o item do DANFE): não abre o menu junto */
     if(ehCelular())return;
     if(sb.getAttribute('data-rail')!=='on')return;
     const t=e.target;
