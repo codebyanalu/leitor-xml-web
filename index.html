@@ -954,9 +954,6 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .dnf .adic{grid-template-columns:2fr 1fr}
 .dnf .adic .v{font-weight:400;white-space:pre-wrap}
 .dnf-sec{font-size:12.5px;font-weight:700;text-transform:uppercase;margin:10px 0 3px;color:var(--text)}
-.dnf-filtro{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:6px 0}
-.dnf-filtro input::placeholder{color:var(--text3)}
-.dnf-filtro input{flex:1 1 280px;min-height:44px;padding:6px 10px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit}
 .nota-card .dnf-prod{border:1px solid var(--border);overflow-x:auto}
 .nota-card .dnf-prod table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;margin:0}
 .nota-card .dnf-prod th{position:sticky;background:var(--card-2);color:var(--text2);font-size:12px;text-transform:uppercase;font-weight:600;letter-spacing:0;padding:6px 9px;border:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border-light);border-radius:0;white-space:nowrap;z-index:2;text-align:left}
@@ -1167,7 +1164,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    query de ≤768px (escolha de layout, no celular). Estavam como duas cópias e
    já divergiram uma vez: o min-height:44px do alvo de toque entrou na media
    query mas o atributo não tinha, e o botão novo nasceria com 42px.
-   O piso de 44px do Designer também vale para o toggle (rail: 42px medido). */
+   O piso de 44px da revisão de design também vale para o toggle (rail: 42px medido). */
 #sidebar[data-rail="on"]{width:64px;min-width:64px;transition:width .18s,min-width .18s}
 /* No rail o bloco da marca some INTEIRO. Cheguei aqui tentando centralizar a
    sigla, e centralizar não resolve: o primeiro item de uma coluna de 8 ícones
@@ -1965,7 +1962,7 @@ const DNF_TRIB=[['ICMS','ICMS_CST',['ICMS_vBC','m'],['ICMS_pICMS','p'],'ICMS_vIC
   ['IBS total',null,null,null,'IBS_vIBS',[]],
   ['CBS',null,['IBS_vBC','m'],['pCBS','p'],'CBS_vCBS',[]]];
 const DNF_UI=new Map();
-function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={q:'',abertos:new Set(),nota:false};DNF_UI.set(ch,u);}return u;}
+function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={abertos:new Set(),nota:false};DNF_UI.set(ch,u);}return u;}
 /* Agrupamento das linhas de DB.nfe por nota (uma nota = info + itens). Object.create(null):
    a chave vem do XML e não pode resolver pelo protótipo.
    A chave do GRUPO é a Chave_NFe; sem ela, notas diferentes não podem se fundir num
@@ -1975,7 +1972,7 @@ function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={q:'',abertos:new Set(),nota:fa
    A chave EXIBIDA continua sendo o Chave_NFe (vazio → —). */
 /* Cache: o agrupamento só é refeito quando DB.nfe muda. A importação troca o array
    (o dedup faz DB.nfe=DB.nfe.filter(...)) e o limpar também; um push no mesmo array
-   muda o comprimento. Sem o cache, cada tecla no filtro de itens reagrupava o DB inteiro. */
+   muda o comprimento. Sem o cache, cada repintura da nota reagrupava o DB inteiro. */
 let dnfGruposCache={ref:null,n:-1,t:null};
 function dnfGrupos(){const c=dnfGruposCache;if(c.ref===DB.nfe&&c.n===DB.nfe.length)return c.t;
   const t=Object.create(null),sem=new Map();DB.nfe.forEach((p,i)=>{let k=p.Chave_NFe;if(k&&k[0]==='?')k='?'+k; /* chave real que começa com ? ganha mais um ?: nunca colide com a sintética ?+índice */
@@ -1983,8 +1980,6 @@ function dnfGrupos(){const c=dnfGruposCache;if(c.ref===DB.nfe&&c.n===DB.nfe.leng
   if(!t[k])t[k]={info:p,itens:[]};t[k].itens.push(p);});dnfGruposCache={ref:DB.nfe,n:DB.nfe.length,t};return t;}
 function dnfGrupo(ch){return dnfGrupos()[ch]||{info:null,itens:[]};}
 function dnfTem(v){return v!==''&&v!=null;}
-/* Texto para busca: sem acento e em minúsculas (filtro de itens do DANFE). */
-function semAcento(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
 /* Regra pedida: o que não está no XML vem ZERADO (valor) ou "—" (texto). Devolve {h: html escapado, z: está vazio/zerado}. */
 function dnfVal(v,tp){
   if(tp==='m')return {h:esc(num2(v)),z:!dnfTem(v)||f(v)===0};
@@ -2002,11 +1997,9 @@ function nfeDanfe(ch,g){
   const S=(k)=>it.reduce((a,p)=>a+f(p[k]),0);
   const soma=(rot,k)=>{const v=S(k);return dnfCx(rot,esc(num2(v)),true,!v);};
   const tp={'0':'0 - Entrada','1':'1 - Saída'}[String(n.Tp_NF)]||n.Tp_NF;
-  const t=semAcento(u.q).split(/\s+/).filter(Boolean);
-  /* Identidade do item = POSIÇÃO da linha na nota (índice em g.itens, não no filtrado).
+  /* Identidade do item = POSIÇÃO da linha na nota (índice em g.itens).
      O nItem é só rótulo: pode repetir ou faltar, e abrir pelo valor abria a linha errada. */
-  const todos=it.map((p,i)=>[p,i]);
-  const its=t.length?todos.filter(([p])=>{const a=semAcento([p.cProd,p.xProd,p.NCM,p.CFOP,p.ICMS_CST,p.Veic_Chassi,p.cEAN,p.CEST,p.cClassTrib,p.infAdProd].join(' '));return t.every(w=>a.includes(w));}):todos;
+  const its=it.map((p,i)=>[p,i]);
   /* Colunas da tabela, como num DANFE impresso (+ IBS e CBS). Todo o resto do item
      aparece ao abrir a linha. */
   const TAB=[['Item','Item','t'],['cProd','Código','t'],['xProd','Descrição','t'],['NCM','NCM','t'],['ICMS_CST','CST','cst'],['CFOP','CFOP','t'],['uCom','Un','t'],['qCom','Qtd','q'],['vUnCom','V. unit.','m'],['vProd','V. total','m'],['ICMS_vBC','BC ICMS','m'],['ICMS_vICMS','V. ICMS','m'],['IPI_vIPI','V. IPI','m'],['ICMS_pICMS','Alíq. ICMS','p'],['IPI_pIPI','Alíq. IPI','p'],['IBS_vIBS','V. IBS','m'],['CBS_vCBS','V. CBS','m']];
@@ -2039,15 +2032,14 @@ function nfeDanfe(ch,g){
   <div class="dnf-l g7">${soma('Valor do PIS','PIS_vPIS')}${soma('Valor da COFINS','COFINS_vCOFINS')}${soma('Base IBS/CBS','IBS_vBC')}${soma('IBS UF','vIBSUF')}${soma('IBS município','vIBSMun')}${soma('Valor do IBS','IBS_vIBS')}${soma('Valor da CBS','CBS_vCBS')}</div>
   <div class="dnf-l g3">${dnfCampo('Tributos aproximados (Lei 12.741)',n.vTotTrib,'m')}${dnfCx('IBS + CBS',esc(num2(ibscbs)),true,!ibscbs)}${dnfCx('Total com IBS/CBS',esc(num2(vnf+ibscbs)),true,false)}</div>
   <div class="dnf-sec">Dados dos produtos / serviços</div>
-  <div class="dnf-filtro"><label class="visually-hidden" for="dnfq-${esc(ch)}">Filtrar itens</label><input type="search" class="dnf-q" id="dnfq-${esc(ch)}" value="${esc(u.q)}" placeholder="Filtrar itens: código, descrição, NCM, CFOP, CST, GTIN, CEST, chassi"><span class="dim">${its.length} de ${it.length} itens · clique no item para ver todos os impostos e campos no painel ao lado · ↑ ↓ passam de item · Esc fecha</span>${its.some(([,ix])=>u.abertos.has(String(ix)))?`<button type="button" class="dnf-fecha-todos">Fechar item</button>`:''}</div>
-  <div class="dnf-prod" tabindex="0" role="region" aria-label="Itens da nota"><table><thead>${cab}</thead><tbody>${corpo||`<tr><td colspan="${TAB.length+1}" class="dim">Nenhum item encontrado.</td></tr>`}</tbody><tfoot>${rod}</tfoot></table></div>
+  <div class="dnf-prod" tabindex="0" role="region" aria-label="Itens da nota"><table><thead>${cab}</thead><tbody>${corpo||`<tr><td colspan="${TAB.length+1}" class="dim">Nota sem itens.</td></tr>`}</tbody><tfoot>${rod}</tfoot></table></div>
   ${dnfPainel(its,u)}
   <div class="dnf-sec">Dados adicionais</div>
   <div class="dnf-l adic">${dnfCampo('Informações complementares',n.infCpl)}${dnfCx('Reservado ao fisco','—',false,true)}</div>
   </div>`;
 }
 /* Painel lateral fixo, à direita da tela: fica no lugar enquanto se percorre a
-   tabela; só troca de conteúdo. its = [[linha, índice na nota], ...] já filtrado;
+   tabela; só troca de conteúdo. its = [[linha, índice na nota], ...];
    o item aberto é o índice (não o nItem). */
 function dnfPainel(its,u){const k=[...u.abertos][0];if(k==null)return '';const i=its.findIndex(([,ix])=>String(ix)===k);if(i<0)return '';const p=its[i][0];
   const ant=i>0?its[i-1][1]:null,prx=i<its.length-1?its[i+1][1]:null;
@@ -2113,15 +2105,14 @@ function dnfCartao(el){const card=el&&el.closest?el.closest('.nota-card[data-cha
    seguinte mantém aberta) e desenha o corpo na primeira abertura. */
 function dnfGaranteCorpo(h){const x=dnfCartao(h);if(!x)return;const b=x.card.querySelector('.body-detail');if(!b)return;
   x.u.nota=b.classList.contains('open');if(x.u.nota&&!b.childElementCount)dnfRepinta(x);}
-function dnfRepinta(x,foco){const ch=x.ch,g=dnfGrupo(ch);
-  /* a nota saiu do DB (limpar/reimportar) com o debounce do filtro pendente: não há o que desenhar */
+function dnfRepinta(x){const ch=x.ch,g=dnfGrupo(ch);
+  /* a nota saiu do DB (limpar/reimportar) ou o cartão saiu da tela: não há o que desenhar */
   if(!g.info||!x.card.isConnected)return;
-  x.card.querySelector('.body-detail').innerHTML=nfeDanfe(ch,g);
-  if(foco){const q=x.card.querySelector(foco);if(q){q.focus();if(q.setSelectionRange&&q.value!=null)q.setSelectionRange(q.value.length,q.value.length);}}}
+  x.card.querySelector('.body-detail').innerHTML=nfeDanfe(ch,g);}
 function dnfClique(e){
   const x=dnfCartao(e.target);if(!x)return;
   const ir=e.target.closest('.dnf-ir-item');if(ir){if(ir.dataset.ir!=null)dnfAbreSo(x,ir.dataset.ir);return;}
-  if(e.target.closest('.dnf-fecha-todos')){x.u.abertos.clear();dnfRepinta(x,'.dnf-q');return;}
+  if(e.target.closest('.dnf-fecha-todos')){dnfAbreSo(x,null);return;}
   const tr=e.target.closest('.dnf-prod tbody tr.dnf-it');if(!tr)return;
   if(window.getSelection&&String(window.getSelection())&&!e.target.closest('.dnf-abre'))return;
   const k=tr.dataset.it;dnfAbreSo(x,x.u.abertos.has(k)?null:k);
@@ -2136,17 +2127,17 @@ function dnfFechaOutras(ch){for(const [k,u] of DNF_UI){if(k===ch||!u.abertos.siz
    linha não colar no fim da janela. */
 const DNF_ROLA_TOPO=70,DNF_ROLA_TOPO_FOLGA=90,DNF_ROLA_FUNDO=8,DNF_ROLA_FUNDO_FOLGA=40;
 /* Um item aberto por vez (abrir outro substitui). Ao fechar, o foco volta para o
-   botão da linha que estava aberta (ou para o filtro, se foi de lá que veio o Esc)
-   — o innerHTML novo derrubava o foco no <body> e o teclado perdia o lugar na tabela. */
-function dnfAbreSo(x,k,foco){const ant=[...x.u.abertos][0];x.u.abertos.clear();if(k!=null){dnfFechaOutras(x.ch);x.u.abertos.add(String(k));}dnfRepinta(x,foco);
-  if(foco)return;const alvo=k!=null?String(k):ant;const b=alvo==null?null:[...x.card.querySelectorAll('.dnf-abre')].find(z=>z.dataset.abre===alvo);if(!b)return;b.focus({preventScroll:true});
+   botão da linha que estava aberta — o innerHTML novo derrubava o foco no <body>
+   e o teclado perdia o lugar na tabela. */
+function dnfAbreSo(x,k){const ant=[...x.u.abertos][0];x.u.abertos.clear();if(k!=null){dnfFechaOutras(x.ch);x.u.abertos.add(String(k));}dnfRepinta(x);
+  const alvo=k!=null?String(k):ant;const b=alvo==null?null:[...x.card.querySelectorAll('.dnf-abre')].find(z=>z.dataset.abre===alvo);if(!b)return;b.focus({preventScroll:true});
   if(k==null)return;const r=b.closest('tr').getBoundingClientRect(),lim=innerHeight;
   const sc=document.getElementById('content')||window; /* quem rola é #content (o body tem overflow:hidden) */
   if(r.top<DNF_ROLA_TOPO)sc.scrollBy(0,r.top-DNF_ROLA_TOPO_FOLGA);else if(r.bottom>lim-DNF_ROLA_FUNDO)sc.scrollBy(0,r.bottom-lim+DNF_ROLA_FUNDO_FOLGA);}
-/* Esc fecha o item só quando o painel está na tela (item escondido pelo filtro não
-   rouba o Esc do campo de busca). preventDefault: o Esc do menu lateral respeita. */
+/* Esc fecha o item só quando o painel está na tela e o foco está na nota dele.
+   preventDefault: o Esc do menu lateral respeita. */
 function dnfEsc(e){const a0=document.activeElement,x0=dnfCartao(a0);if(!x0||!x0.card.querySelector('.dnf-painel'))return;
-  e.preventDefault();dnfAbreSo(x0,null,a0.classList&&a0.classList.contains('dnf-q')?'.dnf-q':null);}
+  e.preventDefault();dnfAbreSo(x0,null);}
 /* ↑ ↓ passam de item (fora de campo de texto). data-it é o índice da linha na nota:
    único, então a vizinha na tela é o próximo/anterior. */
 function dnfTecla(e){if(e.key==='Escape'){dnfEsc(e);return;}
@@ -2155,9 +2146,16 @@ function dnfTecla(e){if(e.key==='Escape'){dnfEsc(e);return;}
   const ks=[...x.card.querySelectorAll('tr.dnf-it')].map(t=>t.dataset.it),i=ks.indexOf([...x.u.abertos][0]),j=i+(e.key==='ArrowDown'?1:-1);
   if(i<0||j<0||j>=ks.length)return;e.preventDefault();dnfAbreSo(x,ks[j]);}
 document.addEventListener('keydown',dnfTecla);
-let dnfTq=0;
-function dnfEntrada(e){const x=dnfCartao(e.target);if(!x)return;
-  if(e.target.classList.contains('dnf-q')){clearTimeout(dnfTq);dnfTq=setTimeout(()=>{x.u.q=e.target.value;dnfRepinta(x,'.dnf-q');},150);}}
+/* Clique fora do painel e fora das linhas de produto fecha o item aberto, sem mexer
+   no foco (o clique pode ter ido para outro campo da tela). Alvo que já saiu do DOM
+   não conta como "fora": os botões do próprio painel e as linhas repintam a nota.
+   Com texto selecionado também não: arrastar a seleção para além da borda do painel
+   (ou de uma linha para outra) dispara o clique no ancestral comum, que fica fora. */
+function dnfForaClique(e){const pn=document.querySelector('.dnf-painel');if(!pn)return;const t=e.target;
+  if(window.getSelection&&String(window.getSelection()))return;
+  if(!t||!t.isConnected||!t.closest||t.closest('.dnf-painel')||t.closest('.dnf-prod tbody tr.dnf-it'))return;
+  const x=dnfCartao(pn);if(!x||!x.u.abertos.size)return;x.u.abertos.clear();dnfRepinta(x);}
+document.addEventListener('click',dnfForaClique);
 
 function toggleDet(el){
   const b=el.nextElementSibling;
@@ -2282,9 +2280,6 @@ function toggleNota(el){
     if(d){toggleDet(d);return;}
     if(id==='nfe-list')dnfClique(e);
   });
-  if(id==='nfe-list'){
-    raiz.addEventListener('input',e=>{if(e.target.classList.contains('dnf-q'))dnfEntrada(e);});
-  }
   /* Teclado: os alvos são div/span clicáveis — sem isto, são inalcançáveis por Tab (2.1.1) */
   raiz.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
