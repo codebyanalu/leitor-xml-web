@@ -12,6 +12,7 @@ O que é versionado:
 | `painel-gerencial.html` | painel do estado do projeto, mesma linguagem visual do app |
 | `README.md` | este arquivo |
 | `testes/` | as quatro suítes de gate (ver [Testes](#testes)) |
+| `.github/workflows/` | integração contínua e publicação (ver [CI/CD](#cicd-no-github)) |
 
 O que **não** é versionado (continua na máquina, sai do índice do git):
 
@@ -203,6 +204,21 @@ O `smoke` sai com **2** (não 1) e diz o que faltou quando o browser não está 
 `painel-check.mjs` e `regressao.mjs` resolvem os caminhos por `__dirname`, então rodam da raiz ou de dentro de `testes/`. Sem `amostras/` e `verdade.json` (ambos gitignored) a bancada sai com "Nenhum PDF em amostras/" e código 1 — é o comportamento esperado em clone novo, não uma falha do gate.
 
 A regressão, ao contrário, tem de **passar** em clone novo, e isso é conferido: o gate anti-vazamento aceita a ausência do gabarito sem reprovar o fonte correto (ver [Privacidade](#nenhum-dado-fiscal-da-cliente-no-repositório)). Uma suíte que só passa na máquina de quem escreveu é um portão que não existe para mais ninguém.
+
+## CI/CD no GitHub
+
+**CI** (`.github/workflows/ci.yml`) roda em todo push e pull request, e também à mão pela aba Actions ("Run workflow"):
+
+| Job | O que confere |
+|---|---|
+| regressão e painel | `regressao.mjs` (renders, XSS, schema, contraste) e `painel-check.mjs` (o KPI do painel bate com a regressão) |
+| mutação | `mutacao.mjs`: cada gate reprova quando o código que ele protege é quebrado de propósito |
+| navegador | `smoke.cjs` no Chrome do runner, com o `index.html` de verdade; se falhar, as capturas de tela ficam como artefato por 7 dias |
+| segurança | gitleaks no histórico inteiro, lista fechada de arquivos que podem ser versionados e nenhum `console.*` no sistema |
+
+**CD** (`.github/workflows/publicar.yml`) roda a cada push na `main`: repete a regressão e, só com ela verde, publica no GitHub Pages **apenas o `index.html`**. Testes, README e painel continuam no repositório, mas não ficam acessíveis pelo endereço do site. Requer *Settings → Pages → Source = GitHub Actions*.
+
+As actions são fixadas por commit (SHA), não por nome de versão, e os workflows só têm permissão de leitura do código; o de publicação recebe `pages: write` apenas no job que publica.
 
 ## Stack
 
