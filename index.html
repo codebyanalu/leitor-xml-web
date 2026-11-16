@@ -2932,12 +2932,14 @@ document.getElementById('baixar').addEventListener('click', async () => {
   const DBpdf=[]; const logEl=document.getElementById('pdfiso-log'); const resEl=document.getElementById('pdfiso-result');
   const esc=ESC; /* esc vive no escopo do script (ver ESC) — antes daqui quebrava os consumidores fora deste IIFE */
   function isoLog(m,c){const d=document.createElement('div');d.textContent=m;d.style.color=c||'var(--code-fg)';logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
-  /* fmtCNPJ e fmtChave nao so reformatam: elas ESCAPAM tambem. O dado vem de
+  /* fmtCNPJ reformata e fmtChave mostra a chave junta, mas as duas ESCAPAM. O dado vem de
      PDF e de XML — arquivo de terceiro. Reformatar nao protege: um CNPJ forjado
      com `"><img src=x onerror=...>` sobrevive ao replace e ia parar no
      `onclick="abrirConsultaCNPJ('...')"` e no texto da celula. */
   function fmtCNPJ(c){return c?esc(c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')):'';}
-  function fmtChave(ch){return ch?esc(ch.replace(/(\d{4})/g,'$1 ').trim()):'';}
+  /* A chave sai JUNTA (44 dígitos corridos): quem usa copia e cola em outros
+     sistemas, e os blocos de 4 com espaço atrapalhavam. A célula quebra a linha. */
+  function fmtChave(ch){return ch?esc(ch):'';}
 /* Celula vazia da tabela do leitor de PDF. O "—" cobre tres estados ("não li", "o
    documento não tem", "recusei por ambiguidade") e nada na tela dizia qual. A regra do
    leitor é "vazio em vez de errado", então o vazio carrega o porquê no title.
@@ -3019,7 +3021,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
         <td style="font-size:11px;white-space:nowrap">${r.numero?esc(r.numero):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Número não localizado" title="Número não localizado">✗</span>'} <span class="pdfiso-badge ${confCls}" data-para="confianca" style="margin-left:4px">${r.confMedio}%</span></td>
         <td style="font-size:10px;white-space:nowrap">${gar}</td>
         <td style="font-family:monospace;font-size:11px">${celVazia(r.serie)}</td>
-        <td style="font-family:monospace;font-size:11px;max-width:280px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
+        <td style="font-family:monospace;font-size:11px;max-width:320px;word-break:break-all">${r.chave?fmtChave(r.chave):'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave não localizada" title="Chave não localizada">✗</span>'} ${r.chaveValida?'<span role="img" aria-label="Chave de 44 dígitos validada: dígito verificador, cUF, AAMM e modelo conferem" title="Chave validada (DV + cUF + AAMM + modelo)">✓</span>':r.chave?'<span style="color:var(--err-ink);font-weight:700" role="img" aria-label="Chave de 44 dígitos lida, mas não validada: o dígito verificador fecha e o cUF, o AAMM ou o modelo não conferem. Ela não é usada para número nem para CNPJ" title="Chave lida, não validada (DV fecha; cUF/AAMM/modelo não conferem) — não usada para número nem CNPJ">✗</span>':''}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjPrestador)}</td>
         <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" >${celVazia(r.nomePrestador)}</td>
         <td style="font-family:monospace;font-size:11px;white-space:nowrap">${cnpjCell(r.cnpjTomador)}</td>
