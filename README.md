@@ -62,7 +62,8 @@ XML e PDF são entrada de terceiro: o conteúdo do arquivo aparece na tela, e um
 | `escProfundo()` | o render do resultado do CNPJ aplica na árvore inteira |
 | `celVazia()` | célula da tabela do PDF, com o `title` do tooltip |
 | `cnpjCell()` | CNPJ da tabela do PDF |
-| `fmtCNPJ()` / `fmtChave()` | reformatam **e escapam** |
+| `fmtCNPJ()` | reformata **e escapa** |
+| `fmtChave()` | só escapa (a chave sai junta, sem blocos) |
 | `dataBr()` | trunca a data **e escapa** — truncar não impede o ataque (ver abaixo) |
 | `dnfVal()` | toda célula do DANFE (tabela de itens, impostos, produto, financeiro, veículo) — valor, percentual, quantidade, código com descrição e texto |
 | `nfeDanfe()` / `dnfItemAberto()` / `dnfPainel()` / `renderNFE()` / `renderNFSe()` | o card da nota inteiro, campo a campo |

@@ -1552,11 +1552,20 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   ok('nenhum dado de arquivo entra em onclick inline (contexto de JavaScript)',
     !/onclick="[^"]*\$\{[^}]*(cnpj|CNPJ|c\}|prestador|emitente|tomador)/.test(html),
     'escapar para HTML nao protege dentro de onclick: a aspa simples sobrevive');
-  /* fmtCNPJ e fmtChave escapam alem de formatar: o dado vem de PDF/XML, e
-     reformatar nao protege. */
+  /* fmtCNPJ e fmtChave escapam (a chave nem é reformatada): o dado vem de
+     PDF/XML, e reformatar não protege. */
   ok('os formatadores de dado de arquivo escapam, não só reformatam',
     /function fmtCNPJ\(c\)\{return c\?esc\(/.test(html)
     && /function fmtChave\(ch\)\{return ch\?esc\(/.test(html));
+  {
+    /* A chave de acesso aparece sempre junta, sem espaços entre os blocos. */
+    const src = (/function fmtChave\(ch\)\{[^\n]*\}/.exec(html) || [''])[0];
+    const chave = '0123456789'.repeat(5).slice(0, 44); // sintética, montada em tempo de execução
+    let saida = '', erro = '';
+    try { saida = new Function('esc', src + ';return fmtChave;')((s) => String(s))(chave); } catch (e) { erro = e.message; }
+    ok('a chave do leitor de PDF sai junta (44 dígitos, sem espaço)',
+      !erro && saida === chave, erro || JSON.stringify(saida));
+  }
   /* dataBr truncava sem escapar, e o truncamento nao impede o ataque:
      `"><img src=x onerror=...>` nos 10 primeiros caracteres ainda abre tag. */
   ok('dataBr escapa além de truncar (a data vem do XML)',
