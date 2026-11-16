@@ -86,7 +86,7 @@ jobs:
         run: |
           # Lista do que pode existir no repositório. Qualquer outro arquivo
           # (configuração de ferramenta local, dado de cliente, rascunho) reprova.
-          permitidos='^(index\.html|README\.md|\.gitignore|painel-gerencial\.html|testes/[^/]+\.(mjs|cjs|json)|\.github/workflows/[^/]+\.yml)$'
+          permitidos='^(index\.html|README\.md|\.gitignore|painel-gerencial\.html|testes/[^/]+\.(mjs|cjs|json)|\.github/workflows/[^/]+\.yml|\.github/dependabot\.yml)$'
           fora=$(git ls-files | grep -Ev "$permitidos" || true)
           if [ -n "$fora" ]; then
             echo "Arquivos fora da lista do sistema:"; echo "$fora"; exit 1
