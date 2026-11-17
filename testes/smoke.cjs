@@ -133,7 +133,7 @@ const MEDIR_SIDEBAR = `(() => {
   };
 })()`;
 
-/* Os 8 itens do menu têm title (nome no rail, onde o rótulo é visually-hidden)
+/* Os 9 itens do menu têm title (nome no rail, onde o rótulo é visually-hidden)
    e o toggle não é .nav-btn (entraria na troca de aba e no breadcrumb). */
 const MEDIR_MENU = `(() => {
   const btns = [...document.querySelectorAll('.nav-btn')];
@@ -200,8 +200,8 @@ const MEDIR_MENU = `(() => {
         ok(c.crAccent >= 3, `${tema}: --sidebar-accent sobre --sidebar = ${c.crAccent}:1 (o que o toggle usa)`);
       }
       const menu = await page.evaluate(MEDIR_MENU);
-      ok(menu.itens === 8 && menu.titulos === 8,
-        `${w}px ${tema}: os 8 itens do menu têm title (${menu.titulos}/8)`);
+      ok(menu.itens === 9 && menu.titulos === 9,
+        `${w}px ${tema}: os 9 itens do menu têm title (${menu.titulos}/9)`);
       ok(menu.crumb === 'Leitura PDF',
         `${w}px ${tema}: o breadcrumb mostra a aba, sem o toggle ("${menu.crumb.trim()}")`);
 
