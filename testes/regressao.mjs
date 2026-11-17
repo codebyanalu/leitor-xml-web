@@ -387,7 +387,7 @@ const simbolos = new Set([...html.matchAll(/<symbol id="([^"]+)"/g)].map(m => m[
    nenhum markup estático — sem esta segunda fonte, o gate acusaria órfão). */
 const usos = new Set([...html.matchAll(/<use href="#([^"]+)"/g)].map(m => m[1]));
 for (const m of html.matchAll(/['"]#(i-[a-z-]+)['"]/g)) usos.add(m[1]);
-ok('sprite tem 22 símbolos', simbolos.size === 22, 'achou ' + simbolos.size);
+ok('sprite tem 23 símbolos', simbolos.size === 23, 'achou ' + simbolos.size);
 ok('todo use aponta para um símbolo existente', [...usos].every(u => simbolos.has(u)),
   [...usos].filter(u => !simbolos.has(u)).join(','));
 ok('nenhum símbolo órfão (definido e nunca usado)', [...simbolos].every(s => usos.has(s)),
@@ -1305,7 +1305,7 @@ await (async () => {
     somePorAtributo.length >= 4, 'pares: ' + somePorAtributo.join(', '));
   ok('a faixa de estatísticas some inteira quando não há contagem',
     /#status-bar\[hidden\]\{display:none\}/.test(html)
-    && /barra\.hidden=!\(DB\.nfe\.length\+DB\.nfse\.length\+DB\.arquivos>0\)/.test(html));
+    && /barra\.hidden=!\(DB\.nfe\.length\+DB\.nfse\.length\+DB\.cte\.length\+DB\.arquivos>0\)/.test(html));
   ok('cada contador some quando volta a zero (a faixa não fica com "0 produtos")',
     /el\.parentElement\.hidden=!\(n>0\)/.test(html) && /#status-bar \.stat\[hidden\]\{display:none\}/.test(html));
   ok('a barra de filtro do leitor de PDF só existe depois do primeiro PDF',
@@ -1849,8 +1849,8 @@ grupo('14.1 · SIDEBAR RECOLHÍVEL: um estado, dois gatilhos');
     && /btn\.setAttribute\('aria-label',txt\);btn\.setAttribute\('title',txt\);/.test(html)
     && !/#btn-rail>span\{/.test(css) && !/#sidebar\[data-rail="on"\] #btn-rail>span\{/.test(css));
   const titulosRail = [...html.matchAll(/class="nav-btn[^"]*" data-tab="[^"]+" title="([^"]+)"/g)].map((m) => m[1]);
-  ok('os 8 itens do menu têm title (nome no rail, onde o rótulo é visually-hidden)',
-    titulosRail.length === 8, 'achou ' + titulosRail.length + ': ' + titulosRail.join(', '));
+  ok('os 9 itens do menu têm title (nome no rail, onde o rótulo é visually-hidden)',
+    titulosRail.length === 9, 'achou ' + titulosRail.length + ': ' + titulosRail.join(', '));
   ok('a live region do toggle existe ANTES da primeira escrita',
     /<p id="rail-status" role="status" aria-live="polite" class="visually-hidden">/.test(html));
   ok('existe a utilitária .visually-hidden (o rail escondia o rótulo só na media query)',
@@ -3071,6 +3071,96 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           /\.dnf-painel\{[^}]*top:var\(--painel-topo\)[^}]*box-shadow:var\(--shadow-painel\)/.test(html)
           && (html.match(/--shadow-painel:/g) || []).length === 2);
       }
+    }
+    /* ── CT-e ─────────────────────────────────────────────────────────────────
+       A aba CT-e (lista + painel aberto + quadro "Para conferir") roda com o
+       payload em TODO campo que ela lê. O universo vem do FONTE do módulo
+       (c./pt./d./v./k./q.), como no NF-e/NFS-e: campo novo lido cru reprova sem
+       ninguém mexer no fixture. Dois registros: o segundo com tomador "4 - Outros",
+       que desenha o bloco do tomador (ramo que o primeiro não percorre). */
+    {
+      const iniC = html.indexOf('// ═══ CT-e (modelo 57) ═══');
+      const iniTela = html.indexOf('/* ── Tela:', iniC);
+      const fimC = html.indexOf('function cteAbre(', iniC);
+      const fonteCte = iniC < 0 || iniTela < 0 || fimC < 0 ? '' : html.slice(iniTela, fimC);
+      const NAO_CAMPO = ['length', 'map', 'filter', 'some', 'concat', 'join', 'slice', 'reduce', 'flatMap'];
+      const campos = (pref) => [...new Set([...fonteCte.matchAll(new RegExp('\\b' + pref + '\\.([A-Za-z_]\\w*)', 'g'))].map((m) => m[1]))]
+        .filter((k) => !NAO_CAMPO.includes(k));
+      const topo = campos('c');
+      const daParte = [...new Set(campos('pt').concat(['doc', 'nome', 'email', 'fone']))];
+      const objDe = (pref, val) => Object.fromEntries(campos(pref).map((k) => [k, val]));
+      const regCte = (val, extra) => {
+        const r = {};
+        for (const k of topo) r[k] = val;
+        for (const k of ['emit', 'rem', 'exped', 'receb', 'dest', 'tomaOutro', 'resp']) r[k] = Object.fromEntries(daParte.map((x) => [x, val]));
+        r.comp = [objDe('k', val)]; r.infQ = [objDe('q', val)]; r.veic = [objDe('v', val)]; r.dup = [objDe('d', val)];
+        r.docs = [Object.assign(objDe('d', val), { tipo: 'NF-e', chave: val }), objDe('d', val)];
+        for (const k of ['docAnt', 'occ', 'obsCont', 'obsFisco']) r[k] = [val];
+        r.fat = [val, val, val, val];
+        return Object.assign(r, extra || {});
+      };
+      ok('CT-e: o universo de campos do render vem do fonte (e não está vazio)',
+        topo.length >= 60 && daParte.length >= 7 && campos('d').length >= 7 && campos('v').length >= 6, 'c.=' + topo.length + ' pt.=' + daParte.length);
+      const medeCte = (val, aberto) => {
+        try {
+          vm.runInContext(`(()=>{__DB.cte=${JSON.stringify([regCte(val), regCte(val, { toma: '4' })])};__DB.nfe=[];CTE_UI.aberto=${aberto};renderCTe();})()`, sb);
+          return vm.runInContext("document.getElementById('cte-list').innerHTML+document.getElementById('cte-alertas').innerHTML", sb);
+        } catch (e) { return 'ERRO: ' + e.message; }
+      };
+      for (const ab of [0, 1]) {
+        const hp = medeCte(PAY, ab), hb = medeCte(BENIGNO, ab), fp = forma(hp), fb = forma(hb);
+        ok('renderCTe com o painel ' + (ab ? 'do tomador "outros"' : 'aberto') + ': o payload não ganha tag nem handler e continua como texto',
+          !/^ERRO/.test(hp) && /cte-painel/.test(hp) && fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0 && fp.img === 0 && fp.escapado > 0 && fb.escapado === 0,
+          /^ERRO/.test(hp) ? hp : `payload ${fp.tags} tag(s)/${fp.handler} handler vs benigno ${fb.tags}/${fb.handler}`);
+      }
+      FORMAS.forEach((formaPay, i) => {
+        const fp = forma(medeCte(formaPay, 0)), fb = forma(medeCte(BENIGNO, 0));
+        ok('a forma #' + (i + 1) + ' (' + formaPay.slice(0, 18) + '…) não vira HTML em renderCTe',
+          fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0, `tags=${fp.tags} vs benigno=${fb.tags}`);
+      });
+      /* Campo que não veio no XML aparece como "não consta no XML", não some. */
+      const vazio = medeCte('', 0);
+      ok('CT-e: campo ausente no XML aparece como "não consta no XML" no painel',
+        (vazio.match(/não consta no XML/g) || []).length >= 40, (vazio.match(/não consta no XML/g) || []).length + ' ocorrência(s)');
+      /* A exportação: o cteLinha devolve exatamente as colunas do HCTE, na ordem. */
+      const colunas = vm.runInContext(`Object.keys(cteLinha(${JSON.stringify(regCte('X'))})).join('|')`, sb);
+      ok('CT-e: cada linha exportada tem exatamente as colunas do HCTE, na mesma ordem',
+        colunas === vm.runInContext("HCTE.join('|')", sb), colunas.slice(0, 120));
+      /* A detecção: o CT-e não cai mais em "nfe" (virava "0 produto(s)"). */
+      const det = vm.runInContext(`[detectType('<?xml version="1.0"?><cteProc versao="4.00"><CTe>'),detectType('<CTe xmlns="x"><infCte Id="CTe1">'),
+        detectType('<?xml version="1.0"?><nfeProc versao="4.00"><NFe>'),detectType('<CompNFe><NFe>'),detectType('<NFSe versao="1.00"><infNFSe>')].join()`, sb);
+      ok('detectType reconhece CT-e e mantém NF-e e NFS-e', det === 'cte,cte,nfe,nfse,nfse', det);
+      ok('cteRot não resolve código pelo protótipo (o código vem do XML)',
+        vm.runInContext("cteRot('toma','constructor')+'|'+cteRot('toma','3')", sb) === 'constructor|3 - Destinatário');
+      /* O quadro "Para conferir": salto na numeração, NF-e não carregada, chassi e
+         NF-e repetidos entre CT-e, CT-e sem autorização. Chaves sintéticas. */
+      /* Montadas em tempo de execução (nenhuma chave de 44 dígitos fica escrita no arquivo). */
+      const nfChave = (n) => '35' + '2610' + '11222334000126' + '55' + '001' + String(n).padStart(9, '0') + '1' + '00000001' + '1';
+      const nfA = nfChave(100), nfB = nfChave(200);
+      /* Os campos de ligação (Chave_CTe, chCTeSub) são zerados/únicos: com o mesmo valor
+         em tudo, todo CT-e "substituiria" a si mesmo. O 45 substitui o 40 e é autorizado
+         fora de prazo (150), que conta como autorizado. */
+      const base = (n, chs, chassi, st, sub) => regCte('X', { Numero: n, Serie: '1', cStat: st, xMotivo: 'M', Chave_CTe: 'CT' + n, chCTeSub: sub || '',
+        emit: { doc: '11222333000181' }, rem: { doc: '11222333000181' }, docs: chs.map((ch) => ({ tipo: 'NF-e', chave: ch })), veic: [{ chassi }] });
+      const alertas = vm.runInContext(`cteAlertas(${JSON.stringify([base('40', [nfA], 'CH1', '100'), base('41', [nfB], 'CH1', '100'), base('44', [nfA], 'CH2', ''), base('45', [], 'CH3', '150', 'CT40')])},new Set(['${nfA}']))`, sb);
+      const txt = alertas.join(' || ');
+      ok('CT-e: o quadro "Para conferir" aponta salto, NF-e faltando, repetições, substituto e falta de autorização',
+        alertas.length === 7 && /emitente 11222333000181, série 1\): faltam 42 a 43/.test(txt) && /substituto importado junto com o original \(o frete contaria duas vezes\): 45\./.test(txt)
+        && /1 de 3 NF-e vinculadas não foram carregadas: NF 200 \(CT-e 41\)/.test(txt)
+        && /NF-e vinculada a mais de um CT-e: NF 100 \(CT-e 40, 44\)/.test(txt) && /Chassi em mais de um CT-e: CH1 \(CT-e 40, 41\)/.test(txt)
+        && /3 CT-e com a própria transportadora como remetente/.test(txt) && /1 CT-e sem autorização de uso: 44 \(Sem protocolo\)/.test(txt), txt);
+      /* CSV do CT-e: toda célula (inclusive as compostas, juntadas com " | ") passa pela
+         neutralização de fórmula depois de montada. */
+      /* O helper do CSV mora em outro script da página: sobe o mesmo trecho que o teste de NF-e usa. */
+      { const iG = html.indexOf('window.GCON={csvCelula:'); vm.runInContext(html.slice(iG, html.indexOf('\n', iG)), sb); }
+      const celulas = vm.runInContext(`(()=>{const r=cteLinha(${JSON.stringify(regCte('=HYPERLINK("x")', { comp: [{ nome: '=1+1', valor: '1' }] }))});
+        return HCTE.map(h=>window.GCON.csvCelula?window.GCON.csvCelula(formatoBr(r[h])):null);})()`, sb);
+      const crua = celulas.filter((x) => x !== null && /^"[=+\-@]/.test(x));
+      ok('CT-e: o CSV neutraliza fórmula em toda coluna (inclusive as listas juntadas)',
+        celulas.every((x) => x !== null) && crua.length === 0 && celulas.some((x) => x.startsWith('"\'=HYPERLINK')), crua.slice(0, 3).join(' | ') || String(celulas[0]));
+      ok('o botão copiar só aparece para chave de 44 dígitos',
+        vm.runInContext("cteCopiar('12345')+'|'+(cteCopiar('1'.repeat(44)).includes('data-copiar'))", sb) === '|true');
+      vm.runInContext('__DB.cte=[];CTE_UI.aberto=-1', sb);
     }
     ok('o extrator lê o grupo veicProd de dentro de <prod>',
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));

@@ -710,6 +710,56 @@ const MEDIR_MENU = `(() => {
     await ctx.close();
   }
 
+  /* ───────────────────────────────────────────────────────────────────────
+     6. CT-e de ponta a ponta (XML sintético montado aqui, nenhum dado real)
+     ─────────────────────────────────────────────────────────────────────── */
+  head('6. CT-e: importar, conferir, abrir o painel, fechar');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await ctx.newPage();
+    const erros = [];
+    page.on('pageerror', (e) => erros.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error') erros.push(m.text()); });
+    await page.goto(pathToFileURL(FILE).href, { waitUntil: 'load', timeout: 60000 });
+    const r = await page.evaluate(async () => {
+      const dv = (c) => { let s = 0, p = 2; for (let i = c.length - 1; i >= 0; i--) { s += +c[i] * p; p = p === 9 ? 2 : p + 1; } const k = s % 11; return String(k < 2 ? 0 : 11 - k); };
+      const chave = (uf, cnpj, mod, n) => { const b = uf + '2610' + cnpj + mod + '001' + String(n).padStart(9, '0') + '1' + String(10000000 + n); return b + dv(b); };
+      /* O payload vai em campos de texto do XML (escapado como XML): na tela tem de sair como texto. */
+      const PAY = '&lt;img src=x onerror=&quot;window.__XSS=1&quot;&gt;';
+      const xml = (n, nfs) => `<?xml version="1.0" encoding="UTF-8"?><cteProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><CTe><infCte Id="CTe${chave('22', '11222333000181', '57', n)}" versao="4.00"><ide><cUF>22</cUF><cCT>1</cCT><CFOP>6932</CFOP><natOp>${PAY}</natOp><mod>57</mod><serie>1</serie><nCT>${n}</nCT><dhEmi>2026-10-22T13:26:43-03:00</dhEmi><tpAmb>2</tpAmb><tpCTe>0</tpCTe><modal>01</modal><tpServ>0</tpServ><xMunIni>Cidade A</xMunIni><UFIni>SP</UFIni><xMunFim>Cidade C</xMunFim><UFFim>GO</UFFim><toma3><toma>3</toma></toma3></ide><emit><CNPJ>11222333000181</CNPJ><xNome>${PAY}</xNome><CRT>1</CRT></emit><rem><CNPJ>11222333000181</CNPJ><xNome>TRANSPORTADORA EXEMPLO</xNome></rem><dest><CNPJ>12345678000195</CNPJ><xNome>CLIENTE EXEMPLO</xNome></dest><vPrest><vTPrest>2490.00</vTPrest><vRec>2490.00</vRec></vPrest><imp><ICMS><ICMS00><CST>00</CST><vBC>2490.00</vBC><pICMS>12.00</pICMS><vICMS>298.80</vICMS></ICMS00></ICMS></imp><infCTeNorm><infCarga><vCarga>409900.00</vCarga><proPred>${PAY}</proPred></infCarga><infDoc>${nfs.map((k) => `<infNFe><chave>${k}</chave></infNFe>`).join('')}</infDoc><veicNovos><chassi>9BWEXEMPLO000${n}</chassi><vUnit>359900.00</vUnit></veicNovos></infCTeNorm><compl><xObs>${PAY}</xObs></compl></infCte></CTe><protCTe><infProt><cStat>100</cStat><xMotivo>Autorizado</xMotivo><nProt>1</nProt></infProt></protCTe></cteProc>`;
+      const nf = (n) => chave('35', '11222334000126', '55', n);
+      /* Um CT-e com os grupos opcionais que os outros não trazem: tomador "outros" (toma4),
+         ICMS devido a outra UF, NF em papel e outros documentos, cobrança e partilha do ICMS. */
+      const completo = `<?xml version="1.0" encoding="UTF-8"?><cteProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><CTe><infCte Id="CTe${chave('22', '11222333000181', '57', 50)}" versao="4.00"><ide><nCT>50</nCT><serie>1</serie><mod>57</mod><dhEmi>2026-10-23T09:05:00-03:00</dhEmi><toma4><toma>4</toma><CNPJ>11222335000170</CNPJ><xNome>TOMADOR EXEMPLO</xNome><enderToma><xLgr>Rua T</xLgr><xMun>Cidade T</xMun><UF>MG</UF></enderToma></toma4></ide><emit><CNPJ>11222333000181</CNPJ><xNome>TRANSPORTADORA EXEMPLO</xNome></emit><vPrest><vTPrest>1000.00</vTPrest><vRec>1000.00</vRec></vPrest><imp><ICMS><ICMSOutraUF><CST>90</CST><pRedBCOutraUF>10.00</pRedBCOutraUF><vBCOutraUF>900.00</vBCOutraUF><pICMSOutraUF>7.00</pICMSOutraUF><vICMSOutraUF>63.00</vICMSOutraUF></ICMSOutraUF></ICMS><ICMSUFFim><vBCUFFim>1000.00</vBCUFFim><pFCPUFFim>2.00</pFCPUFFim><pICMSUFFim>17.00</pICMSUFFim><pICMSInter>12.00</pICMSInter><vFCPUFFim>20.00</vFCPUFFim><vICMSUFFim>50.00</vICMSUFFim><vICMSUFIni>0.00</vICMSUFIni></ICMSUFFim></imp><infCTeNorm><infCarga><vCarga>5000.00</vCarga><proPred>PECAS</proPred></infCarga><infDoc><infNF><serie>2</serie><nDoc>777</nDoc><dEmi>2026-10-20</dEmi><vNF>5000.00</vNF></infNF><infOutros><tpDoc>99</tpDoc><descOutros>DECLARACAO</descOutros><nDoc>88</nDoc></infOutros></infDoc><cobr><fat><nFat>F-1</nFat><vOrig>1000.00</vOrig><vLiq>1000.00</vLiq></fat><dup><nDup>001</nDup><dVenc>2026-11-20</dVenc><vDup>1000.00</vDup></dup></cobr></infCTeNorm></infCte></CTe><protCTe><infProt><cStat>150</cStat><xMotivo>Autorizado fora de prazo</xMotivo></infProt></protCTe></cteProc>`;
+      await handleFiles([new File([xml(40, [nf(100), nf(200)])], 'cte-40.xml'), new File([xml(42, [nf(102)])], 'cte-42.xml'), new File([xml(42, [nf(102)])], 'cte-42 (1).xml'), new File([completo], 'cte-50.xml')]);
+      document.querySelector('[data-tab=cte]').click();
+      const linhas = document.querySelectorAll('#cte-list tr[data-i]').length;
+      const alertas = document.getElementById('cte-alertas').innerText;
+      document.querySelector('#cte-list tr[data-i="2"]').click();
+      const t50 = (document.querySelector('.cte-painel') || { innerText: '' }).innerText;
+      const grupos = ['TOMADOR EXEMPLO', 'Devido a outra UF', '7,00%', '63,00', '10,00%', 'NF 777', 'DECLARACAO', 'F-1', '20/11/2026', '17,00%', 'R$ 50,00', 'Autorizado fora de prazo']
+        .filter((g) => !t50.includes(g));
+      document.querySelector('#cte-list tr[data-i="0"]').click();
+      const pn = document.querySelector('.cte-painel');
+      const box = pn ? pn.getBoundingClientRect() : null;
+      return { linhas, alertas, esquerda: box ? Math.round(box.left) : -1, colunas: pn ? getComputedStyle(pn.querySelector('.cte-painel-cols')).columnCount : '',
+        blocos: pn ? pn.querySelectorAll('.cte-bloco').length : 0, img: document.querySelectorAll('#cte-list img').length,
+        texto: pn ? pn.innerText.includes('<img src=x') : false, xss: window.__XSS === 1, contador: document.getElementById('s-cte').textContent, grupos };
+    });
+    ok(r.linhas === 3 && r.contador === '3', `3 CT-e na lista e no contador (o "(1)" repetido entra uma vez): linhas=${r.linhas} contador=${r.contador}`);
+    ok(/Nenhuma NF-e carregada/.test(r.alertas) && /faltam 41, 43 a 49/.test(r.alertas), `o quadro "Para conferir" avisa NF-e não carregadas e os saltos: ${r.alertas.replace(/\s+/g, ' ').slice(0, 200)}`);
+    ok(r.grupos.length === 0, `o painel mostra os grupos opcionais (toma4, ICMS outra UF, NF/outros, cobrança, partilha, 150): ${r.grupos.join(', ') || 'todos'}`);
+    ok(r.esquerda > 1440 * 0.4 && r.esquerda < 1440 * 0.6 && r.colunas === '2', `o painel abre perto do meio da tela, em duas colunas: esquerda=${r.esquerda}px colunas=${r.colunas}`);
+    ok(r.blocos >= 20, `o painel mostra todos os grupos do CT-e: ${r.blocos} bloco(s)`);
+    ok(!r.xss && r.img === 0 && r.texto, `o texto hostil do XML aparece como texto e não executa (xss=${r.xss} img=${r.img})`);
+    await page.screenshot({ path: path.join(SHOT, '1440-claro-cte-painel.png') });
+    await page.keyboard.press('Escape');
+    const fechou = await page.evaluate(() => !document.querySelector('.cte-painel') && document.activeElement && document.activeElement.matches('#cte-list tr[data-i]'));
+    ok(fechou, 'Esc fecha o painel do CT-e e devolve o foco para a linha');
+    ok(erros.length === 0, `sem erro de console na aba CT-e: ${erros.slice(0, 3).join(' | ') || 'nenhum'}`);
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + (fail ? 'SMOKE REPROVADO: ' + fail + ' falha(s)' : 'SMOKE OK: tudo passou'));
   console.log('screenshots: ' + SHOT);

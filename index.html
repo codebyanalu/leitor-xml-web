@@ -980,6 +980,50 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .dnf-ir-item,.dnf-fecha-todos{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
 .dnf-ir-item:disabled{color:var(--text3);cursor:default}
 .dnf-painel-corpo{flex:1;overflow:auto;padding:10px 12px}
+/* ── CT-e: lista + painel largo (quase metade da tela), mesmo desenho do item da NF-e ── */
+.cte-alertas{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;color:var(--warn-ink);font-size:12px}
+.cte-alertas b{display:block;margin-bottom:4px}
+.cte-alertas ul{margin:0;padding-left:18px}
+.cte-alertas[hidden]{display:none}
+.cte-tab-wrap{overflow-x:auto}
+.cte-tab{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);font-size:12px}
+.cte-tab th{background:var(--card-2);text-align:left;font-size:11px;color:var(--text2);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border)}
+.cte-tab td{padding:8px 10px;border-bottom:1px solid var(--border-light);vertical-align:top}
+.cte-tab tbody tr{cursor:pointer}
+.cte-tab tbody tr:nth-child(even){background:var(--zebra)}
+.cte-tab tbody tr:hover{background:var(--row-hover)}
+.cte-tab tbody tr:focus-visible{outline-offset:-2px}
+.cte-tab tbody tr.sel{background:var(--tint);box-shadow:inset 3px 0 0 var(--primary-cta)}
+.cte-tab .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cte-sub{font-size:11px;color:var(--text3)}
+.cte-mono{font-family:Consolas,monospace;font-size:11px;word-break:break-all}
+.cte-pill{display:inline-block;padding:2px 8px;border-radius:var(--radius-pill);font-size:11px;font-weight:600;white-space:nowrap;border:1px solid var(--border);color:var(--text2)}
+/* Fundo próprio: sem ele o verde fica abaixo de 4,5:1 sobre a linha com o cursor. */
+.cte-ok{color:var(--success);background:var(--card);border:1px solid currentColor}
+.cte-falta{color:var(--warn-ink);background:var(--warn-bg);border:1px solid var(--warn-line)}
+.cte-err{color:var(--err-ink);background:var(--err-bg);border:1px solid var(--err-line)}
+.cte-painel{position:fixed;top:var(--painel-topo);right:0;bottom:0;width:min(860px,50vw);z-index:60;background:var(--card);border-left:3px solid var(--primary-cta);box-shadow:var(--shadow-painel);display:flex;flex-direction:column}
+.cte-painel-cab{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 10px;background:var(--card-2);border-bottom:1px solid var(--border)}
+.cte-painel-cab b{font-size:15px;flex:1 1 160px}
+.cte-fechar{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+/* As colunas ficam num filho de altura livre: com column-count no próprio contêiner de
+   rolagem (altura fixa), o conteúdo vira colunas para o lado em vez de descer. */
+.cte-painel-corpo{flex:1;overflow:auto}
+.cte-painel-cols{column-count:2;column-gap:0}
+.cte-bloco{break-inside:avoid;padding:10px 14px;border-bottom:1px solid var(--border-light)}
+.cte-bloco h5{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-ink)}
+.cte-kv{display:grid;grid-template-columns:minmax(100px,38%) 1fr;gap:3px 8px;font-size:12px;margin:0}
+.cte-kv dt{color:var(--text2)}
+.cte-kv dd{margin:0;overflow-wrap:anywhere}
+.cte-nc{color:var(--text3);font-style:italic}
+.cte-doc{border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;margin-bottom:6px}
+.cte-doc-l1{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-bottom:3px}
+.cte-copiar{border:1px solid var(--border-input);background:var(--card);color:var(--primary-ink);border-radius:var(--radius-sm);font:inherit;font-size:11px;padding:1px 7px;margin-left:4px;cursor:pointer;position:relative}
+/* O visual fica compacto e a área de toque chega a 44px pelo pseudo-elemento. */
+.cte-copiar::after{content:"";position:absolute;inset:-13px -4px}
+@media (max-width:1100px){.cte-painel-cols{column-count:1}}
+@media (max-width:900px){.cte-painel{width:100vw}}
+@media (max-width:767.98px){.cte-painel{top:0}.cte-dica{display:none}}
 .nota-card .dnf-prod > table > tbody > tr.dnf-it:hover td{background:var(--row-hover)}
 .nota-card .dnf-prod td.n{text-align:right;font-variant-numeric:tabular-nums}
 .nota-card .dnf-prod td.z{color:var(--text3)}
@@ -1261,7 +1305,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
      (e em todo layout ≤768px) o #logo some, e o documento ficava sem nenhum h1.
      Zero impacto visual. -->
 <h1 class="visually-hidden">GCON/SIAN — leitor de NF-e e NFS-e</h1>
-<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-panel-close" viewBox="0 0 24 24"><path d="M15 3l-6 9 6 9M9 3l-6 9 6 9"/></symbol><symbol id="i-panel-open" viewBox="0 0 24 24"><path d="M9 3l6 9-6 9M15 3l6 9-6 9"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
+<svg id="sprite" aria-hidden="true" focusable="false"><symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><path d="M6 9a6 6 0 0 0 6 6h6"/><path d="M18 12l3 3-3 3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol><symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M15 10h4a2 2 0 0 1 2 2v9"/><path d="M8 7h2M12 7h1M8 11h2M12 11h1M8 15h2M12 15h1"/><path d="M10 21v-3h2v3"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 19v-6"/><path d="M12 19V7"/><path d="M17 19v-9"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol><symbol id="i-panel-close" viewBox="0 0 24 24"><path d="M15 3l-6 9 6 9M9 3l-6 9 6 9"/></symbol><symbol id="i-panel-open" viewBox="0 0 24 24"><path d="M9 3l6 9-6 9M15 3l6 9-6 9"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol><symbol id="i-truck" viewBox="0 0 24 24"><path d="M1 5h13v11H1z"/><path d="M14 9h4l4 4v3h-8z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol></svg>
 
 
 <div id="loading-overlay"><div id="loading-box"><div class="spinner"></div><p id="loading-msg">Processando...</p></div></div>
@@ -1280,6 +1324,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
   <div class="nav-section">VISUALIZAR</div>
   <button class="nav-btn" data-tab="nfe" title="NF-e (Peças)"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg></span><span>NF-e (Peças)</span></button>
   <button class="nav-btn" data-tab="nfse" title="NFS-e (Serviços)"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg></span><span>NFS-e (Serviços)</span></button>
+  <button class="nav-btn" data-tab="cte" title="CT-e (Transporte)"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-truck"></use></svg></span><span>CT-e (Transporte)</span></button>
   <button class="nav-btn" data-tab="dashboard" title="Dashboard"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-chart"></use></svg></span><span>Dashboard</span></button>
   <div class="nav-section">EXPORTAR</div>
   <button class="nav-btn" data-tab="exportar" title="Exportar Dados"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg></span><span>Exportar Dados</span></button>
@@ -1298,6 +1343,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
     <div id="status-bar">
       <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-box"></use></svg> <span class="num" id="s-nfe">0</span> produtos NF-e</div>
       <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-clipboard"></use></svg> <span class="num" id="s-nfse">0</span> serviços NFS-e</div>
+      <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-truck"></use></svg> <span class="num" id="s-cte">0</span> CT-e</div>
       <div class="stat"><svg class="i" aria-hidden="true"><use href="#i-folder"></use></svg> <span class="num" id="s-arqs">0</span> XMLs</div>
       <div style="margin-left:auto;font-size:10px;color:var(--text3)" id="s-sessao"></div>
     </div>
@@ -1307,7 +1353,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
       <div id="upload-area" role="button" tabindex="0" aria-describedby="upload-area-hint">
         <div class="icon"><svg class="i" aria-hidden="true"><use href="#i-upload"></use></svg></div>
         <p id="upload-area-hint"><strong>Clique aqui</strong> ou arraste os XMLs</p>
-        <p class="sub">NF-e (modelo 55) · NFS-e (CompNFe / Nacional)</p>
+        <p class="sub">NF-e (modelo 55) · NFS-e (CompNFe / Nacional) · CT-e (modelo 57)</p>
       </div>
       <div id="import-log"></div>
     </div>
@@ -1374,6 +1420,16 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
         <span class="count" id="nfse-count"></span>
       </div>
       <div id="nfse-list"></div>
+    </div>
+
+    <div class="tab-content" id="tab-cte">
+      <div class="filter-bar">
+        <input type="text" id="filtro-cte" placeholder="Buscar CT-e, chassi, chave, nome..." aria-label="Buscar no CT-e" oninput="renderCTe()">
+        <span class="count" id="cte-count"></span>
+      </div>
+      <div id="cte-alertas" class="cte-alertas" role="status" hidden></div>
+      <p id="cte-aviso" class="visually-hidden" aria-live="polite"></p>
+      <div id="cte-list"></div>
     </div>
 
     <div class="tab-content" id="tab-dashboard">
@@ -1516,6 +1572,14 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
               <button class="btn btn-out" onclick="exportXLSX('nfse')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
             </div>
           </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
+            <h4 class="sec-title tight"><svg class="i" aria-hidden="true"><use href="#i-truck"></use></svg> CT-e (Transporte)</h4>
+            <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Conhecimentos de transporte — uma linha por CT-e, com os documentos vinculados</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-prim" onclick="exportCSV('cte')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> CSV</button>
+              <button class="btn btn-out" onclick="exportXLSX('cte')" style="flex:1"><svg class="i" aria-hidden="true"><use href="#i-download"></use></svg> Excel</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1527,7 +1591,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 
 
 // ═══ DATA ═══
-const DB={nfe:[],nfse:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
+const DB={nfe:[],nfse:[],cte:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
 const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','Tp_NF','Data_Emissao',
   'CNPJ_Emitente','Nome_Emitente','NomeFantasia_Emit','IE_Emitente','UF_Emitente','Mun_Emitente',
   'CNPJ_Destinatario','CPF_Destinatario','Nome_Destinatario','IE_Destinatario','UF_Destinatario','Mun_Destinatario',
@@ -1593,6 +1657,9 @@ function dataBr(d){if(!d||d==='nan'||d==='None')return'';return esc(String(d).sl
    Fica no escopo do script (e nao dentro de um IIFE) porque tem consumidores em varios modulos. */
 function ESC(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 const esc=ESC;
+/* Data e hora do XML (2026-10-22T13:26:43-03:00) no formato da tela, SEM escapar
+   (quem põe no HTML escapa). Fonte única: o DANFE (dnfData) e o CT-e usam esta. */
+function dataHoraBr(v,soData){const s=String(v||'');const m=/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(s);if(!m)return s;return m[3]+'/'+m[2]+'/'+m[1]+(!soData&&m[4]?' '+m[4]+':'+m[5]:'');}
 function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
 function agora(){const d=new Date();return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 
@@ -1815,7 +1882,9 @@ function extrairNFSe(nome,texto){
 }
 
 // ═══ FILE HANDLING ═══
-function detectType(texto){return(/CompNFe|<NFSe|infNFSe|nNFSe/i).test(texto.slice(0,600))?'nfse':'nfe';}
+/* CT-e primeiro: o cabeçalho do CT-e não tem nada que a regra da NFS-e casaria, mas sem
+   esta checagem ele caía em 'nfe' e virava "0 produto(s)". */
+function detectType(texto){const ini=texto.slice(0,600);if(/<cteProc[\s>]|<CTe[\s>]|<infCte[\s>]/.test(ini))return'cte';return(/CompNFe|<NFSe|infNFSe|nNFSe/i).test(ini)?'nfse':'nfe';}
 
 function logHTML(texto,tipo){
   const el=document.getElementById('import-log');
@@ -1840,7 +1909,7 @@ async function handleFiles(files){
   logHTML('','brd');
 
   let nfeTotal=0,nfseTotal=0,errCount=0;
-  const novosNFE=[],novosNFSE=[];
+  const novosNFE=[],novosNFSE=[],novosCTE=[];
 
   for(let i=0;i<arr.length;i++){
     const file=arr[i];
@@ -1848,7 +1917,12 @@ async function handleFiles(files){
     try{
       const texto=await readFileAsText(file);
       const tipo=detectType(texto);
-      if(tipo==='nfse'){
+      if(tipo==='cte'){
+        const r=extrairCTe(file.name,texto);
+        if(r.ok){novosCTE.push(r.cte);
+          logHTML(`  [${i+1}/${arr.length}] [CT-e]  ${(file.name||'').slice(0,48).padEnd(48)} ${r.cte.docs.length} doc(s) vinculado(s)  [${(r.msg||'').slice(0,30)}]`,'nfe');
+        }else{errCount++;logHTML(`  [${i+1}/${arr.length}] [CT-e]  ${(file.name||'').slice(0,48)} - ${(r.msg||'erro').slice(0,50)}`,'err');}
+      }else if(tipo==='nfse'){
         const r=extrairNFSe(file.name,texto);
         if(r.ok&&r.notas&&r.notas.length){
           novosNFSE.push(...r.notas);nfseTotal+=r.notas.length;
@@ -1867,18 +1941,21 @@ async function handleFiles(files){
     }
   }
 
-  DB.nfe.push(...novosNFE);DB.nfse.push(...novosNFSE);DB.arquivos+=arr.length;
+  DB.nfe.push(...novosNFE);DB.nfse.push(...novosNFSE);DB.cte.push(...novosCTE);DB.arquivos+=arr.length;
   // Dedup
   const ck=new Set();DB.nfe=DB.nfe.filter(p=>{const k=`${p.Chave_NFe}_${p.Item}_${p.cProd}`;if(ck.has(k))return false;ck.add(k);return true;});
   const ck2=new Set();DB.nfse=DB.nfse.filter(n=>{const k=n.Chave_NFSe||n.Numero_NFSe||JSON.stringify(n);if(ck2.has(k))return false;ck2.add(k);return true;});
+  /* O mesmo CT-e importado duas vezes (o arquivo "(1)" do download repetido) entra uma vez só. */
+  const ck3=new Set();DB.cte=DB.cte.filter(c=>{const k=c.Chave_CTe||c.Arquivo_Origem;if(ck3.has(k))return false;ck3.add(k);return true;});
 
   logHTML('','brd');
-  logHTML(`Processados ${arr.length} arquivo(s) — ${novosNFE.length} produtos NF-e, ${novosNFSE.length} notas NFS-e${errCount?` (${errCount} erro(s))`:''}`,'ok');
-  if(errCount&&!novosNFE.length&&!novosNFSE.length){
+  logHTML(`Processados ${arr.length} arquivo(s) — ${novosNFE.length} produtos NF-e, ${novosNFSE.length} notas NFS-e, ${novosCTE.length} CT-e${errCount?` (${errCount} erro(s))`:''}`,'ok');
+  if(errCount&&!novosNFE.length&&!novosNFSE.length&&!novosCTE.length){
     errb.textContent='Erro: Nenhum XML foi processado. Verifique o console (F12 > Console) para detalhes do erro.';
     errb.style.display='block';
   }
   updateStatus();populateFilters();
+  if(document.getElementById('tab-cte').classList.contains('active'))renderCTe();
   overlay.classList.remove('active');
 }
 
@@ -1894,6 +1971,7 @@ function updateStatus(){
   };
   conta('s-nfe',DB.nfe.length);
   conta('s-nfse',DB.nfse.length);
+  conta('s-cte',DB.cte.length);
   conta('s-arqs',DB.arquivos);
   document.getElementById('s-sessao').textContent=`Sessão: ${DB.sessaoId}`;
   /* Sem nenhuma contagem, a barra inteira sai — inclusive o id da sessão, que
@@ -1901,7 +1979,7 @@ function updateStatus(){
      é tão dependente do layout quanto os contadores). Menos ruído numa tela
      vazia; o id volta no primeiro arquivo e é o que nomeia o export. */
   const barra=document.getElementById('status-bar');
-  if(barra)barra.hidden=!(DB.nfe.length+DB.nfse.length+DB.arquivos>0);
+  if(barra)barra.hidden=!(DB.nfe.length+DB.nfse.length+DB.cte.length+DB.arquivos>0);
 }
 
 function populateFilters(){
@@ -1989,7 +2067,7 @@ function dnfVal(v,tp){
   return {h:dnfTem(v)?esc(v):'—',z:!dnfTem(v)};
 }
 function dnfDoc(c){const d=String(c||'').replace(/\D/g,'');if(d.length===14)return esc(d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'));if(d.length===11)return esc(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'));return dnfTem(c)?esc(c):'—';}
-function dnfData(d){const s=String(d||'');const m=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);return m?esc(m[3]+'/'+m[2]+'/'+m[1]+(m[4]?' '+m[4]+':'+m[5]:'')):(s?esc(s):'—');}
+function dnfData(d){const s=dataHoraBr(d);return s?esc(s):'—';}
 function dnfCx(rot,html,num,zero){return `<div class="dnf-cx"><span class="r">${esc(rot)}</span><span class="v${num?' n':''}${zero?' z':''}">${html}</span></div>`;}
 function dnfCampo(rot,v,tp){const r=dnfVal(v,tp||'t');return dnfCx(rot,r.h,tp==='m'||tp==='p',r.z);}
 function nfeDanfe(ch,g){
@@ -2290,6 +2368,333 @@ function toggleNota(el){
   });
 });
 
+// ═══ CT-e (modelo 57) ═══
+/* O CT-e é lido INTEIRO: todo grupo do leiaute 4.00 que tem dado para a
+   conferência vira campo, e a tela mostra "não consta no XML" quando o grupo não
+   veio (um campo que some não diz se o leitor esqueceu ou se o XML não trouxe).
+   Um CT-e é UMA linha em DB.cte (o objeto guarda as listas: componentes,
+   documentos vinculados, veículos); a exportação achata em HCTE pelo cteLinha.
+   Todo dado do XML entra na tela por esc() (os helpers cteV/cteM/cteP/cteC). */
+const CTE_ROT={
+  tpCTe:{'0':'Normal','1':'Complemento de valores','2':'Anulação','3':'Substituto'},
+  tpServ:{'0':'Normal','1':'Subcontratação','2':'Redespacho','3':'Redespacho intermediário','4':'Serviço vinculado a multimodal'},
+  modal:{'01':'Rodoviário','02':'Aéreo','03':'Aquaviário','04':'Ferroviário','05':'Dutoviário','06':'Multimodal'},
+  toma:{'0':'Remetente','1':'Expedidor','2':'Recebedor','3':'Destinatário','4':'Outros'},
+  tpAmb:{'1':'Produção','2':'Homologação'},
+  tpEmis:{'1':'Normal','3':'Regime especial NFF','4':'EPEC pela SVC','5':'Contingência FSDA','7':'Autorização pela SVC-RS','8':'Autorização pela SVC-SP'},
+  tpImp:{'1':'Retrato','2':'Paisagem'},
+  procEmi:{'0':'Aplicativo do contribuinte','3':'Aplicativo do fisco'},
+  retira:{'0':'Sim','1':'Não'},
+  indIEToma:{'1':'Contribuinte ICMS','2':'Contribuinte isento','9':'Não contribuinte'},
+  CRT:{'1':'Simples Nacional','2':'Simples Nacional, excesso de sublimite','3':'Regime normal','4':'MEI'},
+  cUnid:{'00':'M3','01':'KG','02':'TON','03':'Unidade','04':'Litros','05':'MMBTU'},
+  indSN:{'1':'Sim'},
+  ICMS:{ICMS00:'Tributação normal',ICMS20:'Com redução da base',ICMS45:'Isento, não tributado ou diferido',ICMS60:'Cobrado por substituição',ICMS90:'Outros',ICMSOutraUF:'Devido a outra UF',ICMSSN:'Simples Nacional'}
+};
+function cteRot(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return'';const m=CTE_ROT[tab];const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return r?c+' - '+r:c;}
+/* Uma parte do CT-e (emit, rem, exped, receb, dest, toma4). Filho direto (:scope>):
+   o endereço tem tags com o mesmo nome em outros grupos. */
+function cteParte(el){
+  if(!el)return null;
+  const end=el.querySelector(':scope>enderEmit,:scope>enderReme,:scope>enderExped,:scope>enderReceb,:scope>enderDest,:scope>enderToma');
+  const lugar=end?[t(end,'xMun'),t(end,'UF')].filter(Boolean).join('/'):'';
+  return{doc:t(el,':scope>CNPJ')||t(el,':scope>CPF'),IE:t(el,':scope>IE'),nome:t(el,':scope>xNome'),fant:t(el,':scope>xFant'),
+    fone:t(el,'fone'),email:t(el,'email'),
+    end:end?[t(end,'xLgr'),t(end,'nro'),t(end,'xCpl'),t(end,'xBairro'),lugar,t(end,'CEP')?'CEP '+t(end,'CEP'):'',t(end,'xPais')].filter(Boolean).join(' · '):''};
+}
+function extrairCTe(nome,texto){
+  const doc=parseXML(texto);
+  /* CT-e OS (modelo 67) tem outro leiaute (tomador e partes em outro lugar): melhor recusar
+     com aviso do que mostrar um CT-e pela metade. */
+  if(doc.querySelector('CTeOS'))return{ok:false,msg:'CT-e OS (modelo 67) ainda não é lido'};
+  const inf=doc.querySelector('infCte');
+  if(!inf)return{ok:false,msg:'CT-e sem o grupo infCte'};
+  const fi=(sel)=>inf.querySelector(sel);
+  const ide=fi(':scope>ide'),imp=fi(':scope>imp'),norm=fi(':scope>infCTeNorm'),vp=fi(':scope>vPrest'),compl=fi(':scope>compl');
+  const prot=doc.querySelector('protCTe infProt');
+  const lst=(raiz,sel,fn)=>raiz?[...raiz.querySelectorAll(sel)].map(fn):[];
+  const id=(inf.getAttribute('Id')||'').replace(/^CTe/,'');
+  const icms=imp?imp.querySelector(':scope>ICMS>*'):null;
+  const uf=imp?imp.querySelector(':scope>ICMSUFFim'):null;
+  const ibs=imp?imp.querySelector(':scope>IBSCBS'):null;
+  const tomaEl=ide?ide.querySelector(':scope>toma3,:scope>toma4,:scope>toma03'):null;
+  const infDoc=norm?norm.querySelector(':scope>infDoc'):null;
+  const carga=norm?norm.querySelector(':scope>infCarga'):null;
+  const cobr=norm?norm.querySelector(':scope>cobr'):null;
+  const emit=fi(':scope>emit');
+  const c={
+    Chave_CTe:/^\d{44}$/.test(id)?id:(t(prot,'chCTe')||id),
+    Modelo:t(ide,'mod'),Serie:t(ide,'serie'),Numero:t(ide,'nCT'),Data_Emissao:t(ide,'dhEmi'),CFOP:t(ide,'CFOP'),NatOp:t(ide,'natOp'),
+    cUF:t(ide,'cUF'),cCT:t(ide,'cCT'),cDV:t(ide,'cDV'),tpImp:t(ide,'tpImp'),tpEmis:t(ide,'tpEmis'),tpAmb:t(ide,'tpAmb'),tpCTe:t(ide,'tpCTe'),
+    procEmi:t(ide,'procEmi'),verProc:t(ide,'verProc'),modal:t(ide,'modal'),tpServ:t(ide,'tpServ'),retira:t(ide,'retira'),xDetRetira:t(ide,'xDetRetira'),
+    indIEToma:t(ide,'indIEToma'),toma:tomaEl?t(tomaEl,':scope>toma'):'',dhCont:t(ide,'dhCont'),xJust:t(ide,'xJust'),
+    cMunEnv:t(ide,'cMunEnv'),Mun_Envio:[t(ide,'xMunEnv'),t(ide,'UFEnv')].filter(Boolean).join('/'),
+    cMunIni:t(ide,'cMunIni'),Mun_Ini:t(ide,'xMunIni'),UF_Ini:t(ide,'UFIni'),cMunFim:t(ide,'cMunFim'),Mun_Fim:t(ide,'xMunFim'),UF_Fim:t(ide,'UFFim'),
+    emit:cteParte(emit),CRT:t(emit,':scope>CRT'),
+    rem:cteParte(fi(':scope>rem')),exped:cteParte(fi(':scope>exped')),receb:cteParte(fi(':scope>receb')),dest:cteParte(fi(':scope>dest')),
+    tomaOutro:tomaEl&&tomaEl.tagName==='toma4'?cteParte(tomaEl):null,
+    vTPrest:t(vp,'vTPrest'),vRec:t(vp,'vRec'),comp:lst(vp,':scope>Comp',x=>({nome:t(x,'xNome'),valor:t(x,'vComp')})),
+    ICMS_Grupo:icms?icms.tagName:'',ICMS_CST:t(icms,'CST'),ICMS_indSN:t(icms,'indSN'),
+    ICMS_vBC:t(icms,'vBC')||t(icms,'vBCOutraUF'),ICMS_pICMS:t(icms,'pICMS')||t(icms,'pICMSOutraUF'),ICMS_vICMS:t(icms,'vICMS')||t(icms,'vICMSOutraUF'),
+    ICMS_pRedBC:t(icms,'pRedBC')||t(icms,'pRedBCOutraUF'),ICMS_vBCSTRet:t(icms,'vBCSTRet'),ICMS_pICMSSTRet:t(icms,'pICMSSTRet'),
+    ICMS_vICMSSTRet:t(icms,'vICMSSTRet'),ICMS_vCred:t(icms,'vCred'),ICMS_cBenef:t(icms,'cBenef'),
+    vTotTrib:t(imp,':scope>vTotTrib'),infAdFisco:t(imp,':scope>infAdFisco'),
+    UFFim_vBC:t(uf,'vBCUFFim'),UFFim_pFCP:t(uf,'pFCPUFFim'),UFFim_pICMS:t(uf,'pICMSUFFim'),UFFim_pInter:t(uf,'pICMSInter'),
+    UFFim_vFCP:t(uf,'vFCPUFFim'),UFFim_vICMS:t(uf,'vICMSUFFim'),UFFim_vICMSIni:t(uf,'vICMSUFIni'),
+    IBS_CST:t(ibs,'CST'),cClassTrib:t(ibs,'cClassTrib'),IBS_vBC:t(ibs,'vBC'),pIBSUF:t(ibs,'pIBSUF'),vIBSUF:t(ibs,'vIBSUF'),
+    pIBSMun:t(ibs,'pIBSMun'),vIBSMun:t(ibs,'vIBSMun'),IBS_vIBS:t(ibs,'vIBS'),pCBS:t(ibs,'pCBS'),CBS_vCBS:t(ibs,'vCBS'),
+    vCarga:t(carga,':scope>vCarga'),proPred:t(carga,':scope>proPred'),xOutCat:t(carga,':scope>xOutCat'),vCargaAverb:t(carga,':scope>vCargaAverb'),
+    infQ:lst(carga,':scope>infQ',x=>({cUnid:t(x,'cUnid'),tpMed:t(x,'tpMed'),qCarga:t(x,'qCarga')})),
+    docs:[].concat(
+      lst(infDoc,':scope>infNFe',x=>({tipo:'NF-e',chave:t(x,'chave'),numero:'',serie:'',data:t(x,'dPrev'),valor:'',extra:t(x,'PIN')})),
+      lst(infDoc,':scope>infNF',x=>({tipo:'NF',chave:'',numero:t(x,'nDoc'),serie:t(x,'serie'),data:t(x,'dEmi'),valor:t(x,'vNF'),extra:''})),
+      lst(infDoc,':scope>infOutros',x=>({tipo:'Outros',chave:'',numero:t(x,'nDoc'),serie:'',data:t(x,'dEmi'),valor:t(x,'vDocFisc'),extra:t(x,'descOutros')||t(x,'tpDoc')}))),
+    docAnt:lst(norm,'docAnt idDocAntEle',x=>t(x,'chCTe')).filter(Boolean),
+    RNTRC:norm?t(norm,'infModal rodo>RNTRC'):'',outroModal:norm&&norm.querySelector('infModal>*')&&!norm.querySelector('infModal>rodo')?norm.querySelector('infModal>*').tagName:'',
+    occ:lst(norm,'infModal rodo>occ',x=>[t(x,'serie'),t(x,'nOcc'),t(x,'dEmi')].filter(Boolean).join(' / ')),
+    veic:lst(norm,':scope>veicNovos',x=>({chassi:t(x,'chassi'),cCor:t(x,'cCor'),xCor:t(x,'xCor'),cMod:t(x,'cMod'),vUnit:t(x,'vUnit'),vFrete:t(x,'vFrete')})),
+    fat:cobr&&cobr.querySelector(':scope>fat')?[t(cobr,'fat>nFat'),t(cobr,'fat>vOrig'),t(cobr,'fat>vDesc'),t(cobr,'fat>vLiq')]:null,
+    dup:lst(cobr,':scope>dup',x=>({n:t(x,'nDup'),venc:t(x,'dVenc'),valor:t(x,'vDup')})),
+    chCTeComp:lst(inf,':scope>infCteComp',x=>t(x,'chCTe')).filter(Boolean).join(', '),chCTeSub:norm?t(norm,'infCteSub>chCte'):'',
+    xCaracAd:t(compl,'xCaracAd'),xCaracSer:t(compl,'xCaracSer'),xEmi:t(compl,'xEmi'),xObs:t(compl,':scope>xObs'),
+    obsCont:lst(compl,':scope>ObsCont',x=>(x.getAttribute('xCampo')||'')+': '+t(x,'xTexto')),
+    obsFisco:lst(compl,':scope>ObsFisco',x=>(x.getAttribute('xCampo')||'')+': '+t(x,'xTexto')),
+    nProt:t(prot,'nProt'),dhRecbto:t(prot,'dhRecbto'),cStat:t(prot,'cStat'),xMotivo:t(prot,'xMotivo'),verAplic:t(prot,'verAplic'),
+    resp:cteParte(fi(':scope>infRespTec')),respContato:t(fi(':scope>infRespTec'),'xContato'),
+    qrCode:t(doc,'infCTeSupl qrCodCTe'),
+    Arquivo_Origem:nome
+  };
+  if(!c.Numero&&!c.Chave_CTe)return{ok:false,msg:'CT-e sem número e sem chave'};
+  return{ok:true,cte:c,msg:`CT-e ${c.Numero||'?'}: ${((c.emit&&c.emit.nome)||'').slice(0,30)}`};
+}
+/* A exportação: uma linha por CT-e, com as listas juntadas por " | ". */
+const HCTE=['Chave_CTe','Numero','Serie','Modelo','Data_Emissao','Situacao','Protocolo','CFOP','NatOp','Tipo_CTe','Tipo_Servico','Modal','Tomador',
+  'Mun_Ini','UF_Ini','Mun_Fim','UF_Fim','CNPJ_Emitente','IE_Emitente','Nome_Emitente','CRT_Emitente','CNPJ_Remetente','Nome_Remetente',
+  'CNPJ_Expedidor','Nome_Expedidor','CNPJ_Recebedor','Nome_Recebedor','CNPJ_Destinatario','IE_Destinatario','Nome_Destinatario',
+  'Valor_Prestacao','Valor_Receber','Componentes','ICMS_Grupo','ICMS_CST','ICMS_vBC','ICMS_pICMS','ICMS_vICMS','ICMS_pRedBC',
+  'ICMS_vBCSTRet','ICMS_vICMSSTRet','ICMS_vCred','ICMS_indSN','vTotTrib','UFFim_vICMS','UFFim_vFCP','IBS_CST','cClassTrib','IBS_vBC','IBS_vIBS','CBS_vCBS',
+  'Valor_Carga','Produto_Predominante','Quantidade_Carga','Valor_Averbado','Qtd_Docs','Docs_Vinculados','RNTRC','Chassis','Observacoes','Arquivo_Origem'];
+function cteLinha(c){
+  const pt=(x,k)=>(x&&x[k])||'';
+  return{Chave_CTe:c.Chave_CTe,Numero:c.Numero,Serie:c.Serie,Modelo:c.Modelo,Data_Emissao:c.Data_Emissao,Situacao:[c.cStat,c.xMotivo].filter(Boolean).join(' - '),
+    Protocolo:c.nProt,CFOP:c.CFOP,NatOp:c.NatOp,Tipo_CTe:cteRot('tpCTe',c.tpCTe),Tipo_Servico:cteRot('tpServ',c.tpServ),Modal:cteRot('modal',c.modal),Tomador:cteRot('toma',c.toma),
+    Mun_Ini:c.Mun_Ini,UF_Ini:c.UF_Ini,Mun_Fim:c.Mun_Fim,UF_Fim:c.UF_Fim,
+    CNPJ_Emitente:pt(c.emit,'doc'),IE_Emitente:pt(c.emit,'IE'),Nome_Emitente:pt(c.emit,'nome'),CRT_Emitente:cteRot('CRT',c.CRT),
+    CNPJ_Remetente:pt(c.rem,'doc'),Nome_Remetente:pt(c.rem,'nome'),CNPJ_Expedidor:pt(c.exped,'doc'),Nome_Expedidor:pt(c.exped,'nome'),
+    CNPJ_Recebedor:pt(c.receb,'doc'),Nome_Recebedor:pt(c.receb,'nome'),CNPJ_Destinatario:pt(c.dest,'doc'),IE_Destinatario:pt(c.dest,'IE'),Nome_Destinatario:pt(c.dest,'nome'),
+    Valor_Prestacao:c.vTPrest,Valor_Receber:c.vRec,Componentes:c.comp.map(k=>k.nome+'='+formatoBr(k.valor)).join(' | '),
+    ICMS_Grupo:c.ICMS_Grupo,ICMS_CST:c.ICMS_CST,ICMS_vBC:c.ICMS_vBC,ICMS_pICMS:c.ICMS_pICMS,ICMS_vICMS:c.ICMS_vICMS,ICMS_pRedBC:c.ICMS_pRedBC,
+    ICMS_vBCSTRet:c.ICMS_vBCSTRet,ICMS_vICMSSTRet:c.ICMS_vICMSSTRet,ICMS_vCred:c.ICMS_vCred,ICMS_indSN:c.ICMS_indSN,vTotTrib:c.vTotTrib,
+    UFFim_vICMS:c.UFFim_vICMS,UFFim_vFCP:c.UFFim_vFCP,IBS_CST:c.IBS_CST,cClassTrib:c.cClassTrib,IBS_vBC:c.IBS_vBC,IBS_vIBS:c.IBS_vIBS,CBS_vCBS:c.CBS_vCBS,
+    Valor_Carga:c.vCarga,Produto_Predominante:c.proPred,Quantidade_Carga:c.infQ.map(q=>formatoBr(q.qCarga)+' '+cteRot('cUnid',q.cUnid)).join(' | '),Valor_Averbado:c.vCargaAverb,
+    Qtd_Docs:String(c.docs.length),Docs_Vinculados:c.docs.map(d=>d.chave||[d.tipo,d.serie,d.numero].filter(Boolean).join(' ')).join(' | '),
+    RNTRC:c.RNTRC,Chassis:c.veic.map(v=>v.chassi).join(' | '),Observacoes:[c.xObs].concat(c.obsCont).filter(Boolean).join(' | '),Arquivo_Origem:c.Arquivo_Origem};
+}
+
+/* ── Tela: lista + painel largo (o mesmo desenho do item da NF-e) ── */
+const CTE_UI={aberto:-1};
+const CTE_NC='<span class="cte-nc">não consta no XML</span>';
+const cteVazio=v=>v===''||v===null||v===undefined;
+function cteV(v){return cteVazio(v)?CTE_NC:esc(v);}
+function cteM(v){return cteVazio(v)?CTE_NC:esc(moeda(v));}
+function cteP(v){return cteVazio(v)?CTE_NC:esc(pct(v));}
+function cteC(tab,v){return cteVazio(v)?CTE_NC:esc(cteRot(tab,v));}
+function cteKV(pares){return'<dl class="cte-kv">'+pares.map(([k,h])=>`<dt>${k}</dt><dd>${h}</dd>`).join('')+'</dl>';}
+function cteBloco(tit,h){return`<section class="cte-bloco"><h5>${tit}</h5>${h}</section>`;}
+function cteParteKV(pt,extra){
+  if(!pt)return cteKV([['Grupo',CTE_NC]]);
+  return cteKV([['Razão social',cteV(pt.nome)+(extra||'')],['Fantasia',cteV(pt.fant)],['CNPJ/CPF',`<span class="cte-mono">${cteV(pt.doc)}</span>`],
+    ['IE',cteV(pt.IE)],['Endereço',cteV(pt.end)],['Telefone',cteV(pt.fone)],['E-mail',cteV(pt.email)]]);
+}
+/* Só chave de 44 dígitos ganha o botão: o texto vem do XML e não deve ir cru para a área de transferência. */
+function cteCopiar(v){return /^\d{44}$/.test(v||'')?` <button type="button" class="cte-copiar" data-copiar="${esc(v)}" aria-label="Copiar chave">copiar</button>`:'';}
+/* nº da NF-e dentro da chave (posições 26 a 34) e o CNPJ do emitente (7 a 20). */
+const cteNumNF=ch=>/^\d{44}$/.test(ch)?String(+ch.slice(25,34)):'';
+const cteCnpjNF=ch=>/^\d{44}$/.test(ch)?ch.slice(6,20):'';
+/* 100 e 150 (autorizado fora de prazo) são uso autorizado. */
+const cteAutorizado=c=>c.cStat==='100'||c.cStat==='150';
+function cteSit(c){
+  if(!c.cStat)return['Sem protocolo','cte-falta'];
+  return cteAutorizado(c)?[c.cStat==='150'?'Autorizado fora de prazo':'Autorizado','cte-ok']:[c.cStat+' - '+c.xMotivo,'cte-err'];
+}
+function cteDocsHTML(c,carregadas){
+  if(!c.docs.length)return cteKV([['Documentos',CTE_NC]]);
+  return c.docs.map(d=>{
+    if(d.tipo==='NF-e'){
+      const ok=carregadas.has(d.chave);
+      return`<div class="cte-doc"><div class="cte-doc-l1"><b>NF-e ${esc(cteNumNF(d.chave))}</b><span class="cte-pill ${ok?'cte-ok':'cte-falta'}">${ok?'carregada':'não carregada'}</span></div>`
+        +`<div class="cte-mono">${cteV(d.chave)}${cteCopiar(d.chave)}</div><div class="cte-sub">CNPJ do emitente ${esc(cteCnpjNF(d.chave))}${d.data?' · entrega prevista '+esc(dataHoraBr(d.data,true)):''}${d.extra?' · PIN '+esc(d.extra):''}</div></div>`;
+    }
+    return`<div class="cte-doc"><div class="cte-doc-l1"><b>${esc(d.tipo)} ${esc(d.numero)}</b></div><div class="cte-sub">${[d.serie?'série '+esc(d.serie):'',d.data?esc(dataHoraBr(d.data,true)):'',d.valor?esc(moeda(d.valor)):'',esc(d.extra)].filter(Boolean).join(' · ')}</div></div>`;
+  }).join('');
+}
+function ctePainel(c,carregadas){
+  const [sit,cls]=cteSit(c);
+  const remAviso=c.rem&&c.emit&&c.rem.doc&&c.rem.doc===c.emit.doc?' <span class="cte-pill cte-falta" title="O remetente é a própria transportadora">conferir</span>':'';
+  const veic=c.veic.length?c.veic.map(v=>cteKV([['Chassi',`<span class="cte-mono">${cteV(v.chassi)}</span>`],['Cor',cteV([v.cCor,v.xCor].filter(Boolean).join(' - '))],
+    ['Marca/modelo',cteV(v.cMod)],['Valor unitário',cteM(v.vUnit)],['Frete unitário',cteM(v.vFrete)]])).join(''):cteKV([['Veículos',CTE_NC]]);
+  const lstHTML=(a)=>a.length?a.map(esc).join('<br>'):CTE_NC;
+  return`<aside class="cte-painel" role="dialog" aria-label="CT-e ${esc(c.Numero)}">`
+  +`<div class="cte-painel-cab"><b>CT-e ${esc(c.Numero)} <span class="cte-sub">série ${esc(c.Serie)}</span></b><span class="cte-pill ${cls}">${esc(sit)}</span>`
+  +`<span class="cte-sub cte-dica">↑ ↓ passam de CT-e · Esc fecha</span><button type="button" class="cte-fechar">Fechar <span aria-hidden="true">✕</span></button></div>`
+  +`<div class="cte-painel-corpo"><div class="cte-painel-cols">`
+  +cteBloco('Chave de acesso',`<div class="cte-mono">${cteV(c.Chave_CTe)}${cteCopiar(c.Chave_CTe)}</div>`)
+  +cteBloco('Identificação',cteKV([['Número / série',cteV(c.Numero)+' / '+cteV(c.Serie)],['Modelo',cteV(c.Modelo)],['Emissão',cteV(dataHoraBr(c.Data_Emissao))],
+    ['CFOP',cteV(c.CFOP)],['Natureza',cteV(c.NatOp)],['Tipo do CT-e',cteC('tpCTe',c.tpCTe)],['Tipo de serviço',cteC('tpServ',c.tpServ)],['Modal',cteC('modal',c.modal)],
+    ['Tomador',cteC('toma',c.toma)],['IE do tomador',cteC('indIEToma',c.indIEToma)],['Retira',cteC('retira',c.retira)],['Detalhe da retirada',cteV(c.xDetRetira)],
+    ['Ambiente',cteC('tpAmb',c.tpAmb)],['Forma de emissão',cteC('tpEmis',c.tpEmis)],['Impressão',cteC('tpImp',c.tpImp)],['Processo',cteC('procEmi',c.procEmi)],
+    ['Versão do sistema',cteV(c.verProc)],['Código numérico',cteV(c.cCT)],['Dígito verificador',cteV(c.cDV)],['UF do emitente',cteV(c.cUF)],
+    ['Município de envio',cteV([c.cMunEnv,c.Mun_Envio].filter(Boolean).join(' - '))],
+    ['Início da prestação',cteV([c.cMunIni,[c.Mun_Ini,c.UF_Ini].filter(Boolean).join('/')].filter(Boolean).join(' - '))],
+    ['Fim da prestação',cteV([c.cMunFim,[c.Mun_Fim,c.UF_Fim].filter(Boolean).join('/')].filter(Boolean).join(' - '))],
+    ['Contingência',cteV([dataHoraBr(c.dhCont),c.xJust].filter(Boolean).join(' - '))],['CT-e complementado',cteV(c.chCTeComp)],['CT-e substituído',cteV(c.chCTeSub)]]))
+  +cteBloco('Emitente (transportadora)',cteParteKV(c.emit)+cteKV([['Regime (CRT)',cteC('CRT',c.CRT)]]))
+  +cteBloco('Remetente',cteParteKV(c.rem,remAviso))
+  +cteBloco('Destinatário',cteParteKV(c.dest))
+  +cteBloco('Expedidor',cteParteKV(c.exped))
+  +cteBloco('Recebedor',cteParteKV(c.receb))
+  +(c.toma==='4'?cteBloco('Tomador (outros)',cteParteKV(c.tomaOutro)):'')
+  +cteBloco('Valores da prestação',cteKV([['Valor total',`<b>${cteM(c.vTPrest)}</b>`],['Valor a receber',cteM(c.vRec)]]
+    .concat(c.comp.length?c.comp.map(k=>['Componente · '+esc(k.nome),cteM(k.valor)]):[['Componentes',CTE_NC]])))
+  +cteBloco('Impostos',cteKV([['Grupo',cteV(c.ICMS_Grupo?cteRot('ICMS',c.ICMS_Grupo):'')],['CST',cteV(c.ICMS_CST)],['Base de cálculo',cteM(c.ICMS_vBC)],
+    ['Alíquota ICMS',cteP(c.ICMS_pICMS)],['Valor do ICMS',cteM(c.ICMS_vICMS)],['Redução da base',cteP(c.ICMS_pRedBC)],['Optante Simples',cteC('indSN',c.ICMS_indSN)],
+    ['BC ICMS ST retido',cteM(c.ICMS_vBCSTRet)],['Alíquota ST',cteP(c.ICMS_pICMSSTRet)],['ICMS ST retido',cteM(c.ICMS_vICMSSTRet)],['Crédito presumido',cteM(c.ICMS_vCred)],
+    ['Benefício fiscal',cteV(c.ICMS_cBenef)],['Tributos aproximados',cteM(c.vTotTrib)],['Inf. ao fisco',cteV(c.infAdFisco)]]))
+  +cteBloco('Partilha do ICMS com a UF de destino',cteKV([['Base UF destino',cteM(c.UFFim_vBC)],['Alíq. UF destino',cteP(c.UFFim_pICMS)],['Alíq. interestadual',cteP(c.UFFim_pInter)],
+    ['% FCP',cteP(c.UFFim_pFCP)],['Valor FCP',cteM(c.UFFim_vFCP)],['ICMS UF destino',cteM(c.UFFim_vICMS)],['ICMS UF início',cteM(c.UFFim_vICMSIni)]]))
+  +cteBloco('IBS / CBS',cteKV([['CST',cteV(c.IBS_CST)],['cClassTrib',cteV(c.cClassTrib)],['Base de cálculo',cteM(c.IBS_vBC)],['Alíq. IBS UF',cteP(c.pIBSUF)],
+    ['IBS UF',cteM(c.vIBSUF)],['Alíq. IBS município',cteP(c.pIBSMun)],['IBS município',cteM(c.vIBSMun)],['IBS total',cteM(c.IBS_vIBS)],['Alíq. CBS',cteP(c.pCBS)],['CBS',cteM(c.CBS_vCBS)]]))
+  +cteBloco('Carga',cteKV([['Produto predominante',cteV(c.proPred)],['Outras características',cteV(c.xOutCat)],['Valor da carga',cteM(c.vCarga)],['Valor averbado',cteM(c.vCargaAverb)]]
+    .concat(c.infQ.length?c.infQ.map(q=>['Quantidade',esc([num2(q.qCarga,4),cteRot('cUnid',q.cUnid),q.tpMed?'medida '+q.tpMed:''].filter(Boolean).join(' · '))]):[['Quantidade',CTE_NC]])))
+  +cteBloco(`Documentos vinculados (${c.docs.length})`,cteDocsHTML(c,carregadas))
+  +cteBloco('Documentos anteriores',cteKV([['CT-e anteriores',lstHTML(c.docAnt)]]))
+  +cteBloco('Modal rodoviário',cteKV((c.outroModal?[['Outro modal',esc(c.outroModal)+' <span class="cte-nc">(detalhe não mostrado)</span>']]:[]).concat([['RNTRC',`<span class="cte-mono">${cteV(c.RNTRC)}</span>`],['Ordens de coleta',lstHTML(c.occ)]])))
+  +cteBloco(`Veículos novos transportados${c.veic.length>1?' ('+c.veic.length+')':''}`,veic)
+  +cteBloco('Cobrança',cteKV([['Fatura',c.fat?esc([c.fat[0],c.fat[1]?'original '+moeda(c.fat[1]):'',c.fat[2]?'desconto '+moeda(c.fat[2]):'',c.fat[3]?'líquido '+moeda(c.fat[3]):''].filter(Boolean).join(' · ')):CTE_NC],
+    ['Duplicatas',c.dup.length?c.dup.map(d=>esc([d.n,dataHoraBr(d.venc,true),d.valor?moeda(d.valor):''].filter(Boolean).join(' · '))).join('<br>'):CTE_NC]]))
+  +cteBloco('Observações',cteKV([['Observação geral',cteV(c.xObs)],['Obs. do contribuinte',lstHTML(c.obsCont)],['Obs. do fisco',lstHTML(c.obsFisco)],
+    ['Característica adicional',cteV(c.xCaracAd)],['Característica do serviço',cteV(c.xCaracSer)],['Funcionário emissor',cteV(c.xEmi)]]))
+  +cteBloco('Autorização',cteKV([['Situação',`<span class="cte-pill ${cls}">${esc(sit)}</span>`],['Protocolo',`<span class="cte-mono">${cteV(c.nProt)}</span>`],
+    ['Recebido em',cteV(dataHoraBr(c.dhRecbto))],['Aplicação',cteV(c.verAplic)],['QR Code',`<span class="cte-mono">${cteV(c.qrCode)}</span>`]]))
+  +cteBloco('Responsável técnico',cteKV([['CNPJ',`<span class="cte-mono">${cteV(c.resp&&c.resp.doc)}</span>`],['Contato',cteV(c.respContato)],
+    ['E-mail',cteV(c.resp&&c.resp.email)],['Telefone',cteV(c.resp&&c.resp.fone)]]))
+  +cteBloco('Arquivo',cteKV([['Origem',cteV(c.Arquivo_Origem)]]))
+  +`</div></div></aside>`;
+}
+/* Os alertas da conferência do lote. Texto puro: quem desenha escapa. Cada alerta cita
+   no máximo CTE_ALERTA_MAX itens (o resto vira "e mais N"): a lista é para achar, não para ler inteira. */
+const CTE_ALERTA_MAX=10;
+function cteAlertas(lista,carregadas){
+  const al=[];
+  const nfes=lista.flatMap(c=>c.docs.filter(d=>d.tipo==='NF-e'&&d.chave).map(d=>({c,ch:d.chave})));
+  if(nfes.length){
+    const faltam=nfes.filter(x=>!carregadas.has(x.ch));
+    if(!carregadas.size)al.push(`Nenhuma NF-e carregada: as ${nfes.length} NF-e vinculadas não foram conferidas. Importe os XMLs das notas junto com os CT-e.`);
+    else if(faltam.length)al.push(`${faltam.length} de ${nfes.length} NF-e vinculadas não foram carregadas: `+faltam.slice(0,CTE_ALERTA_MAX).map(x=>`NF ${cteNumNF(x.ch)} (CT-e ${x.c.Numero})`).join(', ')+(faltam.length>CTE_ALERTA_MAX?` e mais ${faltam.length-CTE_ALERTA_MAX}`:'')+'.');
+    const vezes=new Map();nfes.forEach(x=>vezes.set(x.ch,(vezes.get(x.ch)||[]).concat(x.c.Numero)));
+    const rep=[...vezes].filter(([,v])=>v.length>1);
+    if(rep.length)al.push('NF-e vinculada a mais de um CT-e: '+rep.slice(0,CTE_ALERTA_MAX).map(([ch,v])=>`NF ${cteNumNF(ch)} (CT-e ${v.join(', ')})`).join('; ')+'.');
+  }
+  /* Saltos de numeração por emitente + série. */
+  const seq=new Map();
+  lista.forEach(c=>{const k=((c.emit&&c.emit.doc)||'?')+'|'+c.Serie;const n=parseInt(c.Numero,10);if(!isNaN(n))seq.set(k,(seq.get(k)||[]).concat(n));});
+  seq.forEach((ns,k)=>{
+    const u=[...new Set(ns)].sort((a,b)=>a-b),buracos=[];
+    for(let i=1;i<u.length;i++){const d=u[i]-u[i-1];if(d===2)buracos.push(String(u[i]-1));else if(d>2)buracos.push((u[i-1]+1)+' a '+(u[i]-1));}
+    const [em,se]=k.split('|');
+    if(buracos.length)al.push(`Numeração com salto (emitente ${em}, série ${se}): faltam ${buracos.slice(0,CTE_ALERTA_MAX).join(', ')}${buracos.length>CTE_ALERTA_MAX?'…':''} no que foi importado.`);
+  });
+  const remEmit=lista.filter(c=>c.rem&&c.emit&&c.rem.doc&&c.rem.doc===c.emit.doc&&c.docs.some(d=>d.chave&&cteCnpjNF(d.chave)!==c.rem.doc));
+  if(remEmit.length)al.push(`${remEmit.length} CT-e com a própria transportadora como remetente, mas com NF-e de outro CNPJ.`);
+  const ch=new Map();lista.forEach(c=>c.veic.forEach(v=>{if(v.chassi)ch.set(v.chassi,(ch.get(v.chassi)||[]).concat(c.Numero));}));
+  const chRep=[...ch].filter(([,v])=>v.length>1);
+  if(chRep.length)al.push('Chassi em mais de um CT-e: '+chRep.slice(0,CTE_ALERTA_MAX).map(([k,v])=>`${k} (CT-e ${v.join(', ')})`).join('; ')+'.');
+  const chaves=new Set(lista.map(c=>c.Chave_CTe));
+  const subst=lista.filter(c=>c.chCTeSub&&chaves.has(c.chCTeSub));
+  if(subst.length)al.push('CT-e substituto importado junto com o original (o frete contaria duas vezes): '+subst.map(c=>c.Numero).join(', ')+'.');
+  const naoAut=lista.filter(c=>!cteAutorizado(c));
+  if(naoAut.length)al.push(`${naoAut.length} CT-e sem autorização de uso: `+naoAut.slice(0,CTE_ALERTA_MAX).map(c=>`${c.Numero} (${cteSit(c)[0]})`).join(', ')+'.');
+  return al;
+}
+function renderCTe(){
+  const lista=DB.cte;
+  const q=(document.getElementById('filtro-cte').value||'').trim().toLowerCase();
+  const el=document.getElementById('cte-list'),av=document.getElementById('cte-alertas');
+  const carregadas=new Set(DB.nfe.map(r=>r.Chave_NFe).filter(Boolean));
+  const idx=lista.map((c,i)=>i).filter(i=>{
+    if(!q)return true;const c=lista[i];
+    return[c.Numero,c.Chave_CTe,c.proPred,c.Mun_Ini,c.Mun_Fim,c.emit&&c.emit.nome,c.dest&&c.dest.nome,c.rem&&c.rem.nome]
+      .concat(c.docs.map(d=>d.chave||d.numero),c.veic.map(v=>v.chassi)).some(v=>String(v||'').toLowerCase().includes(q));
+  });
+  document.getElementById('cte-count').textContent=lista.length?`${idx.length} de ${lista.length} CT-e · ${lista.reduce((s,c)=>s+c.docs.length,0)} documentos vinculados`:'';
+  const al=lista.length?cteAlertas(lista,carregadas):[];
+  av.hidden=!al.length;
+  av.innerHTML=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'';
+  if(!lista.length){el.innerHTML='<div class="empty-state"><p>Nenhum CT-e. Importe os XMLs de CT-e (modelo 57).</p></div>';return;}
+  if(!idx.length){el.innerHTML='<div class="empty-state"><p>Nenhum CT-e para a busca.</p></div>';return;}
+  if(!idx.includes(CTE_UI.aberto))CTE_UI.aberto=-1;
+  const linhas=idx.map(i=>{
+    const c=lista[i],nf=c.docs.filter(d=>d.tipo==='NF-e'&&d.chave),k=nf.filter(d=>carregadas.has(d.chave)).length;
+    const pill=!nf.length?`<span class="cte-pill">${c.docs.length} doc.</span>`:k===nf.length?`<span class="cte-pill cte-ok">${k}/${nf.length} carregadas</span>`:`<span class="cte-pill cte-falta">${k}/${nf.length} · falta ${nf.length-k}</span>`;
+    const [sit,cls]=cteSit(c);
+    return`<tr data-i="${i}" tabindex="0" class="${i===CTE_UI.aberto?'sel':''}">`
+      +`<td><b>${esc(c.Numero)}</b><div class="cte-sub">série ${esc(c.Serie)}</div></td><td>${esc(dataHoraBr(c.Data_Emissao,true))}</td>`
+      +`<td>${esc([c.Mun_Ini,c.UF_Ini].filter(Boolean).join('/'))} → ${esc([c.Mun_Fim,c.UF_Fim].filter(Boolean).join('/'))}</td>`
+      +`<td>${esc(c.proPred)}${c.veic.length?`<div class="cte-sub cte-mono">${esc(c.veic.map(v=>v.chassi).join(', '))}</div>`:''}</td>`
+      +`<td class="n">${esc(moeda(c.vTPrest))}</td><td>${esc(c.ICMS_CST)}${c.ICMS_indSN?'<div class="cte-sub">Simples</div>':''}</td>`
+      +`<td class="n">${c.ICMS_pICMS?esc(pct(c.ICMS_pICMS)):'—'}</td><td class="n">${c.ICMS_vICMS?esc(moeda(c.ICMS_vICMS)):'—'}</td>`
+      +`<td class="n">${esc(moeda(c.vCarga))}</td><td>${pill}</td><td><span class="cte-pill ${cls}">${esc(sit)}</span></td></tr>`;
+  }).join('');
+  el.innerHTML=`<div class="cte-tab-wrap" tabindex="0" role="region" aria-label="Tabela de CT-e"><table class="cte-tab"><thead><tr><th>CT-e</th><th>Emissão</th><th>Rota</th><th>Carga / chassi</th><th class="n">Frete</th>`
+    +`<th>CST</th><th class="n">Alíq.</th><th class="n">ICMS</th><th class="n">Valor da carga</th><th>NF-e vinculadas</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+    +(CTE_UI.aberto>=0?ctePainel(lista[CTE_UI.aberto],carregadas):'');
+}
+function cteAbre(i,foco){
+  CTE_UI.aberto=i;renderCTe();
+  if(foco){const b=document.querySelector('.cte-painel .cte-fechar');if(b)b.focus();}
+}
+function cteFecha(){
+  const i=CTE_UI.aberto;if(i<0)return;CTE_UI.aberto=-1;renderCTe();
+  const tr=document.querySelector(`#cte-list tr[data-i="${i}"]`);if(tr)tr.focus();
+}
+(function(){
+  const raiz=document.getElementById('cte-list');
+  raiz.addEventListener('click',e=>{
+    const cp=e.target.closest('.cte-copiar');
+    if(cp){const v=cp.dataset.copiar||'';
+      const aviso=document.getElementById('cte-aviso'),diz=(t)=>{cp.textContent=t;if(aviso)aviso.textContent=t==='copiado'?'Chave copiada':'A chave não foi copiada';};
+      if(navigator.clipboard)navigator.clipboard.writeText(v).then(()=>diz('copiado'),()=>diz('não copiou'));else diz('não copiou');return;}
+    if(e.target.closest('.cte-fechar')){cteFecha();return;}
+    const tr=e.target.closest('tr[data-i]');
+    if(tr){const i=+tr.dataset.i;if(i===CTE_UI.aberto)cteFecha();else cteAbre(i,false);}
+  });
+  raiz.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const tr=e.target.closest&&e.target.closest('tr[data-i]');
+    if(tr){e.preventDefault();cteAbre(+tr.dataset.i,true);}
+  });
+  /* Os eventos ficam no document, então só valem com a aba CT-e à mostra: escondida,
+     a aba continua no DOM e roubaria as setas, o Esc e os cliques da aba NF-e.
+     Esc fecha o CT-e aberto e marca o evento como usado (o menu lateral não abre junto).
+     ↑ ↓ passam para o CT-e vizinho na lista (fora de campo de texto). */
+  const ativa=()=>CTE_UI.aberto>=0&&document.getElementById('tab-cte').classList.contains('active')&&!!document.querySelector('.cte-painel');
+  document.addEventListener('keydown',e=>{
+    if(e.defaultPrevented||!ativa())return;
+    if(e.key==='Escape'){e.preventDefault();cteFecha();return;}
+    if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+    const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+    const is=[...document.querySelectorAll('#cte-list tr[data-i]')].map(tr=>+tr.dataset.i),p=is.indexOf(CTE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
+    if(p<0||j<0||j>=is.length)return;e.preventDefault();cteAbre(is[j],true);
+  });
+  /* Clique fora do painel e fora das linhas fecha, como no item da NF-e. */
+  document.addEventListener('click',e=>{
+    if(!ativa())return;
+    const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
+    if(!t||!t.isConnected||!t.closest||t.closest('.cte-painel')||t.closest('#cte-list tr[data-i]'))return;
+    cteFecha();
+  });
+})();
+
 // ═══ DASHBOARD ═══
 let dashCharts={};
 function renderDashboard(){
@@ -2369,8 +2774,8 @@ function exportAviso(msg){
   exportAvisoTimer=setTimeout(()=>{b.style.display='none';b.textContent='';},6000);
 }
 function exportCSV(tipo){
-  const cab=tipo==='nfe'?HNFE:HNFSE;
-  const dados=tipo==='nfe'?DB.nfe:DB.nfse;
+  const cab=tipo==='nfe'?HNFE:tipo==='cte'?HCTE:HNFSE;
+  const dados=tipo==='nfe'?DB.nfe:tipo==='cte'?DB.cte.map(cteLinha):DB.nfse;
   if(!dados.length){exportAviso('Nada para exportar: importe XMLs ou PDFs primeiro.');return;}
   let csv='\ufeff'+cab.join(';')+'\n';
   for(const row of dados){
@@ -2382,17 +2787,17 @@ function exportCSV(tipo){
   }
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download=`${tipo==='nfe'?'produtos_nfe':'servicos_nfse'}_${DB.sessaoId}.csv`;
+  a.download=`${tipo==='nfe'?'produtos_nfe':tipo==='cte'?'conhecimentos_cte':'servicos_nfse'}_${DB.sessaoId}.csv`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
 }
 function exportXLSX(tipo){
-  const cab=tipo==='nfe'?HNFE:HNFSE;
-  const dados=tipo==='nfe'?DB.nfe:DB.nfse;
+  const cab=tipo==='nfe'?HNFE:tipo==='cte'?HCTE:HNFSE;
+  const dados=tipo==='nfe'?DB.nfe:tipo==='cte'?DB.cte.map(cteLinha):DB.nfse;
   if(!dados.length){exportAviso('Nada para exportar: importe XMLs ou PDFs primeiro.');return;}
   const data=[cab,...dados.map(r=>cab.map(c=>formatoBr(r[c])||''))];
   const ws=XLSX.utils.aoa_to_sheet(data);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo==='nfe'?'Produtos_NFe':'Servicos_NFSe');
-  XLSX.writeFile(wb,`${tipo==='nfe'?'produtos_nfe':'servicos_nfse'}_${DB.sessaoId}.xlsx`);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo==='nfe'?'Produtos_NFe':tipo==='cte'?'Conhecimentos_CTe':'Servicos_NFSe');
+  XLSX.writeFile(wb,`${tipo==='nfe'?'produtos_nfe':tipo==='cte'?'conhecimentos_cte':'servicos_nfse'}_${DB.sessaoId}.xlsx`);
 }
 
 // ═══ NAVIGATION ═══
@@ -2406,6 +2811,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
       if(btn.dataset.tab==='dashboard')renderDashboard();
       if(btn.dataset.tab==='nfe')renderNFE();
       if(btn.dataset.tab==='nfse')renderNFSe();
+      if(btn.dataset.tab==='cte')renderCTe();else CTE_UI.aberto=-1;
     }
   });
 });
