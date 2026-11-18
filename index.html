@@ -3728,7 +3728,8 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
    seletor de arquivo, com a tela ainda em branco. Toda escrita passa por aqui
    e o rodapé some junto com o texto. */
 const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
-    let lista=[], resultados=[], timer=null, idx=0, abort=false, rodando=false, naoGravados=0, ger=0;
+    let lista=[], resultados=[], timer=null, idx=0, abort=false, rodando=false, naoGravados=0, ger=0, pausaAte=0, recusas=0;
+    const LOTE_ESPERA_429=60000, LOTE_ESPERA_429_MAX=300000, LOTE_MAX_RECUSAS=6;
     /* Paleta do log medida contra --code-bg (não a da superfície clara) — ver
        os tokens --log-* no :root. */
     const TOM={neutro:'var(--log-neutro)',info:'var(--log-info)',ok:'var(--log-ok)',erro:'var(--log-err)',aviso:'var(--log-aviso)'};
@@ -3909,6 +3910,9 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
          consultas ao mesmo tempo, quebra o teto de 3/min e devolve 429 —
          e o mesmo índice é processado duas vezes. */
       if(rodando)return;
+      /* Depois de um 429 o intervalo continua batendo a cada 20s; até a espera
+         acabar ele não consulta nada (Parar ainda funciona: o abort é lido abaixo). */
+      if(!abort&&Date.now()<pausaAte)return;
       /* Este caminho nunca entra no try/finally, então `rodando` não fica
          preso em true e o lote não trava; e não há índice para pular. */
       if(abort||idx>=lista.length){
@@ -3939,19 +3943,50 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
           return;
         }
         try{
-          const r=await fetch(API+c);
+          /* 429 = a consulta pública recusou por excesso. Antes virava ERRO e o
+             lote seguia para o próximo CNPJ 20s depois — ainda dentro da janela
+             da recusa, que conta como consulta: as recusas se emendavam e o lote
+             inteiro saía 429. Agora o MESMO CNPJ espera e é consultado de novo,
+             com espera crescente (1, 2, 3... até 5 min). Sem resposta nenhuma
+             (rede, ou um 429 sem cabeçalho CORS, que o navegador entrega como
+             falha de rede) segue a mesma regra. Depois de LOTE_MAX_RECUSAS
+             seguidas o CNPJ sai como ERRO e o lote anda: não fica preso. */
+          let r=null;
+          try{ r=await fetch(API+c); }catch(_){ r=null; }
+          if(!r||r.status===429){
+            if(meuGer!==ger||abort)return;
+            recusas++;
+            const motivo=r?'limite da consulta pública atingido':'sem resposta da consulta pública';
+            if(recusas>=LOTE_MAX_RECUSAS){
+              recusas=0;
+              throw new Error(`${motivo} (${LOTE_MAX_RECUSAS} tentativas)`);
+            }
+            const espera=Math.min(LOTE_ESPERA_429*recusas,LOTE_ESPERA_429_MAX);
+            pausaAte=Date.now()+espera;
+            /* A tentativa sai no primeiro disparo do intervalo depois da espera:
+               até 20s a mais do que o número mostrado. */
+            const ate=new Date(pausaAte+20000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+            eta.textContent=`em espera até ~${ate}`;
+            loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} — ${motivo}; nova tentativa em cerca de ${Math.round(espera/60000)} min`,TOM.aviso);
+            return;
+          }
+          /* Qualquer resposta que não é 429 mostra que a recusa acabou. */
+          recusas=0;
+          if(r.status===404)throw new Error('não encontrado na base pública de CNPJ');
           if(!r.ok)throw new Error('HTTP '+r.status);
           /* dado cru no cache e no array de resultados; o escape é do
              renderLote(). Ver o comentário de render() sobre o porquê. */
           const dados=await r.json();
-          /* A lista mudou (ou o lote foi parado) enquanto esta consulta voava:
-             o resultado pertence à lista antiga e contaminaria a contagem. */
-          if(meuGer!==ger)return;
+          /* O cache vale para o CNPJ, qualquer que seja a lista: grava antes do
+             descarte (a taxa já foi gasta). */
           if(!gravarCache(CHAVE_CACHE+c,dados))naoGravados++;
+          /* A lista mudou, ou o lote foi parado/reiniciado, enquanto esta consulta
+             voava: o resultado pertence ao ciclo antigo e contaminaria a contagem. */
+          if(meuGer!==ger||abort)return;
           registra(c,dados,'');
           loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✓`,TOM.ok);
         }catch(e){
-          if(meuGer!==ger)return;
+          if(meuGer!==ger||abort)return;
           resultados.push({cnpj:c,razao:'',fantasia:'',uf:'',situacao:'',ie:'',ok:false,msg:e.message});
           loteLog(`[${idx+1}/${lista.length}] ${fmtCnpj(c)} ✗ ${e.message}`,TOM.erro);
         }
@@ -3963,12 +3998,17 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
       /* clearInterval defensivo: dois intervalos vivos = 6 requisições/min,
          o dobro do teto. Só um único timer pode existir. */
       if(timer){clearInterval(timer);timer=null;}
-      resultados=[]; idx=0; abort=false; naoGravados=0; logEl.textContent=''; bar.style.display='block'; barIn.style.width='0%';
+      /* ger++: uma consulta do ciclo anterior ainda em voo (Parar e Iniciar
+         seguidos) não pode entrar na lista nova como se fosse o item 1. */
+      ger++;
+      resultados=[]; idx=0; abort=false; naoGravados=0; pausaAte=0; recusas=0; logEl.textContent=''; bar.style.display='block'; barIn.style.width='0%';
       start.disabled=true; stop.disabled=false; exp.disabled=true;
       loteLog(`Iniciando lote 3/min — ${lista.length} CNPJ(s)`,TOM.aviso);
       step(); timer=setInterval(step,20000);
     });
-    stop?.addEventListener('click',()=>{ abort=true; clearInterval(timer); timer=null; start.disabled=false; stop.disabled=true; loteLog('Parado pelo usuário',TOM.aviso);});
+    /* Parar libera a exportação do que já foi consultado (antes só o fim do
+       lote liberava, e o parcial ficava preso na tela). */
+    stop?.addEventListener('click',()=>{ abort=true; ger++; clearInterval(timer); timer=null; pausaAte=0; start.disabled=false; stop.disabled=true; exp.disabled=resultados.length===0; eta.textContent=''; loteLog('Parado pelo usuário',TOM.aviso);});
     /* Fechar a aba no meio do lote descarta tudo que já foi consultado. */
     window.addEventListener('beforeunload',e=>{
       if(timer&&!abort){e.preventDefault();e.returnValue='';}

@@ -957,7 +957,9 @@ function extrairCnpjModule() {
      cnpjsDoTexto/renderLote/registra vivem ali, e a da consulta antes do
      fechamento da externa. */
   return corpo
-    + '\n    this.__lote = { cnpjsDoTexto, renderLote, registrar: registra, avisoCache, lista: () => lista, resultados: () => resultados };\n  '
+    + '\n    this.__lote = { cnpjsDoTexto, renderLote, registrar: registra, avisoCache, lista: () => lista, resultados: () => resultados,'
+    + ' step, carregar: (l) => { lista = l; idx = 0; resultados = []; abort = false; pausaAte = 0; recusas = 0; },'
+    + ' estado: () => ({ idx, pausaAte, recusas }), fimDaPausa: () => { pausaAte = 0; }, parar: () => { abort = true; } };\n  '
     + html.slice(ultimo + 'avisoCache();'.length, fim)
     + '\n  this.__t = { consultar, render, lerCache, gravarCache, cacheResumo, expurgarCacheLegado, CHAVE_CACHE, CHAVE_CACHE_LEGADO };\n  })();';
 }
@@ -1095,6 +1097,103 @@ await (async () => {
         /return\{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH\};/.test(html));
     }
   }
+
+  // ── Lote: 429 espera e repete o MESMO CNPJ; 404 vira "não encontrado" ──
+  /* O bug: o 429 virava ERRO e o lote passava ao próximo CNPJ 20s depois,
+     ainda dentro da janela da recusa — as recusas se emendavam e o lote
+     inteiro saía "HTTP 429". */
+  {
+    const storage = storageReal();
+    const fila = [];
+    const pedidos = [];
+    const resp = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+    const { sandbox, els, erros } = rodarCnpj({
+      storage, fetchImpl: (u) => { pedidos.push(String(u).slice(-14)); return Promise.resolve(fila.shift()); },
+      modPdf: { vC: modPdf },
+    });
+    ok('módulo sobe para o teste de 429 do lote', erros.length === 0, erros.map((e) => e.message).join('|'));
+    if (!erros.length) {
+      /* o rodapé do lote esconde o pai do #cnpj-lote-info quando está vazio */
+      els['cnpj-lote-info'].parentElement = els['cnpj-lote-info'].parentElement || { hidden: false };
+      const L = sandbox.__lote;
+      const api = { razao_social: 'EMPRESA TESTE', estabelecimento: { estado: { sigla: 'SP' } } };
+      L.carregar(['11222333000181', '00000000000191']);
+      fila.push(resp(429));
+      await L.step();
+      let e = L.estado();
+      ok('429: o lote NÃO avança para o próximo CNPJ', e.idx === 0 && L.resultados().length === 0, JSON.stringify(e));
+      ok('429: o lote entra em espera (pelo menos 1 min)', e.pausaAte - Date.now() >= 55000, String(e.pausaAte - Date.now()));
+      await L.step();
+      ok('429: durante a espera o intervalo não consulta nada', pedidos.length === 1, JSON.stringify(pedidos));
+      fila.push(resp(429));
+      L.fimDaPausa(); await L.step();
+      e = L.estado();
+      ok('429 seguido: a espera cresce (2 min)', e.recusas === 2 && e.pausaAte - Date.now() >= 115000, JSON.stringify(e));
+      fila.push(resp(200, api));
+      L.fimDaPausa(); await L.step();
+      e = L.estado();
+      ok('depois da espera, o MESMO CNPJ é consultado de novo e entra OK',
+        pedidos[2] === '11222333000181' && e.idx === 1 && L.resultados()[0].ok === true && e.recusas === 0,
+        JSON.stringify({ pedidos, e, r: L.resultados() }));
+      fila.push(resp(404));
+      await L.step();
+      const r404 = L.resultados()[1] || {};
+      ok('404 sai como "não encontrado", não como código cru', r404.ok === false && /não encontrado/.test(r404.msg) && !/HTTP/.test(r404.msg), JSON.stringify(r404));
+
+      /* cada cenário começa sem cache: o CNPJ que entrou OK acima voltaria do
+         cache e não passaria pela consulta */
+      const novo = (l) => { storage.clear(); L.carregar(l); };
+
+      // 429 → 404 → 429: a resposta que não é 429 zera a espera crescente
+      novo(['11222333000181', '00000000000191']);
+      fila.push(resp(429)); await L.step(); L.fimDaPausa();
+      fila.push(resp(404)); await L.step();
+      fila.push(resp(429)); await L.step();
+      e = L.estado();
+      ok('depois de um 404 a espera recomeça de 1 min (recusas zeradas)', e.recusas === 1 && e.idx === 1, JSON.stringify(e));
+
+      // sem resposta (rede, ou 429 sem CORS): mesma espera, não vira ERRO
+      novo(['11222333000181']);
+      fila.push(Promise.reject(new TypeError('Failed to fetch'))); await L.step();
+      e = L.estado();
+      ok('falha de rede: espera e repete o mesmo CNPJ', e.idx === 0 && e.pausaAte > Date.now() && L.resultados().length === 0, JSON.stringify(e));
+
+      // 6 recusas seguidas: o CNPJ sai como ERRO e o lote anda (não fica preso)
+      novo(['11222333000181', '00000000000191']);
+      for (let k = 0; k < 6; k++) { fila.push(resp(429)); L.fimDaPausa(); await L.step(); }
+      e = L.estado();
+      const rMax = L.resultados()[0] || {};
+      ok('depois de 6 recusas o CNPJ vira ERRO e o lote segue', e.idx === 1 && rMax.ok === false && /6 tentativas/.test(rMax.msg) && e.recusas === 0, JSON.stringify({ e, rMax }));
+
+      // 500: erro comum, sem espera
+      novo(['11222333000181']);
+      fila.push(resp(500)); await L.step();
+      e = L.estado();
+      ok('HTTP 500 sai como erro e não entra em espera', e.idx === 1 && e.pausaAte === 0 && /HTTP 500/.test((L.resultados()[0] || {}).msg), JSON.stringify(e));
+
+      // Parar durante a espera: o próximo tick encerra o lote, não fica preso na pausa
+      novo(['11222333000181', '00000000000191']);
+      fila.push(resp(429)); await L.step();
+      const antes = pedidos.length;
+      L.parar(); await L.step();
+      ok('parar durante a espera encerra o lote sem consultar de novo', pedidos.length === antes && /Concluído/.test(els['cnpj-lote-info'].textContent), els['cnpj-lote-info'].textContent);
+
+      // Parado com a consulta em voo: o resultado não entra depois do "Parado"
+      novo(['11222333000181']);
+      let solta;
+      fila.push(new Promise((res) => { solta = res; }));
+      const voo = L.step();
+      L.parar();
+      solta(resp(200, api));
+      await voo;
+      ok('parado com consulta em voo: o resultado não entra na lista depois do "Parado"', L.resultados().length === 0, JSON.stringify(L.resultados()));
+      ok('parado com consulta em voo: o resultado fica no cache (a consulta já foi gasta)',
+        !!sandbox.__t.lerCache(sandbox.__t.CHAVE_CACHE + '11222333000181'));
+    }
+  }
+  ok('Iniciar e Parar trocam a geração (consulta em voo do ciclo anterior é descartada)',
+    /stop\?\.addEventListener\('click',\(\)=>\{ abort=true; ger\+\+;/.test(html) && /ger\+\+;\s*\n\s*resultados=\[\]; idx=0;/.test(html));
+  ok('Parar libera a exportação do parcial', /stop\?\.addEventListener[^\n]*exp\.disabled=resultados\.length===0/.test(html));
 
   // ── B3b: fetch rejeita com payload HTML na mensagem ──
   {
@@ -1399,7 +1498,7 @@ if (mInstrucoes) {
 ok('importar outra planilha no meio do lote mata o lote (2 intervalos = 6/min, o dobro do teto)',
   /ger\+\+;\s*\n\s*abort=true;\s*\n\s*if\(timer\)\{clearInterval\(timer\);timer=null;\}/.test(html));
 ok('a resposta que chegou depois da troca de lista é descartada',
-  /const meuGer=ger;/.test(html) && (html.match(/if\(meuGer!==ger\)return;/g) || []).length >= 3);
+  /const meuGer=ger;/.test(html) && (html.match(/if\(meuGer!==ger(\|\|abort)?\)return;/g) || []).length >= 4);
 ok('"Iniciar" nunca cria um segundo intervalo',
   /if\(timer\)\{clearInterval\(timer\);timer=null;\}/.test(html));
 ok('importar .xlsx sem a biblioteca diz o que fazer (CDN fora)', /!window\.XLSX/.test(html) && /Exporte a planilha como CSV/.test(html));
