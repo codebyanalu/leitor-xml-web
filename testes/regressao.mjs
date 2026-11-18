@@ -959,7 +959,7 @@ function extrairCnpjModule() {
   return corpo
     + '\n    this.__lote = { cnpjsDoTexto, renderLote, registrar: registra, avisoCache, lista: () => lista, resultados: () => resultados,'
     + ' step, carregar: (l) => { lista = l; idx = 0; resultados = []; abort = false; pausaAte = 0; recusas = 0; },'
-    + ' estado: () => ({ idx, pausaAte, recusas }), fimDaPausa: () => { pausaAte = 0; }, parar: () => { abort = true; } };\n  '
+    + ' estado: () => ({ idx, pausaAte, recusas }), tempo: tempoLote, fimDaPausa: () => { pausaAte = 0; }, parar: () => { abort = true; } };\n  '
     + html.slice(ultimo + 'avisoCache();'.length, fim)
     + '\n  this.__t = { consultar, render, lerCache, gravarCache, cacheResumo, expurgarCacheLegado, CHAVE_CACHE, CHAVE_CACHE_LEGADO };\n  })();';
 }
@@ -968,7 +968,8 @@ function stubEl(id) {
     id, value: '', textContent: '', innerHTML: '', disabled: false, dataset: {},
     style: {}, files: null,
     scrollTop: 0, scrollHeight: 0, classList: { add() { }, remove() { }, toggle() { }, contains: () => false },
-    addEventListener() { }, removeEventListener() { },
+    /* guarda o ouvinte: o teste do lote dispara o 'change' real do arquivo */
+    addEventListener(tipo, f) { (el._ouv = el._ouv || {})[tipo] = f; }, removeEventListener() { },
     appendChild(c) { (el._filhos = el._filhos || []).push(c); return c; },
     querySelectorAll: () => [],
     querySelector: () => null,
@@ -1001,7 +1002,7 @@ function ambienteCnpj({ storage, fetchImpl, modPdf }) {
   const ids = ['cnpj-input', 'cnpj-btn', 'cnpj-limpar', 'cnpj-result', 'cnpj-raw', 'cnpj-status',
     'cnpj-lote-file', 'cnpj-lote-start', 'cnpj-lote-stop', 'cnpj-lote-export', 'cnpj-lote-modelo',
     'cnpj-lote-bar', 'cnpj-lote-bar-inner', 'cnpj-lote-info', 'cnpj-lote-eta', 'cnpj-lote-log',
-    'cnpj-lote-table', 'cnpj-cache-aviso'];
+    'cnpj-lote-table', 'cnpj-cache-aviso', 'cnpj-lote-resumo', 'cnpj-lote-tela'];
   ids.forEach((i) => { els[i] = stubEl(i); });
   const doc = {
     getElementById: (i) => els[i] || null,
@@ -1193,6 +1194,47 @@ await (async () => {
   }
   ok('Iniciar e Parar trocam a geração (consulta em voo do ciclo anterior é descartada)',
     /stop\?\.addEventListener\('click',\(\)=>\{ abort=true; ger\+\+;/.test(html) && /ger\+\+;\s*\n\s*resultados=\[\]; idx=0;/.test(html));
+  // ── Lote: os já lidos (cache) entram na hora; importar mostra o resumo e libera exportar ──
+  {
+    const storage = storageReal();
+    const pedidos = [];
+    const resp = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+    const fila = [];
+    const { sandbox, els, erros } = rodarCnpj({
+      storage, fetchImpl: (u) => { pedidos.push(String(u).slice(-14)); return Promise.resolve(fila.shift()); },
+      modPdf: { vC: modPdf },
+    });
+    ok('módulo sobe para o teste de retomada do lote', erros.length === 0, erros.map((e) => e.message).join('|'));
+    if (!erros.length) {
+      els['cnpj-lote-info'].parentElement = els['cnpj-lote-info'].parentElement || { hidden: false };
+      const L = sandbox.__lote, T = sandbox.__t;
+      const api = { razao_social: 'EMPRESA TESTE', estabelecimento: { estado: { sigla: 'SP' } } };
+      T.gravarCache(T.CHAVE_CACHE + '11222333000181', api);
+      T.gravarCache(T.CHAVE_CACHE + '12345678000195', api);
+      // importar um CSV com 3 CNPJs, 2 já lidos
+      els['cnpj-lote-file'].files = [{ name: 'lote.csv', arrayBuffer: async () => new TextEncoder().encode('CNPJ\n11.222.333/0001-81\n12.345.678/0001-95\n00.000.000/0001-91\n').buffer }];
+      await els['cnpj-lote-file']._ouv.change();
+      const res = els['cnpj-lote-resumo'];
+      ok('importar: o resumo mostra total, já lidos e faltam', res.hidden === false && />3</.test(res.innerHTML) && />2</.test(res.innerHTML) && />1</.test(res.innerHTML), res.innerHTML.slice(0, 200));
+      ok('importar: os já lidos ficam prontos para exportar na hora', els['cnpj-lote-export'].disabled === false && L.resultados().length === 2 && /Exportar 2 já lidos/.test(els['cnpj-lote-export'].innerHTML), els['cnpj-lote-export'].innerHTML);
+      ok('importar: o botão vira "Continuar lote (faltam 1)"', /Continuar lote \(faltam 1\)/.test(els['cnpj-lote-start'].innerHTML), els['cnpj-lote-start'].innerHTML);
+      ok('importar: o resumo não gasta consulta', pedidos.length === 0, JSON.stringify(pedidos));
+      // um disparo só: os 2 do cache entram e o 3º já é consultado
+      L.carregar(L.lista());
+      fila.push(resp(200, api));
+      await L.step();
+      const e = L.estado();
+      ok('retomar: os já lidos entram no mesmo disparo e o próximo já é consultado', e.idx === 3 && pedidos.length === 1 && pedidos[0] === '00000000000191' && L.resultados().length === 3, JSON.stringify({ e, pedidos }));
+      ok('durante o lote o Exportar fica liberado com a contagem', els['cnpj-lote-export'].disabled === false && /Exportar 3 resultados/.test(els['cnpj-lote-export'].innerHTML), els['cnpj-lote-export'].innerHTML);
+      ok('retomar: o log resume os já lidos numa linha', /\[1–2\/3\] 2 CNPJ\(s\) já lidos \(cache\)/.test(JSON.stringify(els['cnpj-lote-log']._filhos.map((d) => d.textContent))), '');
+      // sem Wake Lock no ambiente: o aviso explica o que fazer
+      ok('sem Wake Lock: o tempo estimado usa horas', sandbox.__lote.tempo(1824) === '~10h08', sandbox.__lote.tempo(1824));
+    }
+  }
+  ok('Wake Lock: pede no Iniciar, solta no Parar e no fim, e pede de novo ao voltar à aba',
+    /ultimoTick=Date\.now\(\); emLote=true; manterTela\(\);/.test(html) && /soltarTela\(\);[^\n]*loteLog\('Parado pelo usuário'/.test(html)
+    && /soltarTela\(\); rotulo\(start,ICO_PLAY,'Iniciar lote'\);\s*\n\s*avisoCache\(\);\s*\n\s*return;/.test(html) && /visibilitychange[^\n]*manterTela\(\)/.test(html));
+  ok('repouso do computador: o lote avisa quanto tempo ficou parado', /agora-ultimoTick>LOTE_SONO_MS/.test(html));
   ok('Parar libera a exportação do parcial', /stop\?\.addEventListener[^\n]*exp\.disabled=resultados\.length===0/.test(html));
 
   // ── B3b: fetch rejeita com payload HTML na mensagem ──
@@ -1498,7 +1540,9 @@ if (mInstrucoes) {
 ok('importar outra planilha no meio do lote mata o lote (2 intervalos = 6/min, o dobro do teto)',
   /ger\+\+;\s*\n\s*abort=true;\s*\n\s*if\(timer\)\{clearInterval\(timer\);timer=null;\}/.test(html));
 ok('a resposta que chegou depois da troca de lista é descartada',
-  /const meuGer=ger;/.test(html) && (html.match(/if\(meuGer!==ger(\|\|abort)?\)return;/g) || []).length >= 4);
+  /const meuGer=ger;/.test(html) && (html.match(/if\(meuGer!==ger(\|\|abort)?\)return;/g) || []).length >= 3);
+  /* 3 saídas assíncronas: o 429/sem resposta, o sucesso e o erro. Os já lidos
+     (cache) entram no mesmo disparo, sem await, e não precisam de guarda. */
 ok('"Iniciar" nunca cria um segundo intervalo',
   /if\(timer\)\{clearInterval\(timer\);timer=null;\}/.test(html));
 ok('importar .xlsx sem a biblioteca diz o que fazer (CDN fora)', /!window\.XLSX/.test(html) && /Exporte a planilha como CSV/.test(html));
