@@ -912,6 +912,8 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
    fallback precisa bater com o atributo, e é o gate 14.1 que garante isso.
    Fora desses dois pontos, quem encolhe rótulo usa esta classe. */
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Rodapé com a versão, no fim do conteúdo de toda aba. */
+#rodape{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin-top:24px;padding:10px 0 2px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text2)}
 #content{flex:1;overflow-y:auto;padding:20px 24px}
 #content::-webkit-scrollbar{width:6px}#content::-webkit-scrollbar-track{background:transparent}#content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}#content::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 
@@ -1006,7 +1008,45 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .dnf .g3{grid-template-columns:repeat(3,1fr)}
 .dnf .g5{grid-template-columns:3fr 1fr 1fr 1fr 1.2fr}
 .dnf .g7{grid-template-columns:repeat(7,1fr)}
-.dnf .adic{grid-template-columns:2fr 1fr}
+.dnf .adic{grid-template-columns:1fr 1fr}
+.dnf .g4{grid-template-columns:repeat(4,1fr)}
+.dnf .g6{grid-template-columns:repeat(6,1fr)}
+.dnf .gdup{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.dnf .gdup .dim{display:block}
+/* Aviso de conferência dos totais: uma linha discreta sob as caixas. */
+.dnf-aviso{margin:4px 0 0;padding:4px 8px;border-left:3px solid var(--warn-ink);background:var(--card);color:var(--text2);font-size:13px}
+.dnf-aviso b{color:var(--text)}
+.dnf-conf-wrap{overflow-x:auto;border:1px solid var(--border);margin-top:-1px}
+.dnf-conf-wrap:focus-visible{outline-offset:-2px}
+.nota-card table.dnf-conf th .tag{text-transform:none}
+.nota-card table.dnf-conf td.ok{color:var(--text)}
+/* Chave de acesso numa linha só: rola de lado em vez de quebrar. */
+.dnf-cx .v.mono{white-space:nowrap;overflow-wrap:normal;overflow-x:auto}
+/* Valor numérico não quebra no meio. */
+.dnf-cx .v.n{overflow-wrap:normal;white-space:nowrap}
+@media (max-width:1100px){.dnf .g6,.dnf .g7{grid-template-columns:repeat(4,1fr)}}
+.dnf-busca .dnf-pag-info{font-size:13px;color:var(--text2)}
+.nota-card table.dnf-conf{border-collapse:collapse;margin:0;width:100%;font-size:14px}
+.nota-card table.dnf-conf th{position:static;background:var(--card-2);color:var(--primary-ink);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0;padding:6px 9px;border:0;border-bottom:1px solid var(--border);border-radius:0;text-align:left;white-space:nowrap}
+.nota-card table.dnf-conf td{background:var(--card);padding:6px 9px;border:0;border-bottom:1px solid var(--border-light);white-space:nowrap}
+.nota-card table.dnf-conf .n{text-align:right;font-variant-numeric:tabular-nums}
+.nota-card table.dnf-conf td.nome{font-weight:700}
+.nota-card table.dnf-conf .z{color:var(--text3)}
+.nota-card table.dnf-conf td.dif{color:var(--warn-ink);font-weight:600}
+.nota-card table.dnf-conf small{font-size:12px;color:var(--text2)}
+/* Busca e paginação da tabela de itens. */
+.dnf-busca{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:4px 0 6px}
+.dnf-busca label{font-size:12px;color:var(--text2);text-transform:uppercase}
+.dnf-busca input{flex:1 1 280px;min-height:44px;padding:6px 10px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit}
+.dnf-busca input::placeholder{color:var(--text3)}
+.dnf-pag{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:6px 0;font-size:13px;color:var(--text2)}
+.dnf-pag label{display:inline-flex;align-items:center;gap:6px}
+.dnf-pag select{min-height:44px;padding:4px 8px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit}
+.dnf-pgs{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.dnf-pg{min-width:44px;min-height:44px;padding:0 8px;border:1px solid var(--border-input);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
+.dnf-pg.atual{background:var(--card-2);color:var(--primary-ink);border-color:var(--primary-cta);font-weight:700}
+.dnf-pg:disabled{color:var(--text3);cursor:default}
+.dnf-pg-gap{color:var(--text3)}
 .dnf .adic .v{font-weight:400;white-space:pre-wrap}
 .dnf-sec{font-size:12.5px;font-weight:700;text-transform:uppercase;margin:10px 0 3px;color:var(--text)}
 .nota-card .dnf-prod{border:1px solid var(--border);overflow-x:auto}
@@ -1147,7 +1187,7 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
 @media (max-width:1000px){.dnf-aberto{grid-template-columns:1fr}.dnf-veic .dnf-lst{grid-template-columns:auto 1fr}}
 .nota-card .dnf-prod td.d small{display:block;color:var(--text2);font-size:12.5px;font-weight:400}
 .nota-card .dnf-prod tfoot td{position:sticky;bottom:0;background:var(--card-2);font-weight:700;border-top:1px solid var(--border);z-index:2}
-@media (max-width:760px){.dnf-cab,.dnf .g3,.dnf .g5,.dnf .g7,.dnf .adic{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.dnf-cab,.dnf .g3,.dnf .g4,.dnf .g5,.dnf .g6,.dnf .g7,.dnf .adic{grid-template-columns:1fr 1fr}.dnf-cab>.dnf-cx:last-child{grid-column:1/-1}}
 
 /* ═══════════════════════════════════════════════════════════
    8 · DASHBOARD E FILTROS
@@ -1506,7 +1546,7 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
 
     <div class="tab-content" id="tab-nfe">
       <div class="filter-bar">
-        <input type="text" id="filtro-nfe" placeholder="Buscar na NF-e..." oninput="renderNFE()">
+        <input type="text" id="filtro-nfe" placeholder="Buscar na NF-e...">
         <select id="filtro-nfe-cnpj" onchange="renderNFE()"><option value="">Todos emitentes</option></select>
         <span class="count" id="nfe-count"></span>
       </div>
@@ -1578,7 +1618,8 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
      uma folga de 32. Medido no smoke (o drop centrado tem que ficar acima de
      25% da altura da janela). Se o #status-bar voltar a aparecer sempre, este
      número é o primeiro a revisar. */
-  #tab-pdfleitura.active:has(#pdfiso-filtros[hidden]){display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 132px);min-height:calc(100dvh - 132px)}
+  /* 132px do topo e da faixa de status + 58px do rodapé com a versão (margem, borda e linha). */
+  #tab-pdfleitura.active:has(#pdfiso-filtros[hidden]){display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 190px);min-height:calc(100dvh - 190px)}
   #tab-pdfleitura.active:has(#pdfiso-filtros[hidden])>div{width:100%;max-width:900px}
 }
 </style>
@@ -1687,6 +1728,7 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
         </div>
       </div>
     </div>
+    <footer id="rodape"><span>GCON/SIAN · Leitor de XML</span><span id="rod-versao"></span></footer>
   </div>
 </div>
 
@@ -1696,6 +1738,10 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
 
 // ═══ DATA ═══
 const DB={nfe:[],nfse:[],cte:[],arquivos:0,sessaoId:Date.now().toString(36)+Math.random().toString(36).slice(2,8)};
+/* Versão do sistema: fonte ÚNICA. O rodapé fica fora das abas (no fim do conteúdo),
+   então aparece em todas; o texto dele sai daqui. */
+const APP_VERSAO='3.0';
+{const rv=document.getElementById('rod-versao');if(rv)rv.textContent='Versão '+APP_VERSAO;}
 const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','Tp_NF','Data_Emissao',
   'CNPJ_Emitente','Nome_Emitente','NomeFantasia_Emit','IE_Emitente','UF_Emitente','Mun_Emitente',
   'CNPJ_Destinatario','CPF_Destinatario','Nome_Destinatario','IE_Destinatario','UF_Destinatario','Mun_Destinatario',
@@ -1820,6 +1866,35 @@ function extrairNFE(nome,texto){
   const tagsICMS=['ICMS00','ICMS10','ICMS20','ICMS30','ICMS40','ICMS41','ICMS50','ICMS51','ICMS60','ICMS61','ICMS70','ICMS90','ICMSPart','ICMSST','ICMSSN101','ICMSSN102','ICMSSN201','ICMSSN202','ICMSSN500','ICMSSN900'];
   const tagsPIS=['PISAliq','PISQtde','PISNT','PISOutr','PISSN'];
   const tagsCOFINS=['COFINSAliq','COFINSQtde','COFINSNT','COFINSOutr','COFINSSN'];
+  /* Dados da NOTA INTEIRA só para a tela (DANFE): ficam fora do HNFE, então a
+     exportação continua com as mesmas colunas. Os totais vêm do grupo <total> do
+     XML (o número oficial da nota); a soma dos itens vira conferência, não fonte.
+     Duplicatas, volumes e pagamentos são listas (um objeto por ocorrência). */
+  const totG=inf.querySelector('total');
+  const ibt=totG?totG.querySelector('IBSCBSTot'):null,gIBSt=ibt?ibt.querySelector('gIBS'):null,gCBSt=ibt?ibt.querySelector('gCBS'):null;
+  const tx=inf.querySelector('transp'),tra=tx?tx.querySelector('transporta'):null,vei=tx?tx.querySelector('veicTransp'):null;
+  const cobr=inf.querySelector('cobr'),fat=cobr?cobr.querySelector('fat'):null,pagEl=inf.querySelector('pag');
+  const ender=(e)=>e?[t(e,'xLgr'),t(e,'nro'),t(e,'xCpl'),t(e,'xBairro')].filter(Boolean).join(', '):'';
+  const nota={
+    Protocolo_NFe:prot?t(prot,'nProt'):'',Data_Autorizacao:prot?t(prot,'dhRecbto'):'',
+    Fin_NFe:t(ide,'finNFe'),Id_Dest:t(ide,'idDest'),Ind_Final:t(ide,'indFinal'),Ind_Pres:t(ide,'indPres'),
+    End_Emitente:ender(ee),CEP_Emitente:t(ee,'CEP'),Fone_Emitente:t(ee,'fone'),CRT_Emitente:t(emit,'CRT'),
+    End_Destinatario:ender(ed),CEP_Destinatario:t(ed,'CEP'),Email_Destinatario:t(dest,'email'),IndIE_Destinatario:t(dest,'indIEDest'),
+    Tot_vBC:t(totI,'vBC'),Tot_vICMS:t(totI,'vICMS'),Tot_vICMSDeson:t(totI,'vICMSDeson'),Tot_vFCP:t(totI,'vFCP'),
+    Tot_vBCST:t(totI,'vBCST'),Tot_vST:t(totI,'vST'),Tot_vFCPST:t(totI,'vFCPST'),Tot_vFCPSTRet:t(totI,'vFCPSTRet'),
+    Tot_vProd:t(totI,'vProd'),Tot_vII:t(totI,'vII'),Tot_vIPI:t(totI,'vIPI'),Tot_vIPIDevol:t(totI,'vIPIDevol'),
+    Tot_vPIS:t(totI,'vPIS'),Tot_vCOFINS:t(totI,'vCOFINS'),
+    Tot_vBCIBSCBS:t(ibt,'vBCIBSCBS'),Tot_vIBSUF:t(gIBSt,'gIBSUF vIBSUF'),Tot_vIBSMun:t(gIBSt,'gIBSMun vIBSMun'),
+    Tot_vIBS:t(gIBSt,'vIBS'),Tot_vCBS:t(gCBSt,'vCBS'),Tot_vNFTot:t(totG,'vNFTot'),
+    Transp_Mod:t(tx,'modFrete'),Transp_Nome:t(tra,'xNome'),Transp_CNPJ:tra?(t(tra,'CNPJ')||t(tra,'CPF')):'',Transp_IE:t(tra,'IE'),
+    Transp_End:t(tra,'xEnder'),Transp_Mun:t(tra,'xMun'),Transp_UF:t(tra,'UF'),
+    Transp_Placa:t(vei,'placa'),Transp_UFPlaca:t(vei,'UF'),Transp_RNTC:t(vei,'RNTC'),
+    Volumes:tx?[...tx.querySelectorAll('vol')].map(v=>({qVol:t(v,'qVol'),esp:t(v,'esp'),marca:t(v,'marca'),nVol:t(v,'nVol'),pesoL:t(v,'pesoL'),pesoB:t(v,'pesoB')})):[],
+    Fat_Numero:t(fat,'nFat'),Fat_vOrig:t(fat,'vOrig'),Fat_vDesc:t(fat,'vDesc'),Fat_vLiq:t(fat,'vLiq'),
+    Duplicatas:cobr?[...cobr.querySelectorAll('dup')].map(d=>({nDup:t(d,'nDup'),dVenc:t(d,'dVenc'),vDup:t(d,'vDup')})):[],
+    Pagamentos:pagEl?[...pagEl.querySelectorAll('detPag')].map(d=>({tPag:t(d,'tPag'),xPag:t(d,'xPag'),vPag:t(d,'vPag')})):[],
+    vTroco:t(pagEl,'vTroco'),infAdFisco:t(infAdic,'infAdFisco')
+  };
   for(const det of dets){
     const prod=det.querySelector('prod');if(!prod)continue;
     const imp=det.querySelector('imposto');
@@ -1845,8 +1920,14 @@ function extrairNFE(nome,texto){
       PIS_CST:'',PIS_vBC:'',PIS_pPIS:'',PIS_vPIS:'',PIS_qBCProd:'',PIS_vAliqProd:'',
       COFINS_CST:'',COFINS_vBC:'',COFINS_pCOFINS:'',COFINS_vCOFINS:'',COFINS_qBCProd:'',COFINS_vAliqProd:'',
       IBS_CST:'',cClassTrib:'',IBS_vBC:'',pIBSUF:'',vIBSUF:'',pIBSMun:'',vIBSMun:'',IBS_vIBS:'',pCBS:'',CBS_vCBS:'',
-      Arquivo_Origem:nome
+      Arquivo_Origem:nome,
+      /* Só para a tela (fora do HNFE): indTot (1 = o vProd compõe o total da nota), PIS e
+         COFINS do grupo próprio do item (sem o PISST/COFINSST, que o campo exportado
+         recebe quando o próprio vem vazio) e a redução de alíquota (gRed). */
+      indTot:t(prod,'indTot'),PIS_vPISProprio:'',COFINS_vCOFINSProprio:'',
+      pRedIBSUF:'',pAliqEfetIBSUF:'',pRedIBSMun:'',pAliqEfetIBSMun:'',pRedCBS:'',pAliqEfetCBS:''
     };
+    Object.assign(base,nota);
     for(const vc of VEIC_CAMPOS)base[vc[1]]='';
     /* veicProd (veículo novo, filho de <prod>): chassi, cor, motor, ano etc.
        Lido como está no XML; a descrição dos códigos é só da tela. */
@@ -1871,6 +1952,7 @@ function extrairNFE(nome,texto){
       if(pis)for(const f of pis.children){if(tagsPIS.some(t=>f.tagName.includes(t))){base.PIS_CST=t(f,'CST');base.PIS_vBC=t(f,'vBC');base.PIS_pPIS=t(f,'pPIS');base.PIS_vPIS=t(f,'vPIS');base.PIS_qBCProd=t(f,'qBCProd');base.PIS_vAliqProd=t(f,'vAliqProd');break;}}
       const cof=imp.querySelector('COFINS');
       if(cof)for(const f of cof.children){if(tagsCOFINS.some(t=>f.tagName.includes(t))){base.COFINS_CST=t(f,'CST');base.COFINS_vBC=t(f,'vBC');base.COFINS_pCOFINS=t(f,'pCOFINS');base.COFINS_vCOFINS=t(f,'vCOFINS');base.COFINS_qBCProd=t(f,'qBCProd');base.COFINS_vAliqProd=t(f,'vAliqProd');break;}}
+      base.PIS_vPISProprio=base.PIS_vPIS;base.COFINS_vCOFINSProprio=base.COFINS_vCOFINS;
       const pisst=imp.querySelector('PISST');
       if(pisst){if(!base.PIS_vBC)base.PIS_vBC=t(pisst,'vBC');if(!base.PIS_pPIS)base.PIS_pPIS=t(pisst,'pPIS');if(!base.PIS_qBCProd)base.PIS_qBCProd=t(pisst,'qBCProd');if(!base.PIS_vAliqProd)base.PIS_vAliqProd=t(pisst,'vAliqProd');if(!base.PIS_vPIS)base.PIS_vPIS=t(pisst,'vPIS');}
       const cofinsst=imp.querySelector('COFINSST');
@@ -1880,10 +1962,14 @@ function extrairNFE(nome,texto){
         base.IBS_CST=t(ibscbs,'CST');base.cClassTrib=t(ibscbs,'cClassTrib');
         let g=ibscbs.querySelector('gIBSCBS')||ibscbs;
         base.IBS_vBC=t(g,'vBC');
-        const guf=g.querySelector('gIBSUF');if(guf){base.pIBSUF=t(guf,'pIBSUF');base.vIBSUF=t(guf,'vIBSUF');}
-        const gmun=g.querySelector('gIBSMun');if(gmun){base.pIBSMun=t(gmun,'pIBSMun');base.vIBSMun=t(gmun,'vIBSMun');}
+        /* gRed: redução de alíquota pelo cClassTrib. A alíquota que vale é a EFETIVA
+           (pAliqEfet); só para a tela (fora do HNFE), a conferência por CST + cClassTrib
+           mostra a efetiva quando há redução. */
+        const red=(el)=>{const r=el.querySelector('gRed');return r?[t(r,'pRedAliq'),t(r,'pAliqEfet')]:['',''];};
+        const guf=g.querySelector('gIBSUF');if(guf){base.pIBSUF=t(guf,'pIBSUF');base.vIBSUF=t(guf,'vIBSUF');[base.pRedIBSUF,base.pAliqEfetIBSUF]=red(guf);}
+        const gmun=g.querySelector('gIBSMun');if(gmun){base.pIBSMun=t(gmun,'pIBSMun');base.vIBSMun=t(gmun,'vIBSMun');[base.pRedIBSMun,base.pAliqEfetIBSMun]=red(gmun);}
         base.IBS_vIBS=t(g,'vIBS');
-        const gcbs=g.querySelector('gCBS');if(gcbs){base.pCBS=t(gcbs,'pCBS');base.CBS_vCBS=t(gcbs,'vCBS');}
+        const gcbs=g.querySelector('gCBS');if(gcbs){base.pCBS=t(gcbs,'pCBS');base.CBS_vCBS=t(gcbs,'vCBS');[base.pRedCBS,base.pAliqEfetCBS]=red(gcbs);}
         else{const vcbs2=g.querySelector('vCBS')||det.querySelector('vCBS');if(vcbs2&&vcbs2.textContent)base.CBS_vCBS=vcbs2.textContent.trim();}
       }else{const vcb=imp.querySelector('vCBS')||det.querySelector('vCBS');if(vcb&&vcb.textContent)base.CBS_vCBS=vcb.textContent.trim();}
     }
@@ -2236,6 +2322,22 @@ const VEIC_ROT={
   cCorDENATRAN:{'01':'Amarela','02':'Azul','03':'Bege','04':'Branca','05':'Cinza','06':'Dourada','07':'Grená','08':'Laranja','09':'Marrom','10':'Prata','11':'Preta','12':'Rosa','13':'Roxa','14':'Verde','15':'Vermelha','16':'Fantasia'}
 };
 function veicRot(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return'';const m=VEIC_ROT[tab];const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return r?c+' - '+r:c;}
+/* Descrição dos códigos da nota (finalidade, destino, consumidor final, presença,
+   regime do emitente, indicador da IE, frete, forma de pagamento), na mesma forma
+   do veículo: "código - descrição". O código vem do XML: hasOwnProperty impede que
+   'constructor' ou '__proto__' resolvam pelo protótipo do mapa. */
+const NFE_ROT={
+  tpNF:{'0':'Entrada','1':'Saída'},
+  finNFe:{'1':'Normal','2':'Complementar','3':'Ajuste','4':'Devolução','5':'Nota de crédito','6':'Nota de débito'},
+  idDest:{'1':'Operação interna','2':'Interestadual','3':'Com o exterior'},
+  indFinal:{'0':'Não','1':'Sim'},
+  indPres:{'0':'Não se aplica','1':'Presencial','2':'Internet','3':'Teleatendimento','4':'Entrega em domicílio','5':'Presencial fora do estabelecimento','9':'Outros'},
+  CRT:{'1':'Simples Nacional','2':'Simples Nacional, excesso de sublimite','3':'Regime normal','4':'MEI'},
+  indIEDest:{'1':'Contribuinte ICMS','2':'Contribuinte isento','9':'Não contribuinte'},
+  modFrete:{'0':'Remetente (CIF)','1':'Destinatário (FOB)','2':'Terceiros','3':'Próprio, do remetente','4':'Próprio, do destinatário','9':'Sem transporte'},
+  tPag:{'01':'Dinheiro','02':'Cheque','03':'Cartão de crédito','04':'Cartão de débito','05':'Crédito loja','10':'Vale alimentação','11':'Vale refeição','12':'Vale presente','13':'Vale combustível','15':'Boleto','16':'Depósito bancário','17':'PIX','18':'Transferência bancária','19':'Programa de fidelidade','20':'PIX estático','21':'Crédito em loja','22':'Pagamento eletrônico não informado','90':'Sem pagamento','99':'Outros'}
+};
+function nfeRot(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return'';const m=NFE_ROT[tab];const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return r?c+' - '+r:c;}
 /* ═══ NF-e no formato DANFE completo (teste) ═══
    A nota aberta mostra o DANFE com TODOS os campos que o leitor tem (as colunas
    da exportação): o que não veio no XML aparece como 0,00 (valor) ou — (texto).
@@ -2266,7 +2368,11 @@ const DNF_TRIB=[['ICMS','ICMS_CST',['ICMS_vBC','m'],['ICMS_pICMS','p'],'ICMS_vIC
   ['IBS total',null,null,null,'IBS_vIBS',[]],
   ['CBS',null,['IBS_vBC','m'],['pCBS','p'],'CBS_vCBS',[]]];
 const DNF_UI=new Map();
-function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={abertos:new Set(),nota:false};DNF_UI.set(ch,u);}return u;}
+/* Itens por página da tabela de produtos (0 = todos). */
+const DNF_TAMS=[25,50,100,0],DNF_TAM_PADRAO=50;
+/* Estado por nota: item aberto (índice da linha), nota aberta, busca nos itens, página,
+   tamanho da página e a espera da digitação na busca. */
+function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={abertos:new Set(),nota:false,q:'',pag:1,tam:DNF_TAM_PADRAO,espera:0};DNF_UI.set(ch,u);}return u;}
 /* Agrupamento das linhas de DB.nfe por nota (uma nota = info + itens). Object.create(null):
    a chave vem do XML e não pode resolver pelo protótipo.
    A chave do GRUPO é a Chave_NFe; sem ela, notas diferentes não podem se fundir num
@@ -2284,72 +2390,127 @@ function dnfGrupos(){const c=dnfGruposCache;if(c.ref===DB.nfe&&c.n===DB.nfe.leng
   if(!t[k])t[k]={info:p,itens:[]};t[k].itens.push(p);});dnfGruposCache={ref:DB.nfe,n:DB.nfe.length,t};return t;}
 function dnfGrupo(ch){return dnfGrupos()[ch]||{info:null,itens:[]};}
 function dnfTem(v){return v!==''&&v!=null;}
+/* Texto para busca: sem acento e em minúsculas (busca nos itens do DANFE). */
+function semAcento(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
 /* Regra pedida: o que não está no XML vem ZERADO (valor) ou "—" (texto). Devolve {h: html escapado, z: está vazio/zerado}. */
 function dnfVal(v,tp){
   if(tp==='m')return {h:esc(num2(v)),z:!dnfTem(v)||f(v)===0};
   if(tp==='p')return {h:esc(num2(v,4)),z:!dnfTem(v)||f(v)===0};
   if(tp==='q')return {h:dnfTem(v)?esc(f(v).toLocaleString('pt-BR',{maximumFractionDigits:4})):'0',z:!dnfTem(v)};
   if(tp&&tp.indexOf('v:')===0)return {h:dnfTem(v)?esc(veicRot(tp.slice(2),v)):'—',z:!dnfTem(v)};
+  if(tp&&tp.indexOf('c:')===0)return {h:dnfTem(v)?esc(nfeRot(tp.slice(2),v)):'—',z:!dnfTem(v)};
   return {h:dnfTem(v)?esc(v):'—',z:!dnfTem(v)};
 }
 function dnfDoc(c){const d=String(c||'').replace(/\D/g,'');if(d.length===14)return esc(d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'));/* CNPJ alfanumérico (NT 2026.004): letra nas 12 primeiras posições, DV numérico. */const a=String(c||'').toUpperCase().replace(/[^0-9A-Z]/g,'');if(/[A-Z]/.test(a)&&/^[0-9A-Z]{12}\d{2}$/.test(a))return esc(a.replace(/^(.{2})(.{3})(.{3})(.{4})(\d{2})$/,'$1.$2.$3/$4-$5'));if(d.length===11)return esc(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'));return dnfTem(c)?esc(c):'—';}
 function dnfData(d){const s=dataHoraBr(d);return s?esc(s):'—';}
 function dnfCx(rot,html,num,zero){return `<div class="dnf-cx"><span class="r">${esc(rot)}</span><span class="v${num?' n':''}${zero?' z':''}">${html}</span></div>`;}
 function dnfCampo(rot,v,tp){const r=dnfVal(v,tp||'t');return dnfCx(rot,r.h,tp==='m'||tp==='p',r.z);}
-function nfeDanfe(ch,g){
-  const n=g.info,u=dnfUI(ch),it=g.itens;
-  const S=(k)=>it.reduce((a,p)=>a+f(p[k]),0);
-  const soma=(rot,k)=>{const v=S(k);return dnfCx(rot,esc(num2(v)),true,!v);};
-  const tp={'0':'0 - Entrada','1':'1 - Saída'}[String(n.Tp_NF)]||n.Tp_NF;
-  /* Identidade do item = POSIÇÃO da linha na nota (índice em g.itens).
-     O nItem é só rótulo: pode repetir ou faltar, e abrir pelo valor abria a linha errada. */
-  const its=it.map((p,i)=>[p,i]);
-  /* Colunas da tabela, como num DANFE impresso (+ IBS e CBS). Todo o resto do item
-     aparece ao abrir a linha. */
-  const TAB=[['Item','Item','t'],['cProd','Código','t'],['xProd','Descrição','t'],['NCM','NCM','t'],['ICMS_CST','CST','cst'],['CFOP','CFOP','t'],['uCom','Un','t'],['qCom','Qtd','q'],['vUnCom','V. unit.','m'],['vProd','V. total','m'],['ICMS_vBC','BC ICMS','m'],['ICMS_vICMS','V. ICMS','m'],['IPI_vIPI','V. IPI','m'],['ICMS_pICMS','Alíq. ICMS','p'],['IPI_pIPI','Alíq. IPI','p'],['IBS_vIBS','V. IBS','m'],['CBS_vCBS','V. CBS','m']];
+/* Soma de um campo dos itens. ler(p) devolve o campo por p.X: assim o campo entra no
+   universo que o gate de render lê do fonte. */
+function dnfSoma(it,ler){return (it||[]).reduce((a,p)=>a+f(ler(p)),0);}
+/* Atributo class só quando há classe (sem class="" vazio na marcação). */
+function dnfCls(c){return c?` class="${c}"`:'';}
+/* Colunas da tabela de itens, como num DANFE impresso (+ IBS e CBS). Todo o resto do
+   item aparece ao abrir a linha. */
+const DNF_TAB=[['Item','Item','t'],['cProd','Código','t'],['xProd','Descrição','t'],['NCM','NCM','t'],['ICMS_CST','CST','cst'],['CFOP','CFOP','t'],['uCom','Un','t'],['qCom','Qtd','q'],['vUnCom','V. unit.','m'],['vProd','V. total','m'],['ICMS_vBC','BC ICMS','m'],['ICMS_vICMS','V. ICMS','m'],['IPI_vIPI','V. IPI','m'],['ICMS_pICMS','Alíq. ICMS','p'],['IPI_pIPI','Alíq. IPI','p'],['IBS_vIBS','V. IBS','m'],['CBS_vCBS','V. CBS','m']];
+/* Termos da busca nos itens: sem acento, sem caixa; termo que fica vazio sem ponto e
+   hífen (só "." ou "-") é ignorado, senão casaria com todo item. */
+function dnfTermos(q){return semAcento(q).split(/\s+/).filter(w=>w.replace(/[.\-]/g,'')!=='');}
+/* A parte da tabela de itens que muda com busca, página e item aberto: tabela,
+   itens por página, paginador e o painel do item. O campo de busca e a faixa
+   "itens X–Y de N" ficam fora dela (redesenhar o campo moveria o cursor; redesenhar a
+   faixa a anunciaria de novo no leitor de tela).
+   Identidade do item = POSIÇÃO da linha na nota (índice em g.itens), também com busca
+   e página: elas escolhem QUAIS linhas aparecem, e o índice continua o da nota. O
+   nItem é só rótulo: pode repetir ou faltar, e abrir pelo valor abriria a linha errada. */
+function dnfItens(ch,g,u){
+  const n=g.info||{},it=g.itens||[],TAB=DNF_TAB;
+  const todos=it.map((p,i)=>[p,i]);
+  const termos=dnfTermos(u.q);
+  const its=termos.length?todos.filter(([p])=>dnfCasaBusca(p,termos)):todos;
+  const N=its.length,tam=DNF_TAMS.includes(u.tam)?u.tam:DNF_TAM_PADRAO,pags=tam?Math.max(1,Math.ceil(N/tam)):1;
+  u.pag=Math.min(Math.max(1,u.pag|0),pags);
+  const ini=tam?(u.pag-1)*tam:0,fim=tam?Math.min(N,ini+tam):N,vis=its.slice(ini,fim);
   const num=(tp2)=>tp2==='m'||tp2==='p'||tp2==='q';
-  const cab='<tr><th class="dnf-tg"><span class="visually-hidden">Abrir item</span></th>'+TAB.map(([c,r,tp2])=>`<th class="${num(tp2)?'n':''}">${esc(r)}</th>`).join('')+'</tr>';
+  const cab='<tr><th class="dnf-tg"><span class="visually-hidden">Abrir item</span></th>'+TAB.map(([c,r,tp2])=>`<th${dnfCls(num(tp2)?'n':'')}>${esc(r)}</th>`).join('')+'</tr>';
   const linha=([p,ix],i)=>{const k=String(ix),ab=u.abertos.has(k),par=i%2?' par':'';
     const tds=TAB.map(([c,r,tp2])=>{
       if(c==='xProd')return `<td class="d">${esc(p.xProd||'—')}${dnfTem(p.Veic_Chassi)?`<small>Chassi: <b>${esc(p.Veic_Chassi)}</b></small>`:''}</td>`;
       if(tp2==='cst'){const o=dnfVal(p.ICMS_orig,'t'),s2=dnfVal(p.ICMS_CST||p.ICMS_CSOSN,'t');return `<td>${o.z?'':o.h+' '}${s2.h}</td>`;}
-      const v=dnfVal(p[c],tp2);return `<td class="${num(tp2)?'n':''}${v.z?' z':''}">${v.h}</td>`;}).join('');
-    return `<tr class="dnf-it${par}${ab?' aberto':''}" data-it="${k}"><td class="dnf-tg"><button type="button" class="dnf-abre" data-abre="${k}" aria-expanded="${ab}" aria-controls="dnf-painel-item" aria-label="${ab?'Fechar':'Abrir'} o item ${esc(p.Item)}"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></button></td>${tds}</tr>`
-      ;};
-  const corpo=its.map(linha).join('');
-  const rod='<tr><td></td>'+TAB.map(([c,r,tp2],i)=>{let v='';if(c==='xProd')v='Total dos itens';else if(tp2==='m'&&c!=='vUnCom')v=esc(num2(its.reduce((a,[p])=>a+f(p[c]),0)));return `<td class="${num(tp2)?'n':''}">${v}</td>`;}).join('')+'</tr>';
-  const vnf=f(n.vNF),ibscbs=S('IBS_vIBS')+S('CBS_vCBS');
+      const v=dnfVal(p[c],tp2);return `<td${dnfCls((num(tp2)?'n':'')+(v.z?' z':'').trim())}>${v.h}</td>`;}).join('');
+    return `<tr class="dnf-it${par}${ab?' aberto':''}" data-it="${k}"><td class="dnf-tg"><button type="button" class="dnf-abre" data-abre="${k}" aria-expanded="${ab}" aria-controls="dnf-painel-item" aria-label="${ab?'Fechar':'Abrir'} o item ${esc(p.Item)}"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></button></td>${tds}</tr>`;};
+  const corpo=vis.map(linha).join('');
+  /* O rodapé soma a nota inteira: a busca e a página não mudam o total dos itens. */
+  const rod='<tr><td></td>'+TAB.map(([c,r,tp2])=>{let v='';if(c==='xProd')v=termos.length?'Total dos itens (nota inteira)':'Total dos itens';else if(tp2==='m'&&c!=='vUnCom')v=esc(num2(dnfSoma(it,p=>p[c])));return `<td${dnfCls(num(tp2)?'n':'')}>${v}</td>`;}).join('')+'</tr>';
+  const vazio=termos.length?'Nenhum item encontrado para a busca. Apague o termo ou busque por código, NCM ou CFOP.':'Nota sem itens.';
+  const faixa=(N?`itens ${ini+1}–${fim} de ${N}`:'nenhum item')+(termos.length?` (filtrados de ${it.length})`:'');
+  const html=`<div class="dnf-prod" tabindex="0" role="region" aria-label="Itens da nota"><table><thead>${cab}</thead><tbody>${corpo||`<tr><td colspan="${TAB.length+1}" class="dim">${vazio}</td></tr>`}</tbody><tfoot>${rod}</tfoot></table></div>
+  <div class="dnf-pag"><label>Itens por página <select class="dnf-tam">${DNF_TAMS.map(v=>`<option value="${v}"${v===tam?' selected':''}>${v||'Todos'}</option>`).join('')}</select></label>${dnfPaginador(u,pags,n.Numero_NFe)}</div>
+  ${dnfPainel(vis,u,todos)}`;
+  return {html,faixa};
+}
+function nfeDanfe(ch,g){
+  const n=g.info,u=dnfUI(ch),it=g.itens,T=dnfTotais(g);
+  /* Caixa de total da nota: o valor do grupo <total> do XML; sem ele, a soma dos
+     itens, e o rótulo diz "(soma dos itens)". */
+  const tot=(rot,k)=>{const x=T[k];return dnfCx(rot+(x.soma?' (soma dos itens)':''),esc(num2(x.v)),true,!x.v);};
+  const soma=(rot,ler)=>{const v=dnfSoma(it,ler);return dnfCx(rot,esc(num2(v)),true,!v);};
+  const tp=dnfVal(n.Tp_NF,'c:tpNF').h;
+  const itens=dnfItens(ch,g,u);
+  const dups=Array.isArray(n.Duplicatas)?n.Duplicatas:[],pgts=Array.isArray(n.Pagamentos)?n.Pagamentos:[],vols=Array.isArray(n.Volumes)?n.Volumes:[];
+  /* Lista do XML (duplicata, pagamento, volume): cada campo passa por dnfVal/dnfData como o resto. */
+  const dup=(d)=>{const nd=dnfVal(d&&d.nDup,'t'),vd=dnfVal(d&&d.vDup,'m');return `<div class="dnf-cx"><span class="r">Duplicata</span><span class="v${nd.z?' z':''}">${nd.h}</span><span class="dim">Venc. ${dnfData(d&&d.dVenc)} · R$ ${vd.h}</span></div>`;};
+  const pag=(x)=>{const fp=dnfVal(x&&x.tPag,'c:tPag'),vp=dnfVal(x&&x.vPag,'m');return `<div class="dnf-cx"><span class="r">Forma de pagamento</span><span class="v${fp.z?' z':''}">${fp.h}${x&&dnfTem(x.xPag)?' · '+esc(x.xPag):''}</span><span class="dim">R$ ${vp.h}</span></div>`;};
+  const vol=(v)=>`<div class="dnf-l g6">${dnfCampo('Quantidade',v&&v.qVol,'q')}${dnfCampo('Espécie',v&&v.esp)}${dnfCampo('Marca',v&&v.marca)}${dnfCampo('Numeração',v&&v.nVol)}${dnfCampo('Peso bruto (kg)',v&&v.pesoB,'q')}${dnfCampo('Peso líquido (kg)',v&&v.pesoL,'q')}</div>`;
   return `<div class="dnf">
   <div class="dnf-l dnf-cab">
     <div class="dnf-cx"><span class="r">Emitente</span><span class="v grande">${esc(n.Nome_Emitente||'—')}</span><span class="dim">Fantasia: ${dnfVal(n.NomeFantasia_Emit,'t').h} · ${dnfVal(n.Mun_Emitente,'t').h} / ${dnfVal(n.UF_Emitente,'t').h}</span></div>
-    <div class="dnf-cx dnf-id"><span class="t">DANFE</span><span class="dim">${esc(n.Tipo_Nota||'NF-e')} · modelo ${dnfVal(n.Mod_NFe,'t').h}</span><span class="v">${esc(tp||'—')}</span><span class="v">Nº ${dnfVal(n.Numero_NFe,'t').h} · Série ${dnfVal(n.Serie_NFe,'t').h}</span></div>
-    <div class="dnf-cx"><span class="r">Chave de acesso</span><span class="v mono">${dnfVal(n.Chave_NFe,'t').h}</span><span class="r sep">Situação</span><span class="v">${dnfVal(n.Status_NFe,'t').h} · ${dnfVal(n.Motivo_Status_NFe,'t').h}</span></div>
+    <div class="dnf-cx dnf-id"><span class="t">DANFE</span><span class="dim">${esc(n.Tipo_Nota||'NF-e')} · modelo ${dnfVal(n.Mod_NFe,'t').h}</span><span class="v">${tp}</span><span class="v">Nº ${dnfVal(n.Numero_NFe,'t').h} · Série ${dnfVal(n.Serie_NFe,'t').h}</span></div>
+    <div class="dnf-cx"><span class="r">Chave de acesso</span><span class="v mono">${dnfVal(n.Chave_NFe,'t').h}</span><span class="r sep">Protocolo de autorização de uso</span><span class="v${dnfTem(n.Protocolo_NFe)?'':' z'}">${dnfVal(n.Protocolo_NFe,'t').h} · ${dnfData(n.Data_Autorizacao)}</span><span class="r sep">Situação</span><span class="v">${dnfVal(n.Status_NFe,'t').h} · ${dnfVal(n.Motivo_Status_NFe,'t').h}</span></div>
   </div>
   <div class="dnf-l g3">${dnfCampo('Natureza da operação',n.NatOp)}${dnfCx('Data de emissão',dnfData(n.Data_Emissao))}${dnfCampo('Arquivo de origem',n.Arquivo_Origem)}</div>
+  <div class="dnf-l g4">${dnfCampo('Finalidade',n.Fin_NFe,'c:finNFe')}${dnfCampo('Destino da operação',n.Id_Dest,'c:idDest')}${dnfCampo('Consumidor final',n.Ind_Final,'c:indFinal')}${dnfCampo('Presença do comprador',n.Ind_Pres,'c:indPres')}</div>
   <div class="dnf-l g3">${dnfCx('CNPJ do emitente',dnfDoc(n.CNPJ_Emitente))}${dnfCampo('Inscrição estadual do emitente',n.IE_Emitente)}${dnfCx('Inscrição estadual do subst. trib.','—',false,true)}</div>
+  <div class="dnf-l g4">${dnfCampo('Endereço do emitente',n.End_Emitente)}${dnfCampo('CEP',n.CEP_Emitente)}${dnfCampo('Telefone',n.Fone_Emitente)}${dnfCampo('Regime tributário (CRT)',n.CRT_Emitente,'c:CRT')}</div>
   <div class="dnf-sec">Destinatário / remetente</div>
   <div class="dnf-l g5">${dnfCampo('Nome / razão social',n.Nome_Destinatario)}${dnfCx('CNPJ',dnfDoc(n.CNPJ_Destinatario),false,!dnfTem(n.CNPJ_Destinatario))}${dnfCx('CPF',dnfDoc(n.CPF_Destinatario),false,!dnfTem(n.CPF_Destinatario))}${dnfCampo('Município',n.Mun_Destinatario)}${dnfCampo('UF',n.UF_Destinatario)}</div>
-  <div class="dnf-l g3">${dnfCampo('Inscrição estadual',n.IE_Destinatario)}<div class="dnf-cx"></div><div class="dnf-cx"></div></div>
+  <div class="dnf-l g5">${dnfCampo('Endereço',n.End_Destinatario)}${dnfCampo('CEP',n.CEP_Destinatario)}${dnfCampo('Inscrição estadual',n.IE_Destinatario)}${dnfCampo('Indicador da IE',n.IndIE_Destinatario,'c:indIEDest')}${dnfCampo('E-mail',n.Email_Destinatario)}</div>
+  <div class="dnf-sec">Fatura / duplicatas</div>
+  <div class="dnf-l g4">${dnfCampo('Número da fatura',n.Fat_Numero)}${dnfCampo('Valor original',n.Fat_vOrig,'m')}${dnfCampo('Desconto',n.Fat_vDesc,'m')}${dnfCampo('Valor líquido',n.Fat_vLiq,'m')}</div>
+  <div class="dnf-l gdup">${dups.length?dups.map(dup).join(''):dnfCx('Duplicatas','—',false,true)}</div>
+  <div class="dnf-sec">Pagamento</div>
+  <div class="dnf-l gdup">${pgts.length?pgts.map(pag).join(''):dnfCx('Forma de pagamento','—',false,true)}${dnfCampo('Troco',n.vTroco,'m')}</div>
   <div class="dnf-sec">Cálculo do imposto</div>
-  <div class="dnf-l g7">${soma('Base de cálc. do ICMS','ICMS_vBC')}${soma('Valor do ICMS','ICMS_vICMS')}${soma('Base de cálc. ICMS ST','ICMS_vBCSTRet')}${soma('Valor do ICMS ST','ICMS_vICMSSTRet')}${soma('ICMS do substituto','ICMS_vICMSSubstituto')}${soma('ICMS monofásico','ICMS_vICMSMonoRet')}${soma('ICMS efetivo','ICMS_vICMSEfet')}</div>
-  <div class="dnf-l g7">${soma('Valor total dos produtos','vProd')}${dnfCampo('Valor do frete',n.vFrete,'m')}${dnfCampo('Valor do seguro',n.vSeg,'m')}${dnfCampo('Desconto',n.vDesc,'m')}${dnfCampo('Outras despesas',n.vOutro,'m')}${soma('Valor do IPI','IPI_vIPI')}${dnfCampo('Valor total da nota',n.vNF,'m')}</div>
-  <div class="dnf-l g7">${soma('Valor do PIS','PIS_vPIS')}${soma('Valor da COFINS','COFINS_vCOFINS')}${soma('Base IBS/CBS','IBS_vBC')}${soma('IBS UF','vIBSUF')}${soma('IBS município','vIBSMun')}${soma('Valor do IBS','IBS_vIBS')}${soma('Valor da CBS','CBS_vCBS')}</div>
-  <div class="dnf-l g3">${dnfCampo('Tributos aproximados (Lei 12.741)',n.vTotTrib,'m')}${dnfCx('IBS + CBS',esc(num2(ibscbs)),true,!ibscbs)}${dnfCx('Total com IBS/CBS',esc(num2(vnf+ibscbs)),true,false)}</div>
+  <div class="dnf-l g7">${tot('Base de cálc. do ICMS','vBC')}${tot('Valor do ICMS','vICMS')}${tot('ICMS desonerado','vICMSDeson')}${tot('Valor do FCP','vFCP')}${tot('Base de cálc. ICMS ST','vBCST')}${tot('Valor do ICMS ST','vST')}${tot('Valor do FCP ST','vFCPST')}</div>
+  <div class="dnf-l g7">${tot('FCP ST retido anteriormente','vFCPSTRet')}${tot('Valor do imp. de importação','vII')}${tot('Valor do IPI','vIPI')}${tot('IPI devolvido','vIPIDevol')}${tot('Valor do PIS','vPIS')}${tot('Valor da COFINS','vCOFINS')}${tot('Tributos aproximados (Lei 12.741)','vTotTrib')}</div>
+  <div class="dnf-l g6">${tot('Valor total dos produtos','vProd')}${tot('Valor do frete','vFrete')}${tot('Valor do seguro','vSeg')}${tot('Desconto','vDesc')}${tot('Outras despesas','vOutro')}${dnfCampo('Valor total da nota',n.vNF,'m')}</div>
+  <div class="dnf-l g7">${tot('Base IBS/CBS','vBCIBS')}${tot('IBS UF','vIBSUF')}${tot('IBS município','vIBSMun')}${tot('Valor do IBS','vIBS')}${tot('Valor da CBS','vCBS')}${dnfCx('IBS + CBS',esc(num2(T.ibscbs)),true,!T.ibscbs)}${dnfCampo(DNF_ROT_VNFTOT,n.Tot_vNFTot,'m')}</div>
+  <div class="dnf-l g3">${soma('ICMS do substituto (soma dos itens)',p=>p.ICMS_vICMSSubstituto)}${soma('ICMS monofásico (soma dos itens)',p=>p.ICMS_vICMSMonoRet)}${soma('ICMS efetivo (soma dos itens)',p=>p.ICMS_vICMSEfet)}</div>
+  ${dnfAvisoTotais(T)}
+  <div class="dnf-sec">Conferência IBS/CBS</div>
+  ${dnfConfIBSCBS(g,T)}
+  <div class="dnf-sec">Transportador / volumes transportados</div>
+  <div class="dnf-l g6">${dnfCampo('Nome / razão social',n.Transp_Nome)}${dnfCampo('Frete por conta',n.Transp_Mod,'c:modFrete')}${dnfCampo('Código ANTT',n.Transp_RNTC)}${dnfCampo('Placa do veículo',n.Transp_Placa)}${dnfCampo('UF da placa',n.Transp_UFPlaca)}${dnfCx('CNPJ / CPF',dnfDoc(n.Transp_CNPJ),false,!dnfTem(n.Transp_CNPJ))}</div>
+  <div class="dnf-l g4">${dnfCampo('Endereço',n.Transp_End)}${dnfCampo('Município',n.Transp_Mun)}${dnfCampo('UF',n.Transp_UF)}${dnfCampo('Inscrição estadual',n.Transp_IE)}</div>
+  ${(vols.length?vols:[null]).map(vol).join('')}
   <div class="dnf-sec">Dados dos produtos / serviços</div>
-  <div class="dnf-prod" tabindex="0" role="region" aria-label="Itens da nota"><table><thead>${cab}</thead><tbody>${corpo||`<tr><td colspan="${TAB.length+1}" class="dim">Nota sem itens.</td></tr>`}</tbody><tfoot>${rod}</tfoot></table></div>
-  ${dnfPainel(its,u)}
+  <div class="dnf-busca"><label for="dnfq-${esc(ch)}">Buscar item</label><input type="search" class="dnf-q" id="dnfq-${esc(ch)}" value="${esc(u.q||'')}" placeholder="Código, descrição, NCM ou CFOP" autocomplete="off"><span class="dnf-pag-info" role="status">${itens.faixa}</span></div>
+  <div class="dnf-itens">${itens.html}</div>
   <div class="dnf-sec">Dados adicionais</div>
-  <div class="dnf-l adic">${dnfCampo('Informações complementares',n.infCpl)}${dnfCx('Reservado ao fisco','—',false,true)}</div>
+  <div class="dnf-l adic">${dnfCampo('Informações complementares',n.infCpl)}${dnfCampo('Informações adicionais de interesse do fisco',n.infAdFisco)}</div>
   </div>`;
 }
 /* Painel lateral fixo, à direita da tela: fica no lugar enquanto se percorre a
-   tabela; só troca de conteúdo. its = [[linha, índice na nota], ...];
-   o item aberto é o índice (não o nItem). */
-function dnfPainel(its,u){const k=[...u.abertos][0];if(k==null)return '';const i=its.findIndex(([,ix])=>String(ix)===k);if(i<0)return '';const p=its[i][0];
-  const ant=i>0?its[i-1][1]:null,prx=i<its.length-1?its[i+1][1]:null;
+   tabela; só troca de conteúdo. its = [[linha, índice na nota], ...] da página
+   visível (anterior/próximo andam nela, como ↑ ↓); todos = a nota inteira. O item
+   aberto é o índice (não o nItem) e continua aberto quando a busca ou a página o
+   tiram da tela: o painel o acha em `todos` e só a navegação fica desligada. */
+function dnfPainel(its,u,todos){const k=[...u.abertos][0];if(k==null)return '';const i=its.findIndex(([,ix])=>String(ix)===k);
+  const par=i>=0?its[i]:(todos||[]).find(([,ix])=>String(ix)===k);if(!par)return '';const p=par[0];
+  const ant=i>0?its[i-1][1]:null,prx=i>=0&&i<its.length-1?its[i+1][1]:null;
   return `<div class="dnf-painel" id="dnf-painel-item" role="region" aria-label="Impostos do item ${esc(p.Item)}"><div class="dnf-painel-cab">
   <button type="button" class="dnf-ir-item" ${ant==null?'disabled':`data-ir="${esc(ant)}"`} aria-label="Item anterior">◂ anterior</button>
-  <b>Item ${esc(p.Item)}</b><span class="dnf-painel-nome">${esc(p.xProd||'—')}</span>
+  <b>Item ${esc(p.Item)}</b><span class="dnf-painel-nome">${esc(p.xProd||'—')}</span>${i<0?'<span class="dim">fora da página ou da busca</span>':''}
   <button type="button" class="dnf-ir-item" ${prx==null?'disabled':`data-ir="${esc(prx)}"`} aria-label="Próximo item">próximo ▸</button>
   <span class="dim dnf-dica-tecla">↑ ↓ passam de item · Esc fecha</span><button type="button" class="dnf-fecha-todos">Fechar <span aria-hidden="true">✕</span></button></div>
   <div class="dnf-painel-corpo">${dnfItemAberto(p)}</div></div>`;}
@@ -2357,7 +2518,7 @@ function dnfPainel(its,u){const k=[...u.abertos][0];if(k==null)return '';const i
    lidas do DNF_TRIB) e os demais campos do produto, o financeiro e o veículo.
    Todo campo do item aparece; o que não veio no XML sai 0,00 ou —. */
 function dnfItemAberto(p){
-  const lst=(pares)=>'<dl class="dnf-lst">'+pares.map(([c,r,tp2])=>{const v=dnfVal(p[c],tp2);return `<dt>${esc(r)}</dt><dd class="${tp2==='t'||(tp2||'').indexOf('v:')===0?'txt':''}${v.z?' z':''}">${v.h}</dd>`;}).join('')+'</dl>';
+  const lst=(pares)=>'<dl class="dnf-lst">'+pares.map(([c,r,tp2])=>{const v=dnfVal(p[c],tp2);return `<dt>${esc(r)}</dt><dd${dnfCls(((tp2==='t'||(tp2||'').indexOf('v:')===0?'txt':'')+(v.z?' z':'')).trim())}>${v.h}</dd>`;}).join('')+'</dl>';
   const cel=(c,tp2)=>{if(!c)return '<td class="n z">—</td>';const v=dnfVal(p[c],tp2);return `<td class="n${v.z?' z':''}">${v.h}</td>`;};
   const cst=(c)=>{if(!c)return '<td class="z">—</td>';const v=dnfVal(p[c],'t');return `<td${v.z?' class="z"':''}>${v.h}</td>`;};
   const det=(pares)=>pares.map(([r,c,tp2])=>{const v=dnfVal(p[c],tp2);return esc(r)+' '+(v.z?'<span class="z">'+v.h+'</span>':'<b>'+v.h+'</b>');}).join(' · ');
@@ -2370,6 +2531,93 @@ function dnfItemAberto(p){
   const vei=dnfTem(p.Veic_Chassi)?`<div class="dnf-sub">Veículo novo</div><div class="dnf-veic">${lst(veic)}</div>`:`<p class="dnf-nada">Veículo novo: não consta no XML (${veic.length} campos zerados).</p>`;
   return `<div class="dnf-aberto"><div class="dnf-ab-prod"><div class="dnf-sub">Produto</div>${lst(prod)}<div class="dnf-sub">Financeiro do item</div>${lst(fin)}</div><div class="dnf-ab-imp">${trib}</div></div>${vei}`;
 }
+/* Totais da nota. O OFICIAL é o grupo <total> do XML (ICMSTot, IBSCBSTot e vNFTot); a
+   soma dos itens é a conferência. Sem o grupo, a caixa mostra a soma dos itens (marcada
+   "soma dos itens") e não há conferência. Cada total: v = o que a caixa mostra,
+   s = soma dos itens (0 quando o item não tem campo equivalente), soma = v veio da soma.
+   Regras da SEFAZ na soma: o vProd conta só item com indTot=1 (o 0 não compõe o total);
+   PIS e COFINS somam só o grupo próprio do item (o PISST/COFINSST não entra no ICMSTot). */
+function dnfTotais(g){
+  const n=g.info||{},it=g.itens||[],S=(ler)=>dnfSoma(it,ler);
+  const temTot=dnfTem(n.Tot_vProd),temIBSCBS=dnfTem(n.Tot_vBCIBSCBS)||dnfTem(n.Tot_vIBS)||dnfTem(n.Tot_vCBS);
+  const of=(xml,soma,vale,temItem)=>{const doXml=vale&&dnfTem(xml);return {v:doXml?f(xml):soma,s:soma,soma:!doXml&&temItem!==false};};
+  const proprio=(v,d)=>v===undefined?d:v; /* item sem o campo do grupo próprio: vale o campo exportado */
+  const T={temTot,temIBSCBS,
+    vBC:of(n.Tot_vBC,S(p=>p.ICMS_vBC),temTot),vICMS:of(n.Tot_vICMS,S(p=>p.ICMS_vICMS),temTot),
+    vICMSDeson:of(n.Tot_vICMSDeson,0,temTot,false),vFCP:of(n.Tot_vFCP,0,temTot,false),
+    vBCST:of(n.Tot_vBCST,S(p=>p.ICMS_vBCSTRet),temTot),vST:of(n.Tot_vST,S(p=>p.ICMS_vICMSSTRet),temTot),
+    vFCPST:of(n.Tot_vFCPST,0,temTot,false),vFCPSTRet:of(n.Tot_vFCPSTRet,0,temTot,false),
+    vProd:of(n.Tot_vProd,S(p=>String(p.indTot)==='0'?0:p.vProd),temTot),vII:of(n.Tot_vII,0,temTot,false),
+    vIPI:of(n.Tot_vIPI,S(p=>p.IPI_vIPI),temTot),vIPIDevol:of(n.Tot_vIPIDevol,0,temTot,false),
+    vPIS:of(n.Tot_vPIS,S(p=>proprio(p.PIS_vPISProprio,p.PIS_vPIS)),temTot),vCOFINS:of(n.Tot_vCOFINS,S(p=>proprio(p.COFINS_vCOFINSProprio,p.COFINS_vCOFINS)),temTot),
+    vFrete:of(n.vFrete,S(p=>p.vFrete_item),true),vSeg:of(n.vSeg,S(p=>p.vSeg_item),true),
+    vDesc:of(n.vDesc,S(p=>p.vDesc_item),true),vOutro:of(n.vOutro,S(p=>p.vOutro_item),true),vTotTrib:of(n.vTotTrib,0,true,false),
+    vBCIBS:of(n.Tot_vBCIBSCBS,S(p=>p.IBS_vBC),temIBSCBS),vIBSUF:of(n.Tot_vIBSUF,S(p=>p.vIBSUF),temIBSCBS),
+    vIBSMun:of(n.Tot_vIBSMun,S(p=>p.vIBSMun),temIBSCBS),vIBS:of(n.Tot_vIBS,S(p=>p.IBS_vIBS),temIBSCBS),vCBS:of(n.Tot_vCBS,S(p=>p.CBS_vCBS),temIBSCBS)};
+  T.ibscbs=T.vIBS.v+T.vCBS.v;
+  return T;
+}
+/* Rótulo do total com IBS/CBS: o mesmo nas duas seções, e o valor é sempre o vNFTot do XML. */
+const DNF_ROT_VNFTOT='Total com IBS/CBS (vNFTot)';
+/* Tolerância da conferência, em centavos: diferença ATÉ ela não é aviso (arredondamento
+   de item); acima dela, é. */
+const DNF_TOL_CENTAVOS=1;
+function dnfCentavos(a,b){return Math.round((a-b)*100);}
+function dnfDifere(a,b){return Math.abs(dnfCentavos(a,b))>DNF_TOL_CENTAVOS;}
+/* Totais conferidos com a soma dos itens. Fora: ST (o campo do item junta o ST retido
+   antes, CST 60, que não é o ST da operação) e os totais sem campo no item. */
+const DNF_CONFERE=[['vProd','Valor total dos produtos'],['vBC','Base de cálc. do ICMS'],['vICMS','Valor do ICMS'],['vIPI','Valor do IPI'],['vPIS','Valor do PIS'],['vCOFINS','Valor da COFINS'],['vFrete','Valor do frete'],['vSeg','Valor do seguro'],['vDesc','Desconto'],['vOutro','Outras despesas']];
+const DNF_CONFERE_IBSCBS=[['vBCIBS','Base IBS/CBS'],['vIBSUF','IBS UF'],['vIBSMun','IBS município'],['vIBS','Valor do IBS'],['vCBS','Valor da CBS']];
+/* Linha curta sob as caixas quando um total do XML não bate com a soma dos itens. */
+function dnfAvisoTotais(T){
+  const lista=(T.temTot?DNF_CONFERE:[]).concat(T.temIBSCBS?DNF_CONFERE_IBSCBS:[]).filter(([k])=>dnfDifere(T[k].v,T[k].s));
+  if(!lista.length)return '';
+  return `<p class="dnf-aviso" role="note"><b>Soma dos itens difere do total do XML:</b> ${lista.map(([k,r])=>`${esc(r)} (XML ${esc(num2(T[k].v))} · itens ${esc(num2(T[k].s))})`).join('; ')}.</p>`;
+}
+/* Situação de um total conferido: "confere" (igual, ou diferença dentro da tolerância,
+   dita em centavos) ou o lado maior e quanto. */
+function dnfSituacao(xml,soma){const c=dnfCentavos(xml,soma),d=esc(num2(Math.abs(c)/100));
+  if(!dnfDifere(xml,soma))return {cls:'ok',txt:c?`confere (diferença de ${d})`:'confere'};
+  return {cls:'dif',txt:(c>0?'XML maior em ':'XML menor em ')+d};}
+/* Conferência IBS/CBS: o total do XML (IBSCBSTot) contra a soma dos itens, o vNF ao
+   lado do vNFTot, e os itens agrupados por CST + cClassTrib. A alíquota do grupo é a
+   EFETIVA quando o XML traz redução (gRed); senão, a nominal. O leitor não calcula
+   imposto: mostra o que está no arquivo. */
+function dnfConfIBSCBS(g,T){
+  const n=g.info||{},it=g.itens||[];
+  const temIt=(p)=>dnfTem(p.IBS_CST)||dnfTem(p.cClassTrib)||f(p.IBS_vIBS)!==0||f(p.CBS_vCBS)!==0;
+  if(!T.temIBSCBS&&!it.some(temIt))return '<p class="dnf-nada">Nota sem IBS/CBS no XML.</p>';
+  const xml=T.temIBSCBS;
+  const conf=DNF_CONFERE_IBSCBS.map(([k,r])=>{const x=T[k],s=xml?dnfSituacao(x.v,x.s):{cls:'z',txt:'sem total no XML'};
+    return `<tr><td class="nome">${esc(r)}</td><td class="n${xml?'':' z'}">${xml?esc(num2(x.v)):'—'}</td><td class="n">${esc(num2(x.s))}</td><td class="${s.cls}">${s.txt}</td></tr>`;}).join('');
+  const grupos=new Map();
+  const aliquota=(nom,efet)=>({v:dnfTem(efet)?efet:nom,e:dnfTem(efet)});
+  for(const p of it){if(!temIt(p))continue;
+    const k=String(p.IBS_CST==null?'':p.IBS_CST)+'\u0001'+String(p.cClassTrib==null?'':p.cClassTrib);let x=grupos.get(k);
+    if(!x){x={cst:p.IBS_CST,cls:p.cClassTrib,q:0,bc:0,uf:0,mun:0,cbs:0,aUF:aliquota(p.pIBSUF,p.pAliqEfetIBSUF),aMun:aliquota(p.pIBSMun,p.pAliqEfetIBSMun),aCBS:aliquota(p.pCBS,p.pAliqEfetCBS),
+        red:[p.pRedCBS,p.pRedIBSUF,p.pRedIBSMun].find(dnfTem)};grupos.set(k,x);}
+    x.q++;x.bc+=f(p.IBS_vBC);x.uf+=f(p.vIBSUF);x.mun+=f(p.vIBSMun);x.cbs+=f(p.CBS_vCBS);}
+  const celAliq=(a)=>{const r=dnfVal(a.v,'p');return `<td class="n${r.z?' z':''}">${r.h}${a.e?' <small>efetiva</small>':''}</td>`;};
+  const lin=[...grupos.values()].map((x)=>{const c=dnfVal(x.cst,'t'),cl=dnfVal(x.cls,'t'),rd=dnfVal(x.red,'p');
+    return `<tr><td${c.z?' class="z"':''}>${c.h}</td><td${cl.z?' class="z"':''}>${cl.h}</td><td class="n">${x.q}</td><td class="n">${esc(num2(x.bc))}</td>${celAliq(x.aUF)}<td class="n">${esc(num2(x.uf))}</td>${celAliq(x.aMun)}<td class="n">${esc(num2(x.mun))}</td>${celAliq(x.aCBS)}<td class="n">${esc(num2(x.cbs))}</td><td class="n${rd.z?' z':''}">${rd.h}</td></tr>`;}).join('');
+  const efet=[...grupos.values()].some(x=>x.aUF.e||x.aMun.e||x.aCBS.e);
+  const tag=(s)=>`<span class="tag">${s}</span>`;
+  return `<div class="dnf-l g3">${dnfCampo('Valor da nota (vNF)',n.vNF,'m')}${dnfCampo(DNF_ROT_VNFTOT,n.Tot_vNFTot,'m')}${dnfCx('IBS + CBS',esc(num2(T.ibscbs)),true,!T.ibscbs)}</div>
+  <div class="dnf-conf-wrap" tabindex="0" role="region" aria-label="Conferência dos totais de IBS e CBS"><table class="dnf-conf"><caption class="visually-hidden">Total de IBS e CBS do XML comparado com a soma dos itens</caption><thead><tr><th>Total</th><th class="n">XML (${tag('IBSCBSTot')})</th><th class="n">Soma dos itens</th><th>Conferência</th></tr></thead><tbody>${conf}</tbody></table></div>
+  ${lin?`<div class="dnf-conf-wrap" tabindex="0" role="region" aria-label="IBS e CBS por CST e classificação tributária"><table class="dnf-conf"><caption class="visually-hidden">Itens agrupados por CST e cClassTrib</caption><thead><tr><th>CST</th><th>${tag('cClassTrib')}</th><th class="n">Itens</th><th class="n">Base</th><th class="n">Alíq. IBS UF</th><th class="n">IBS UF</th><th class="n">Alíq. IBS mun.</th><th class="n">IBS mun.</th><th class="n">Alíq. CBS</th><th class="n">CBS</th><th class="n">Redução</th></tr></thead><tbody>${lin}</tbody></table></div>`:'<p class="dnf-nada">Nenhum item com IBS/CBS.</p>'}
+  ${efet?'<p class="dnf-nada">Alíquota marcada como efetiva: o XML traz redução (gRed) e o valor usa a alíquota efetiva.</p>':''}`;
+}
+/* Busca nos itens: código, descrição, NCM (com ou sem pontos) e CFOP, sem acento e
+   sem caixa; todos os termos têm de aparecer. */
+function dnfCasaBusca(p,termos){const a=semAcento([p.cProd,p.xProd,p.NCM,p.CFOP].join(' ')),b=a.replace(/[.\-]/g,'');
+  return termos.every(w=>a.includes(w)||b.includes(w.replace(/[.\-]/g,'')));}
+/* Páginas da tabela de itens: anterior, a primeira, a última, a atual e as vizinhas.
+   data-dir marca anterior/próxima: o foco fica no botão clicado enquanto ele vale. */
+function dnfPaginador(u,pags,numero){if(pags<2)return '';
+  const b=(pg,rot,lab,atual,des,dir)=>`<button type="button" class="dnf-pg${atual?' atual':''}" data-pag="${pg}"${dir?` data-dir="${dir}"`:''} aria-label="${lab}"${atual?' aria-current="page"':''}${des?' disabled':''}>${rot}</button>`;
+  const perto=new Set([1,pags,u.pag-1,u.pag,u.pag+1]);let nums='',ult=0;
+  for(let i=1;i<=pags;i++){if(!perto.has(i))continue;if(i-ult>1)nums+='<span class="dnf-pg-gap" aria-hidden="true">…</span>';nums+=b(i,i,'Página '+i,i===u.pag);ult=i;}
+  return `<nav class="dnf-pgs" aria-label="Páginas de itens da NF-e ${esc(numero||'')}">${b(u.pag-1,'‹','Página anterior',false,u.pag<=1,'ant')}${nums}${b(u.pag+1,'›','Próxima página',false,u.pag>=pags,'prox')}</nav>`;}
 function renderNFE(){
   try{
   const c=document.getElementById('nfe-list');
@@ -2379,9 +2627,11 @@ function renderNFE(){
   /* A nota é agrupada do DB INTEIRO (o DANFE mostra a nota toda); a busca geral
      decide quais notas aparecem. */
   const todas=dnfGrupos();
-  /* Filtros por LINHA, como antes do DANFE: a nota aparece se alguma linha dela
-     bate o CNPJ e a busca ao mesmo tempo (não só a 1ª linha, g.info). */
-  const vis=Object.entries(todas).filter(([k,g])=>(!fc&&!filtro)||g.itens.some(p=>(!fc||p.CNPJ_Emitente===fc)&&(!filtro||Object.values(p).some(v=>String(v).toLowerCase().includes(filtro)))));
+  /* Filtros por LINHA: a nota aparece se alguma linha dela bate o CNPJ e a busca ao
+     mesmo tempo (não só a 1ª linha, g.info). Lista do XML (duplicatas, volumes,
+     pagamentos) é objeto e fica fora da busca: o texto "object" casaria com toda nota.
+     A busca só escolhe notas; o DANFE e os totais são da nota inteira. */
+  const vis=Object.entries(todas).filter(([k,g])=>(!fc&&!filtro)||g.itens.some(p=>(!fc||p.CNPJ_Emitente===fc)&&(!filtro||Object.values(p).some(v=>(v===null||typeof v!=='object')&&String(v).toLowerCase().includes(filtro)))));
   const nIt=vis.reduce((a,[k,g])=>a+g.itens.length,0);
   document.getElementById('nfe-count').textContent=`${vis.length} nota(s) · ${nIt} item(ns)`;
   if(!vis.length){c.innerHTML='<div class="empty-state"><p>Nenhum produto NF-e. Importe XMLs.</p></div>';return;}
@@ -2409,12 +2659,23 @@ function dnfCartao(el){const card=el&&el.closest?el.closest('.nota-card[data-cha
    seguinte mantém aberta) e desenha o corpo na primeira abertura. */
 function dnfGaranteCorpo(h){const x=dnfCartao(h);if(!x)return;const b=x.card.querySelector('.body-detail');if(!b)return;
   x.u.nota=b.classList.contains('open');if(x.u.nota&&!b.childElementCount)dnfRepinta(x);}
-function dnfRepinta(x){const ch=x.ch,g=dnfGrupo(ch);
+/* Com o DANFE já desenhado, só a parte dos itens (tabela, paginador, painel) é
+   redesenhada, e a faixa "itens X–Y de N" muda pelo texto: o campo de busca fica
+   intacto (cursor no lugar) e o leitor de tela só anuncia a faixa quando ela muda.
+   foco: lista de seletores; o primeiro que existir recebe o foco (o controle
+   redesenhado sairia do foco). */
+function dnfRepinta(x,...foco){const ch=x.ch,g=dnfGrupo(ch);
   /* a nota saiu do DB (limpar/reimportar) ou o cartão saiu da tela: não há o que desenhar */
   if(!g.info||!x.card.isConnected)return;
-  x.card.querySelector('.body-detail').innerHTML=nfeDanfe(ch,g);}
+  const reg=x.card.querySelector('.dnf-itens');
+  if(reg){const r=dnfItens(ch,g,x.u);reg.innerHTML=r.html;const st=x.card.querySelector('.dnf-pag-info');if(st&&st.textContent!==r.faixa)st.textContent=r.faixa;}
+  else x.card.querySelector('.body-detail').innerHTML=nfeDanfe(ch,g);
+  for(const s of foco){const q=s&&x.card.querySelector(s);if(q){q.focus({preventScroll:true});break;}}}
 function dnfClique(e){
   const x=dnfCartao(e.target);if(!x)return;
+  /* página da tabela de itens: o item aberto continua aberto (é o índice na nota);
+     depois de anterior/próxima o foco fica no mesmo botão enquanto ele vale */
+  const pg=e.target.closest('.dnf-pg');if(pg){if(!pg.disabled&&pg.dataset.pag){x.u.pag=parseInt(pg.dataset.pag,10)||1;const d=pg.dataset.dir;dnfRepinta(x,d?`.dnf-pg[data-dir="${d}"]:not(:disabled)`:'','.dnf-pg.atual');}return;}
   const ir=e.target.closest('.dnf-ir-item');if(ir){if(ir.dataset.ir!=null)dnfAbreSo(x,ir.dataset.ir);return;}
   if(e.target.closest('.dnf-fecha-todos')){dnfAbreSo(x,null);return;}
   const tr=e.target.closest('.dnf-prod tbody tr.dnf-it');if(!tr)return;
@@ -2431,8 +2692,8 @@ function dnfFechaOutras(ch){for(const [k,u] of DNF_UI){if(k===ch||!u.abertos.siz
    linha não colar no fim da janela. */
 const DNF_ROLA_TOPO=70,DNF_ROLA_TOPO_FOLGA=90,DNF_ROLA_FUNDO=8,DNF_ROLA_FUNDO_FOLGA=40;
 /* Um item aberto por vez (abrir outro substitui). Ao fechar, o foco volta para o
-   botão da linha que estava aberta — o innerHTML novo derrubava o foco no <body>
-   e o teclado perdia o lugar na tabela. */
+   botão da linha que estava aberta: o redesenho deixaria o foco no <body> e o
+   teclado perderia o lugar na tabela. */
 function dnfAbreSo(x,k){const ant=[...x.u.abertos][0];x.u.abertos.clear();if(k!=null){dnfFechaOutras(x.ch);x.u.abertos.add(String(k));}dnfRepinta(x);
   const alvo=k!=null?String(k):ant;const b=alvo==null?null:[...x.card.querySelectorAll('.dnf-abre')].find(z=>z.dataset.abre===alvo);if(!b)return;b.focus({preventScroll:true});
   if(k==null)return;const r=b.closest('tr').getBoundingClientRect(),lim=innerHeight;
@@ -2441,7 +2702,10 @@ function dnfAbreSo(x,k){const ant=[...x.u.abertos][0];x.u.abertos.clear();if(k!=
 /* Esc fecha o item só quando o painel está na tela e o foco está na nota dele.
    preventDefault: o Esc do menu lateral respeita. */
 function dnfEsc(e){const a0=document.activeElement,x0=dnfCartao(a0);if(!x0||!x0.card.querySelector('.dnf-painel'))return;
-  e.preventDefault();dnfAbreSo(x0,null);}
+  const naBusca=!!(a0.classList&&a0.classList.contains('dnf-q'));
+  e.preventDefault();dnfAbreSo(x0,null);
+  /* Esc dado no campo de busca fecha o item e devolve o foco ao campo */
+  if(naBusca){const q=x0.card.querySelector('.dnf-q');if(q)q.focus({preventScroll:true});}}
 /* ↑ ↓ passam de item (fora de campo de texto). data-it é o índice da linha na nota:
    único, então a vizinha na tela é o próximo/anterior. */
 function dnfTecla(e){if(e.key==='Escape'){dnfEsc(e);return;}
@@ -2450,6 +2714,13 @@ function dnfTecla(e){if(e.key==='Escape'){dnfEsc(e);return;}
   const ks=[...x.card.querySelectorAll('tr.dnf-it')].map(t=>t.dataset.it),i=ks.indexOf([...x.u.abertos][0]),j=i+(e.key==='ArrowDown'?1:-1);
   if(i<0||j<0||j>=ks.length)return;e.preventDefault();dnfAbreSo(x,ks[j]);}
 document.addEventListener('keydown',dnfTecla);
+/* Busca nos itens (com espera curta entre teclas, uma espera por nota) e itens por
+   página: voltam à página 1; o item aberto continua aberto. */
+const DNF_BUSCA_ESPERA_MS=150;
+function dnfBusca(x,valor){x.u.q=valor;x.u.pag=1;dnfRepinta(x);}
+function dnfEntrada(e){const el=e.target,x=dnfCartao(el);if(!x||!el.classList)return;
+  if(el.classList.contains('dnf-q')){clearTimeout(x.u.espera);x.u.espera=setTimeout(()=>dnfBusca(x,el.value),DNF_BUSCA_ESPERA_MS);}
+  else if(el.classList.contains('dnf-tam')){const v=parseInt(el.value,10);x.u.tam=DNF_TAMS.includes(v)?v:DNF_TAM_PADRAO;x.u.pag=1;dnfRepinta(x,'.dnf-tam');}}
 /* Clique fora do painel e fora das linhas de produto fecha o item aberto, sem mexer
    no foco (o clique pode ter ido para outro campo da tela). Alvo que já saiu do DOM
    não conta como "fora": os botões do próprio painel e as linhas repintam a nota.
@@ -2458,6 +2729,8 @@ document.addEventListener('keydown',dnfTecla);
 function dnfForaClique(e){const pn=document.querySelector('.dnf-painel');if(!pn)return;const t=e.target;
   if(window.getSelection&&String(window.getSelection()))return;
   if(!t||!t.isConnected||!t.closest||t.closest('.dnf-painel')||t.closest('.dnf-prod tbody tr.dnf-it'))return;
+  /* busca e paginação dos itens não fecham o item aberto */
+  if(t.closest('.dnf-busca')||t.closest('.dnf-pag'))return;
   const x=dnfCartao(pn);if(!x||!x.u.abertos.size)return;x.u.abertos.clear();dnfRepinta(x);}
 document.addEventListener('click',dnfForaClique);
 
@@ -2725,6 +2998,11 @@ function toggleNota(el){
     if(h){toggleNota(h);dnfGaranteCorpo(h);return;}
     dnfClique(e);
   });
+  raiz.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('dnf-q'))dnfEntrada(e);});
+  /* Busca geral do topo: redesenha a lista depois de uma pausa curta na digitação. */
+  const fbusca=document.getElementById('filtro-nfe');let fespera=0;
+  if(fbusca)fbusca.addEventListener('input',()=>{clearTimeout(fespera);fespera=setTimeout(renderNFE,DNF_BUSCA_ESPERA_MS);});
+  raiz.addEventListener('change',e=>{if(e.target.classList&&e.target.classList.contains('dnf-tam'))dnfEntrada(e);});
   /* Teclado: o header é um div clicável — sem isto, é inalcançável por Tab (2.1.1) */
   raiz.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
