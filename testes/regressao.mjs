@@ -3353,10 +3353,12 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           !erro && /data-ir="1"[^>]*>próximo/.test(r.pDup) && /<b>Item 1<\/b><span class="dnf-painel-nome">A<\/span>/.test(r.pDup), erro || (r && r.pDup.slice(0, 300)));
         ok('nota com 1 item: anterior e próximo desabilitados',
           !erro && (r.pUm.match(/disabled/g) || []).length === 2 && !/data-ir=/.test(r.pUm), erro);
-        ok('sem barra de filtro acima dos produtos: nenhum campo de filtro',
-          !erro && /dnf-painel/.test(r.hVisivel) && !/dnf-filtro/.test(r.hVisivel) && !/class="dnf-q"/.test(r.hVisivel), erro);
-        ok('sem barra de filtro acima dos produtos: nem contagem nem texto de instrução',
-          !erro && !/Filtrar itens/.test(r.hVisivel) && !/\d+ de \d+ itens/.test(r.hVisivel), erro);
+        ok('busca nos itens: um campo com rótulo visível acima da tabela de produtos',
+          !erro && /dnf-painel/.test(r.hVisivel) && /<label for="dnfq-KZ">Buscar item<\/label><input type="search" class="dnf-q" id="dnfq-KZ"/.test(r.hVisivel)
+          && r.hVisivel.indexOf('class="dnf-q"') < r.hVisivel.indexOf('class="dnf-prod"'), erro);
+        ok('abaixo da tabela: a faixa de itens visíveis e o seletor de itens por página',
+          !erro && /<span class="dnf-pag-info" role="status">itens 1–1 de 1<\/span>/.test(r.hVisivel)
+          && /<select class="dnf-tam"><option value="25">25<\/option><option value="50" selected>50<\/option><option value="100">100<\/option><option value="0">Todos<\/option><\/select>/.test(r.hVisivel), erro);
         ok('o clique fora está ligado ao documento (sem a ligação, o handler nunca roda)',
           /document\.addEventListener\('click',dnfForaClique\)/.test(html));
         ok('clique fora do painel fecha o item; dentro do painel, em alvo já repintado ou ao fim de uma seleção de texto, não fecha',
@@ -4810,6 +4812,354 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));
     ok('o universo inclui campo lido por `g.` (o rodapé de Arquivo_Origem do NF-e)',
       /\bg\./.test(fonteRender) && unicos.includes('Arquivo_Origem'));
+
+    /* ── NF-e: totais do XML, conferência IBS/CBS, busca e páginas dos itens, campos
+       novos do DANFE e versão no rodapé ─────────────────────────────────────────
+       O XML sintético é lido pelo extrator de verdade (o DOMParser mínimo do bloco da
+       NFS-e continua no sandbox) e o DANFE é desenhado a partir do que ele leu. CNPJs:
+       os sintéticos da lista do gate de privacidade; chave e protocolo, os declarados lá. */
+    {
+      const T = (tag, filhos) => '<' + tag + '>' + filhos + '</' + tag + '>';
+      const EMIT = '11222333000181', DEST = '12345678000195';
+      const CH = '35260911222333000181550010000001231123456783';
+      /* Item: ICMS00 (ou ICMS40 sem base), IBS/CBS (ou nenhum), PIS/COFINS próprio sem valor
+         com PISST/COFINSST (quando pedido) e indTot (quando pedido). */
+      const det = (n, o) => '<det nItem="' + n + '">'
+        + T('prod', T('cProd', o.c) + T('xProd', o.x) + T('NCM', '87083090') + T('CFOP', '5405') + T('uCom', 'UN') + T('qCom', '1.0000') + T('vUnCom', o.v) + T('vProd', o.v) + (o.indTot != null ? T('indTot', o.indTot) : ''))
+        + T('imposto', T('ICMS', o.icms40 ? T('ICMS40', T('orig', '0') + T('CST', '40')) : T('ICMS00', T('orig', '0') + T('CST', '00') + T('modBC', '3') + T('vBC', o.v) + T('pICMS', '18.00') + T('vICMS', o.icms)))
+          + (o.pis ? T('PIS', T('PISAliq', T('CST', '01') + T('vBC', o.v) + T('pPIS', '0.65') + T('vPIS', '0.65'))) + T('COFINS', T('COFINSAliq', T('CST', '01') + T('vBC', o.v) + T('pCOFINS', '3.00') + T('vCOFINS', '3.00'))) : '')
+          + (o.pisst ? T('PIS', T('PISNT', T('CST', '07'))) + T('PISST', T('vBC', o.v) + T('pPIS', '0.57') + T('vPIS', '0.17')) + T('COFINS', T('COFINSNT', T('CST', '07'))) + T('COFINSST', T('vBC', o.v) + T('pCOFINS', '2.60') + T('vCOFINS', '0.78')) : '')
+          + (o.semIbs ? '' : T('IBSCBS', T('CST', o.cst) + T('cClassTrib', o.cls) + T('gIBSCBS', T('vBC', o.v)
+            + T('gIBSUF', T('pIBSUF', '0.10') + (o.red ? T('gRed', T('pRedAliq', '60.00') + T('pAliqEfet', '0.04')) : '') + T('vIBSUF', o.uf))
+            + T('gIBSMun', T('pIBSMun', '0.00') + T('vIBSMun', '0.00')) + T('vIBS', o.uf)
+            + T('gCBS', T('pCBS', '0.90') + (o.red ? T('gRed', T('pRedAliq', '60.00') + T('pAliqEfet', '0.36')) : '') + T('vCBS', o.cbs))))))
+        + '</det>';
+      const nfeXml = (o) => '<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe' + CH + '" versao="4.00">'
+        + T('ide', T('cUF', '35') + T('natOp', 'VENDA') + T('mod', '55') + T('serie', '1') + T('nNF', '123') + T('dhEmi', '2026-09-10T10:00:00-03:00') + T('tpNF', '1') + T('idDest', '2') + T('finNFe', '1') + T('indFinal', '1') + T('indPres', '1'))
+        + T('emit', T('CNPJ', EMIT) + T('xNome', 'ALFA PECAS DE EXEMPLO LTDA') + T('enderEmit', T('xLgr', 'Rua das Flores') + T('nro', '100') + T('xBairro', 'Centro') + T('xMun', 'Campinas') + T('UF', 'SP') + T('CEP', '13010000') + T('fone', '1930000000')) + T('IE', 'ISENTO') + T('CRT', '3'))
+        + T('dest', T('CNPJ', DEST) + T('xNome', 'CLIENTE DE EXEMPLO LTDA') + T('enderDest', T('xLgr', 'Av. Exemplo') + T('nro', '123') + T('xBairro', 'Bela Vista') + T('xMun', 'Curitiba') + T('UF', 'PR') + T('CEP', '80000000')) + T('indIEDest', '9') + T('email', 'compras@cliente.exemplo'))
+        + det(1, { c: 'P1', x: 'PARAFUSO SEXTAVADO', v: '100.00', icms: '18.00', cst: '000', cls: '000001', uf: '0.10', cbs: '0.90', indTot: o.extra ? '1' : null, pis: !!o.extra })
+        + det(2, { c: 'P2', x: 'ARRUELA LISA', v: '50.00', icms: '9.00', cst: '200', cls: '200034', uf: '0.02', cbs: '0.18', red: true, indTot: o.extra ? '1' : null })
+        + (o.extra ? det(3, { c: 'P3', x: 'BRINDE', v: '30.00', indTot: '0', icms40: true, semIbs: true, pisst: true }) : '')
+        + T('total', T('ICMSTot', T('vBC', '150.00') + T('vICMS', o.vICMS || '27.00') + T('vICMSDeson', '0.00') + T('vFCP', '1.50') + T('vBCST', '0.00') + T('vST', '0.00') + T('vFCPST', '0.00') + T('vFCPSTRet', '0.00')
+            + T('vProd', o.vProd || '150.00') + T('vFrete', '0.00') + T('vSeg', '0.00') + T('vDesc', '0.00') + T('vII', '0.00') + T('vIPI', '0.00') + T('vIPIDevol', '0.00') + T('vPIS', o.extra ? '0.65' : '0.00') + T('vCOFINS', o.extra ? '3.00' : '0.00') + T('vOutro', '0.00') + T('vNF', '150.00') + T('vTotTrib', '30.00'))
+          + T('IBSCBSTot', T('vBCIBSCBS', '150.00')
+            + T('gIBS', T('gIBSUF', T('vDif', '0.00') + T('vDevTrib', '0.00') + T('vIBSUF', '0.12')) + T('gIBSMun', T('vDif', '0.00') + T('vDevTrib', '0.00') + T('vIBSMun', '0.00')) + T('vIBS', '0.12') + T('vCredPres', '0.00'))
+            + T('gCBS', T('vDif', '0.00') + T('vDevTrib', '0.00') + T('vCBS', o.vCBS || '1.08') + T('vCredPres', '0.00')))
+          + (o.semVNFTot ? '' : T('vNFTot', '151.20')))
+        + T('transp', T('modFrete', '0') + T('transporta', T('CNPJ', EMIT) + T('xNome', 'TRANSPORTADORA DE EXEMPLO LTDA') + T('IE', 'ISENTO') + T('xEnder', 'Rod. Exemplo, km 10') + T('xMun', 'Jundiai') + T('UF', 'SP'))
+          + T('veicTransp', T('placa', 'ABC1D23') + T('UF', 'SP') + T('RNTC', 'ANTT-EX'))
+          + T('vol', T('qVol', '3') + T('esp', 'CAIXA') + T('marca', 'ALFA') + T('nVol', '1-3') + T('pesoL', '12.500') + T('pesoB', '13.000')) + T('vol', T('qVol', '1') + T('esp', 'PALETE') + T('pesoB', '80.000')))
+        + T('cobr', T('fat', T('nFat', 'F-123') + T('vOrig', '150.00') + T('vDesc', '0.00') + T('vLiq', '150.00')) + T('dup', T('nDup', '001') + T('dVenc', '2026-10-10') + T('vDup', '75.00')) + T('dup', T('nDup', '002') + T('dVenc', '2026-11-10') + T('vDup', '75.00')))
+        + T('pag', T('detPag', T('tPag', '17') + T('vPag', '100.00')) + T('detPag', T('tPag', '99') + T('xPag', 'Permuta') + T('vPag', '60.00')) + T('vTroco', '10.00'))
+        + T('infAdic', T('infAdFisco', 'Regime especial de exemplo') + T('infCpl', 'Pedido 42'))
+        + '</infNFe></NFe>' + T('protNFe', T('infProt', T('cStat', '100') + T('xMotivo', 'Autorizado o uso da NF-e') + T('nProt', '123456789012345') + T('dhRecbto', '2026-09-10T10:05:00-03:00'))) + '</nfeProc>';
+      /* Lê o XML e desenha o DANFE da nota lida (nota aberta, sem item aberto). */
+      const danfe = (o) => {
+        vm.runInContext('__X=' + JSON.stringify(nfeXml(o || {})), sb);
+        return vm.runInContext(`(()=>{const r=extrairNFE("n.xml",__X);if(!r.ok)throw new Error(r.msg);__DB.nfe=r.produtos;
+          const ch=r.produtos[0].Chave_NFe,u=dnfUI(ch);u.abertos.clear();u.q='';u.pag=1;u.tam=50;return {h:nfeDanfe(ch,dnfGrupo(ch)),rows:r.produtos};})()`, sb);
+      };
+      /* Valor de uma caixa do DANFE pelo rótulo (a classe da caixa vem em `cls`). */
+      const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+      const cxm = (h, rot) => new RegExp('<span class="r">' + reEsc(rot) + '</span><span class="(v[^"]*)">([^<]*)</span>').exec(h);
+      const cx = (h, rot) => { const m = cxm(h, rot); return m ? m[2] : null; };
+      const cxCls = (h, rot) => { const m = cxm(h, rot); return m ? m[1] : null; };
+      const linhasIt = (h) => (h.match(/class="dnf-it[ "]/g) || []).length;
+      let base = null, erro = '';
+      try { base = danfe(); } catch (e) { erro = e.message; }
+      ok('NF-e sintética: o extrator lê a nota (DOMParser mínimo) e o DANFE é desenhado', !erro && !!base && base.rows.length === 2, erro);
+      if (!erro && base) {
+        const r0 = base.rows[0], r1 = base.rows[1], h = base.h;
+        /* 1 · leitura dos campos novos (só tela) */
+        ok('o extrator lê o grupo <total> (ICMSTot, IBSCBSTot e vNFTot) na família Tot_*',
+          r0.Tot_vBC === '150.00' && r0.Tot_vICMS === '27.00' && r0.Tot_vFCP === '1.50' && r0.Tot_vProd === '150.00' && r0.Tot_vIPIDevol === '0.00'
+          && r0.Tot_vBCIBSCBS === '150.00' && r0.Tot_vIBSUF === '0.12' && r0.Tot_vIBSMun === '0.00' && r0.Tot_vIBS === '0.12' && r0.Tot_vCBS === '1.08' && r0.Tot_vNFTot === '151.20'
+          && !('IBSCBS_vIBS' in r0) && !('vNFTot' in r0),
+          JSON.stringify([r0.Tot_vBC, r0.Tot_vICMS, r0.Tot_vIBS, r0.Tot_vCBS, r0.Tot_vNFTot]));
+        ok('o extrator lê protocolo, operação, endereços, transporte, cobrança, pagamento e fisco',
+          r0.Protocolo_NFe === '123456789012345' && r0.Data_Autorizacao === '2026-09-10T10:05:00-03:00'
+          && r0.Fin_NFe === '1' && r0.Id_Dest === '2' && r0.Ind_Final === '1' && r0.Ind_Pres === '1'
+          && r0.End_Emitente === 'Rua das Flores, 100, Centro' && r0.CEP_Emitente === '13010000' && r0.Fone_Emitente === '1930000000' && r0.CRT_Emitente === '3'
+          && r0.End_Destinatario === 'Av. Exemplo, 123, Bela Vista' && r0.CEP_Destinatario === '80000000' && r0.Email_Destinatario === 'compras@cliente.exemplo' && r0.IndIE_Destinatario === '9'
+          && r0.Transp_Mod === '0' && r0.Transp_Nome === 'TRANSPORTADORA DE EXEMPLO LTDA' && r0.Transp_CNPJ === EMIT && r0.Transp_Placa === 'ABC1D23' && r0.Transp_UFPlaca === 'SP'
+          && r0.Volumes.length === 2 && r0.Volumes[0].marca === 'ALFA' && r0.Volumes[1].pesoB === '80.000'
+          && r0.Fat_Numero === 'F-123' && r0.Fat_vLiq === '150.00' && r0.Duplicatas.length === 2 && r0.Duplicatas[1].dVenc === '2026-11-10'
+          && r0.Pagamentos.length === 2 && r0.Pagamentos[1].xPag === 'Permuta' && r0.vTroco === '10.00' && r0.infAdFisco === 'Regime especial de exemplo',
+          JSON.stringify(r0).slice(0, 200));
+        ok('o extrator lê a redução de alíquota (gRed) em campos com nome fixo, vazios quando não há redução',
+          r1.pRedIBSUF === '60.00' && r1.pAliqEfetIBSUF === '0.04' && r1.pRedCBS === '60.00' && r1.pAliqEfetCBS === '0.36'
+          && r0.pAliqEfetCBS === '' && r0.pRedIBSUF === '' && r0.pAliqEfetIBSMun === '' && /\[base\.pRedCBS,base\.pAliqEfetCBS\]=red\(gcbs\)/.test(html) && !/base\['pRed'\+/.test(html),
+          JSON.stringify([r1.pAliqEfetIBSUF, r1.pAliqEfetCBS, r0.pAliqEfetCBS]));
+        /* 2 · exportação inalterada */
+        const cols = vm.runInContext('[HNFE.length,HNFSE.length,HCTE.length]', sb);
+        const novos = ['Tot_vProd', 'Tot_vIBS', 'Tot_vNFTot', 'Protocolo_NFe', 'Transp_Nome', 'Volumes', 'Duplicatas', 'Pagamentos', 'infAdFisco', 'pAliqEfetCBS', 'End_Emitente', 'indTot', 'PIS_vPISProprio', 'COFINS_vCOFINSProprio'];
+        const hn = vm.runInContext('HNFE', sb);
+        ok('exportação inalterada: HNFE 117, HNFSE 121, HCTE 90, nenhum campo novo nas colunas e o item lido tem todas as do HNFE',
+          cols[0] === 117 && cols[1] === 121 && cols[2] === 90 && novos.every((c) => !hn.includes(c)) && hn.every((c) => Object.prototype.hasOwnProperty.call(r0, c)),
+          JSON.stringify(cols));
+        /* 3 · totais oficiais, vNFTot e aviso */
+        ok('Cálculo do imposto: as caixas vêm do <total> do XML (FCP, vNFTot e tributos aproximados só existem lá)',
+          cx(h, 'Valor do ICMS') === '27,00' && cx(h, 'Valor do FCP') === '1,50' && cx(h, 'Tributos aproximados (Lei 12.741)') === '30,00'
+          && cx(h, 'Total com IBS/CBS (vNFTot)') === '151,20' && cx(h, 'Valor da CBS') === '1,08' && !/\(soma dos itens\)<\/span><span class="v n/.test(h.slice(h.indexOf('Cálculo do imposto'), h.indexOf('ICMS do substituto'))),
+          JSON.stringify([cx(h, 'Valor do ICMS'), cx(h, 'Valor do FCP'), cx(h, 'Total com IBS/CBS (vNFTot)')]));
+        ok('soma dos itens igual ao total do XML: nenhum aviso', !/dnf-aviso/.test(h));
+        let dif = null, cent = null, dois = null, prod = null, semTot = null;
+        try {
+          dif = danfe({ vICMS: '27.50' }).h;
+          cent = danfe({ vICMS: '27.01' }).h;
+          dois = danfe({ vICMS: '27.02' }).h;
+          prod = danfe({ vProd: '149.00' }).h;
+          semTot = danfe({ semVNFTot: true }).h;
+        } catch (e) { erro = e.message; }
+        ok('total do XML diferente da soma dos itens: a caixa mostra o do XML e uma linha avisa a diferença',
+          !erro && cx(dif, 'Valor do ICMS') === '27,50'
+          && /<p class="dnf-aviso" role="note"><b>Soma dos itens difere do total do XML:<\/b> Valor do ICMS \(XML 27,50 · itens 27,00\)\.<\/p>/.test(dif)
+          && cx(prod, 'Valor total dos produtos') === '149,00' && /Valor total dos produtos \(XML 149,00 · itens 150,00\)/.test(prod), erro || (dif || '').slice(0, 100));
+        ok('tolerância de 1 centavo (DNF_TOL_CENTAVOS): 0,01 não avisa, 0,02 avisa',
+          !erro && vm.runInContext('DNF_TOL_CENTAVOS', sb) === 1 && !/dnf-aviso/.test(cent) && cx(cent, 'Valor do ICMS') === '27,01'
+          && /<p class="dnf-aviso"[^>]*>[\s\S]*?Valor do ICMS \(XML 27,02 · itens 27,00\)/.test(dois));
+        ok('sem vNFTot no XML, a caixa "Total com IBS/CBS (vNFTot)" fica 0,00 cinza nas duas seções (nada calculado no lugar)',
+          !erro && (semTot.match(/<span class="r">Total com IBS\/CBS \(vNFTot\)<\/span><span class="v n z">0,00<\/span>/g) || []).length === 2
+          && (h.match(/<span class="r">Total com IBS\/CBS \(vNFTot\)<\/span><span class="v n">151,20<\/span>/g) || []).length === 2 && !/151,32/.test(semTot), erro);
+        /* 3.1 · regras da SEFAZ na conferência: indTot e PIS/COFINS próprios */
+        let ext = null;
+        try { ext = danfe({ extra: true }); } catch (e) { erro = e.message; }
+        const r2 = ext && ext.rows[2];
+        ok('item com indTot=0 fica fora da conferência do vProd, e o PISST/COFINSST fora da do PIS/COFINS: nota válida sem aviso',
+          !erro && ext.rows.length === 3 && r2.indTot === '0' && ext.rows[0].indTot === '1' && !/dnf-aviso/.test(ext.h)
+          && cx(ext.h, 'Valor total dos produtos') === '150,00' && cx(ext.h, 'Valor do PIS') === '0,65' && cx(ext.h, 'Valor da COFINS') === '3,00', erro || (ext && ext.h.slice(ext.h.indexOf('dnf-aviso') - 20, ext.h.indexOf('dnf-aviso') + 200)));
+        ok('a exportação continua com o PIS/COFINS do ST no campo do item (só a conferência separa o grupo próprio)',
+          !erro && r2.PIS_vPIS === '0.17' && r2.COFINS_vCOFINS === '0.78' && r2.PIS_vPISProprio === '' && r2.COFINS_vCOFINSProprio === '' && ext.rows[0].PIS_vPISProprio === '0.65' && ext.rows[0].COFINS_vCOFINSProprio === '3.00', erro);
+        /* 4 · busca geral não muda a nota */
+        let busca = null;
+        try {
+          danfe(); /* volta o DB para a nota sem diferença */
+          busca = vm.runInContext(`(()=>{const ch=__DB.nfe[0].Chave_NFe;dnfUI(ch).nota=true;
+            document.getElementById('filtro-nfe').value='parafuso';renderNFE();const a=document.getElementById('nfe-list').innerHTML;
+            document.getElementById('filtro-nfe').value='object';renderNFE();const b=document.getElementById('nfe-list').innerHTML;
+            document.getElementById('filtro-nfe').value='';dnfUI(ch).nota=false;return {a,b};})()`, sb);
+        } catch (e) { erro = e.message; }
+        ok('a busca geral do topo não muda os totais da nota (nem a lista de itens do DANFE)',
+          !erro && cx(busca.a, 'Valor total dos produtos') === '150,00' && cx(busca.a, 'Valor do ICMS') === '27,00'
+          && linhasIt(busca.a) === 2 && /<td>Total dos itens<\/td>/.test(busca.a) && /itens 1–2 de 2</.test(busca.a), erro);
+        ok('a busca geral não casa com as listas do XML (duplicatas/volumes/pagamentos)',
+          !erro && /empty-state/.test(busca.b) && !/dnf-it/.test(busca.b), erro);
+        ok('a busca geral do topo redesenha depois de uma pausa (DNF_BUSCA_ESPERA_MS), sem handler no HTML',
+          /<input type="text" id="filtro-nfe" placeholder="Buscar na NF-e\.\.\.">/.test(html)
+          && /fbusca\.addEventListener\('input',\(\)=>\{clearTimeout\(fespera\);fespera=setTimeout\(renderNFE,DNF_BUSCA_ESPERA_MS\);\}\)/.test(html));
+        /* 5 · conferência IBS/CBS */
+        const conf = h.slice(h.indexOf('Conferência IBS/CBS'), h.indexOf('Transportador / volumes'));
+        ok('conferência IBS/CBS: total do XML × soma dos itens ("confere" sem cinza), com vNF ao lado do vNFTot',
+          /<td class="nome">Valor da CBS<\/td><td class="n">1,08<\/td><td class="n">1,08<\/td><td class="ok">confere<\/td>/.test(conf)
+          && /<td class="nome">IBS UF<\/td><td class="n">0,12<\/td><td class="n">0,12<\/td><td class="ok">confere<\/td>/.test(conf)
+          && cx(conf, 'Valor da nota (vNF)') === '150,00' && cx(conf, 'Total com IBS/CBS (vNFTot)') === '151,20', conf.slice(0, 200));
+        ok('as tabelas da conferência são regiões roláveis com nome e legenda; o nome do campo do XML mantém a caixa',
+          (conf.match(/<div class="dnf-conf-wrap" tabindex="0" role="region" aria-label="[^"]+"><table class="dnf-conf"><caption class="visually-hidden">/g) || []).length === 2
+          && /XML \(<span class="tag">IBSCBSTot<\/span>\)/.test(conf) && /<th><span class="tag">cClassTrib<\/span><\/th>/.test(conf)
+          && /\.nota-card table\.dnf-conf th \.tag\{text-transform:none\}/.test(html));
+        ok('agrupamento por CST + cClassTrib com a alíquota EFETIVA quando há redução (gRed)',
+          /<tr><td>000<\/td><td>000001<\/td><td class="n">1<\/td><td class="n">100,00<\/td><td class="n">0,10<\/td>/.test(conf)
+          && /<tr><td>200<\/td><td>200034<\/td><td class="n">1<\/td><td class="n">50,00<\/td><td class="n">0,04 <small>efetiva<\/small><\/td><td class="n">0,02<\/td>/.test(conf)
+          && /0,36 <small>efetiva<\/small><\/td><td class="n">0,18<\/td><td class="n">60,00<\/td><\/tr>/.test(conf), conf.slice(conf.indexOf('<tbody>', conf.indexOf('CST')), conf.indexOf('<tbody>', conf.indexOf('CST')) + 300));
+        let c09 = '', c10 = '', c120 = '', c100 = '';
+        try { c09 = danfe({ vCBS: '1.09' }).h; c10 = danfe({ vCBS: '1.10' }).h; c120 = danfe({ vCBS: '1.20' }).h; c100 = danfe({ vCBS: '1.00' }).h; } catch (e) { erro = e.message; }
+        const linCBS = (x) => (/<td class="nome">Valor da CBS<\/td><td class="n">[^<]*<\/td><td class="n">[^<]*<\/td><td class="([^"]*)">([^<]*)<\/td>/.exec(x) || []).slice(1).join('|');
+        ok('"confere" com 1 centavo de diferença diz a diferença; 2 centavos já é diferença com o lado maior',
+          !erro && linCBS(c09) === 'ok|confere (diferença de 0,01)' && !/dnf-aviso/.test(c09)
+          && linCBS(c10) === 'dif|XML maior em 0,02' && /Valor da CBS \(XML 1,10 · itens 1,08\)/.test(c10), erro || linCBS(c09) + ' / ' + linCBS(c10));
+        ok('diferença na CBS: "XML maior em" e "XML menor em", e o aviso lista',
+          !erro && linCBS(c120) === 'dif|XML maior em 0,12' && linCBS(c100) === 'dif|XML menor em 0,08' && /Valor da CBS \(XML 1,20 · itens 1,08\)/.test(c120), erro || linCBS(c120));
+        const semIbs = vm.runInContext("nfeDanfe('KSI',{info:{Chave_NFe:'KSI',Item:'1',xProd:'X',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KSI',Item:'1',xProd:'X'}]})", sb);
+        ok('nota sem IBS/CBS: a seção diz que o XML não traz (sem tabela vazia)', /Conferência IBS\/CBS<\/div>\s*<p class="dnf-nada">Nota sem IBS\/CBS no XML\.<\/p>/.test(semIbs) && !/dnf-conf/.test(semIbs));
+        const soTot = vm.runInContext("nfeDanfe('KST',{info:{Chave_NFe:'KST',Item:'1',xProd:'X',Status_NFe:'Autorizada',Tot_vBCIBSCBS:'0.00',Tot_vIBS:'0.00',Tot_vCBS:'0.00'},itens:[{Chave_NFe:'KST',Item:'1',xProd:'X'}]})", sb);
+        ok('total de IBS/CBS no XML sem item com IBS/CBS: a tabela por CST diz que não há item, sem tabela vazia',
+          /<p class="dnf-nada">Nenhum item com IBS\/CBS\.<\/p>/.test(soTot) && (soTot.match(/class="dnf-conf"/g) || []).length === 1);
+        /* 3.2 · nota sem o grupo <total> */
+        const semGrupo = vm.runInContext("nfeDanfe('KNT',{info:{Chave_NFe:'KNT',Item:'1',vProd:'10.00',ICMS_vICMS:'2.00',Tot_vICMS:'99.00',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KNT',Item:'1',vProd:'10.00',ICMS_vICMS:'2.00'},{Chave_NFe:'KNT',Item:'2',vProd:'20.00',ICMS_vICMS:'3.00'}]})", sb);
+        ok('sem o grupo <total>: a caixa mostra a soma dos itens com o rótulo "(soma dos itens)" e não há aviso',
+          cx(semGrupo, 'Valor total dos produtos (soma dos itens)') === '30,00' && cx(semGrupo, 'Valor do ICMS (soma dos itens)') === '5,00'
+          && cx(semGrupo, 'ICMS desonerado') === '0,00' && cxCls(semGrupo, 'ICMS desonerado') === 'v n z' && !/dnf-aviso/.test(semGrupo), semGrupo.slice(semGrupo.indexOf('Cálculo'), semGrupo.indexOf('Cálculo') + 300));
+        /* 6 · campos novos no DANFE */
+        ok('cabeçalho: protocolo e data de autorização ao lado da chave; tipo da nota pelo mapa de códigos',
+          /<span class="r sep">Protocolo de autorização de uso<\/span><span class="v">123456789012345 · 10\/09\/2026 10:05<\/span>/.test(h)
+          && /<span class="t">DANFE<\/span><span class="dim">NF-e · modelo 55<\/span><span class="v">1 - Saída<\/span>/.test(h));
+        const tpHostil = vm.runInContext("nfeDanfe('KTP',{info:{Chave_NFe:'KTP',Tp_NF:'constructor',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KTP',Item:'1'}]})", sb);
+        ok('código hostil no tipo da nota não resolve pelo protótipo', /<span class="v">constructor<\/span><span class="v">Nº/.test(tpHostil));
+        ok('operação, emitente e destinatário: códigos com descrição, endereço, CEP, telefone, e-mail',
+          cx(h, 'Finalidade') === '1 - Normal' && cx(h, 'Destino da operação') === '2 - Interestadual' && cx(h, 'Consumidor final') === '1 - Sim' && cx(h, 'Presença do comprador') === '1 - Presencial'
+          && cx(h, 'Endereço do emitente') === 'Rua das Flores, 100, Centro' && cx(h, 'Telefone') === '1930000000' && cx(h, 'Regime tributário (CRT)') === '3 - Regime normal'
+          && cx(h, 'Indicador da IE') === '9 - Não contribuinte' && cx(h, 'E-mail') === 'compras@cliente.exemplo', JSON.stringify([cx(h, 'Finalidade'), cx(h, 'Regime tributário (CRT)')]));
+        const tr = h.slice(h.indexOf('Transportador / volumes'), h.indexOf('Dados dos produtos'));
+        ok('transportador e volumes como no DANFE impresso (um quadro por volume)',
+          cx(tr, 'Nome / razão social') === 'TRANSPORTADORA DE EXEMPLO LTDA' && cx(tr, 'Frete por conta') === '0 - Remetente (CIF)' && cx(tr, 'Placa do veículo') === 'ABC1D23'
+          && cx(tr, 'CNPJ / CPF') === '11.222.333/0001-81' && cx(tr, 'Município') === 'Jundiai'
+          && (tr.match(/<span class="r">Espécie<\/span>/g) || []).length === 2 && /<span class="r">Peso bruto \(kg\)<\/span><span class="v">80<\/span>/.test(tr) && /<span class="r">Marca<\/span><span class="v z">—<\/span>/.test(tr), tr.slice(0, 160));
+        const fat = h.slice(h.indexOf('Fatura / duplicatas'), h.indexOf('Cálculo do imposto'));
+        ok('fatura, duplicatas e pagamento (forma descrita, troco)',
+          cx(fat, 'Número da fatura') === 'F-123' && cx(fat, 'Valor líquido') === '150,00'
+          && /<span class="r">Duplicata<\/span><span class="v">002<\/span><span class="dim">Venc\. 10\/11\/2026 · R\$ 75,00<\/span>/.test(fat)
+          && /<span class="r">Forma de pagamento<\/span><span class="v">17 - PIX<\/span><span class="dim">R\$ 100,00<\/span>/.test(fat)
+          && /99 - Outros · Permuta/.test(fat) && cx(fat, 'Troco') === '10,00', fat.slice(0, 200));
+        ok('informações de interesse do fisco nos dados adicionais', cx(h, 'Informações adicionais de interesse do fisco') === 'Regime especial de exemplo');
+        ok('nenhuma célula ou caixa do DANFE com class="" vazio', !/class=""/.test(h));
+        const vazio = vm.runInContext("nfeDanfe('KVZ',{info:{Chave_NFe:'KVZ',Item:'1',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KVZ',Item:'1'}]})", sb);
+        ok('campo novo ausente sai cinza: — no texto e 0,00 no valor',
+          /<span class="r">Número da fatura<\/span><span class="v z">—<\/span>/.test(vazio) && /<span class="r">Troco<\/span><span class="v n z">0,00<\/span>/.test(vazio)
+          && /<span class="r">Duplicatas<\/span><span class="v z">—<\/span>/.test(vazio) && /<span class="r">Frete por conta<\/span><span class="v z">—<\/span>/.test(vazio)
+          && /<span class="v z">— · —<\/span>/.test(vazio));
+        ok('layout: chave numa linha só (até 760px ocupa a linha toda) e valor numérico sem quebra, com 4 colunas até 1100px',
+          /\.dnf-cx \.v\.mono\{white-space:nowrap;overflow-wrap:normal;overflow-x:auto\}/.test(html)
+          && /@media \(max-width:760px\)\{[^\n]*\.dnf-cab>\.dnf-cx:last-child\{grid-column:1\/-1\}\}/.test(html)
+          && /\.dnf-cx \.v\.n\{overflow-wrap:normal;white-space:nowrap\}/.test(html)
+          && /@media \(max-width:1100px\)\{\.dnf \.g6,\.dnf \.g7\{grid-template-columns:repeat\(4,1fr\)\}\}/.test(html)
+          && (html.match(/\.dnf-nada\{/g) || []).length === 1 && /\.dnf-aviso\{[^}]*border-left:3px solid var\(--warn-ink\)/.test(html));
+      }
+      /* 7 · o dado do arquivo nos campos novos (listas inclusive) não vira HTML */
+      {
+        const lista = (v) => ({ Volumes: [{ qVol: v, esp: v, marca: v, nVol: v, pesoL: v, pesoB: v }], Duplicatas: [{ nDup: v, dVenc: v, vDup: v }], Pagamentos: [{ tPag: v, xPag: v, vPag: v }] });
+        const campos = ['Protocolo_NFe', 'Data_Autorizacao', 'Fin_NFe', 'Id_Dest', 'Ind_Final', 'Ind_Pres', 'End_Emitente', 'CEP_Emitente', 'Fone_Emitente', 'CRT_Emitente', 'End_Destinatario', 'CEP_Destinatario', 'Email_Destinatario', 'IndIE_Destinatario',
+          'Transp_Mod', 'Transp_Nome', 'Transp_CNPJ', 'Transp_IE', 'Transp_End', 'Transp_Mun', 'Transp_UF', 'Transp_Placa', 'Transp_UFPlaca', 'Transp_RNTC', 'Fat_Numero', 'infAdFisco', 'IBS_CST', 'cClassTrib', 'Tp_NF', 'Numero_NFe'];
+        const reg = (v) => { const r = Object.assign({ Chave_NFe: 'KX9', Item: '1', xProd: 'X', Status_NFe: 'Autorizada' }, lista(v)); campos.forEach((c) => { r[c] = v; }); return r; };
+        let hp = '', hb = '', er = '';
+        try {
+          vm.runInContext('__R=' + JSON.stringify({ p: reg(PAY), b: reg('EXEMPLO') }), sb);
+          hp = vm.runInContext("(()=>{const u=dnfUI('KX9');u.tam=25;const its=Array.from({length:30},()=>__R.p);const h=nfeDanfe('KX9',{info:__R.p,itens:its});u.tam=50;return h;})()", sb);
+          hb = vm.runInContext("(()=>{const u=dnfUI('KX9');u.tam=25;const its=Array.from({length:30},()=>__R.b);const h=nfeDanfe('KX9',{info:__R.b,itens:its});u.tam=50;return h;})()", sb);
+        } catch (e) { er = e.message; }
+        const fp = forma(hp), fb = forma(hb);
+        ok('campos novos do DANFE com payload (listas e número da nota no paginador inclusive): mesma forma do benigno, nenhum handler',
+          !er && fp.tags === fb.tags && fp.handler === 0 && fp.script === 0 && fp.img === 0 && /class="dnf-pgs" aria-label="Páginas de itens da NF-e &quot;&gt;&lt;img/.test(hp), er || `payload ${fp.tags} vs benigno ${fb.tags}`);
+        const trecho = (h, a, b) => h.slice(h.indexOf(a), h.indexOf(b));
+        const n = (s) => (s.match(/&lt;img src=x onerror=/g) || []).length;
+        ok('o payload continua na tela, escapado, em cada lista e campo novo',
+          !er && n(trecho(hp, 'Fatura / duplicatas', 'Pagamento</div>')) >= 3 && n(trecho(hp, 'Pagamento</div>', 'Cálculo do imposto')) >= 2
+          && n(trecho(hp, 'Transportador / volumes', 'Dados dos produtos')) >= 12 && n(hp) >= campos.length,
+          'total escapado=' + n(hp));
+        const r = vm.runInContext("[nfeRot('tPag','constructor'),nfeRot('CRT','__proto__'),nfeRot('tPag','17'),nfeRot('fin','1'),nfeRot('tpNF','0')]", sb);
+        ok('código hostil nos códigos da nota não resolve pelo protótipo do mapa', r[0] === 'constructor' && r[1] === '__proto__' && r[2] === '17 - PIX' && r[3] === '1' && r[4] === '0 - Entrada', JSON.stringify(r));
+      }
+      /* 8 · busca e páginas na tabela de itens */
+      {
+        const its = Array.from({ length: 120 }, (_, k) => ({ Chave_NFe: 'KPG', Numero_NFe: '777', Item: String(k + 1), cProd: 'C' + (k + 1), xProd: k === 7 ? 'PASTILHA DE FREIO CERÂMICA' : 'PEÇA ' + (k + 1),
+          NCM: k < 60 ? '87083090' : '40169990', CFOP: k % 4 === 0 ? '6102' : '5405', vProd: '1.00', Status_NFe: 'Autorizada' }));
+        vm.runInContext('__PG=' + JSON.stringify(its), sb);
+        const ver = (q, pag, tam, aberto) => vm.runInContext(`(()=>{const u=dnfUI('KPG');u.q=${JSON.stringify(q)};u.pag=${pag};u.tam=${tam};u.abertos.clear();${aberto != null ? `u.abertos.add(${JSON.stringify(aberto)});` : ''}
+          const h=nfeDanfe('KPG',{info:__PG[0],itens:__PG});u.abertos.clear();
+          return {h,linhas:(h.match(/class="dnf-it[ "]/g)||[]).length,info:(h.match(/class="dnf-pag-info" role="status">([^<]*)</)||[])[1],pag:u.pag,its:[...h.matchAll(/data-it="(\\d+)"/g)].map(m=>m[1])};})()`, sb);
+        const p1 = ver('', 1, 50), p3 = ver('', 3, 50), t25 = ver('', 1, 25), t100 = ver('', 1, 100), todos = ver('', 1, 0), alem = ver('', 99, 50);
+        ok('páginas de 25/50/100/Todos (padrão 50) e a faixa "itens X–Y de N"',
+          p1.linhas === 50 && p1.info === 'itens 1–50 de 120' && p3.linhas === 20 && p3.info === 'itens 101–120 de 120' && t25.linhas === 25 && t100.linhas === 100
+          && todos.linhas === 120 && todos.info === 'itens 1–120 de 120' && !/class="dnf-pgs"/.test(todos.h) && alem.pag === 3 && alem.info === 'itens 101–120 de 120'
+          && vm.runInContext('dnfUI("KNOVA").tam', sb) === 50,
+          JSON.stringify([p1.info, p3.info, t25.linhas, todos.linhas, alem.pag]));
+        ok('a página 2 mostra as linhas 51–100 pelo índice da nota (data-it 50…99); o paginador marca a atual e diz de que nota é',
+          (() => { const p2 = ver('', 2, 50); return p2.its[0] === '50' && p2.its[49] === '99' && /<button type="button" class="dnf-pg atual" data-pag="2" aria-label="Página 2" aria-current="page">2<\/button>/.test(p2.h)
+            && /<nav class="dnf-pgs" aria-label="Páginas de itens da NF-e 777">/.test(p2.h) && /data-dir="prox" aria-label="Próxima página">/.test(p2.h); })());
+        ok('o campo de busca e a faixa "itens X–Y de N" ficam fora da parte redesenhada (.dnf-itens)',
+          /<div class="dnf-busca">[\s\S]*?<input type="search" class="dnf-q"[^>]*><span class="dnf-pag-info" role="status">itens 1–50 de 120<\/span><\/div>\s*<div class="dnf-itens"><div class="dnf-prod"/.test(p1.h));
+        const acento = ver('ceramica', 1, 50), caixa = ver('PASTILHA freio', 1, 50), peca = ver('peca', 1, 0), ncm = ver('8708.30', 1, 0), ncmSem = ver('870830', 1, 0), cfop = ver('6102', 1, 0), nada = ver('inexistente', 1, 50);
+        ok('busca nos itens: sem acento e sem caixa, por descrição, NCM com ou sem pontos e CFOP, com "(filtrados de M)"',
+          acento.linhas === 1 && acento.its[0] === '7' && acento.info === 'itens 1–1 de 1 (filtrados de 120)' && caixa.linhas === 1 && peca.linhas === 119
+          && ncm.linhas === 60 && ncmSem.linhas === 60 && cfop.linhas === 30 && cfop.info === 'itens 1–30 de 30 (filtrados de 120)'
+          && nada.linhas === 0 && nada.info === 'nenhum item (filtrados de 120)' && /Nenhum item encontrado para a busca\. Apague o termo ou busque por código, NCM ou CFOP\./.test(nada.h),
+          JSON.stringify([acento.linhas, caixa.linhas, peca.linhas, ncm.linhas, ncmSem.linhas, cfop.linhas]));
+        const ponto = ver('.', 1, 50), hifen = ver(' - . ', 1, 50), comPonto = ver('. ceramica', 1, 50);
+        ok('termo que fica vazio sem ponto e hífen ("." ou "-") é ignorado, não casa com tudo nem filtra',
+          ponto.linhas === 50 && ponto.info === 'itens 1–50 de 120' && hifen.info === 'itens 1–50 de 120' && comPonto.linhas === 1, JSON.stringify([ponto.info, hifen.info, comPonto.linhas]));
+        ok('o total dos itens no rodapé da tabela é da nota inteira e o rótulo diz isso durante a busca',
+          /<td>Total dos itens \(nota inteira\)<\/td>[\s\S]*?120,00/.test(acento.h.slice(acento.h.indexOf('<tfoot>'))) && /<td>Total dos itens<\/td>/.test(p1.h.slice(p1.h.indexOf('<tfoot>'))));
+        const fora = ver('', 3, 50, '7'), naBusca = ver('ceramica', 1, 50, '7'), p2 = ver('', 2, 50, '55'), borda = ver('', 2, 50, '99');
+        ok('o item aberto continua aberto quando a página ou a busca o tiram da tela (o painel o acha pelo índice)',
+          /class="dnf-painel-nome">PASTILHA DE FREIO CERÂMICA<\/span><span class="dim">fora da página ou da busca<\/span>/.test(fora.h)
+          && (fora.h.match(/class="dnf-ir-item" disabled/g) || []).length === 2
+          && /class="dnf-painel-nome">PASTILHA DE FREIO CERÂMICA<\/span>\s*<button/.test(naBusca.h) && /data-it="7"[^>]*>[\s\S]{0,300}?aria-expanded="true"/.test(naBusca.h), fora.h.slice(fora.h.indexOf('dnf-painel-cab'), fora.h.indexOf('dnf-painel-cab') + 300));
+        ok('anterior/próximo do painel andam na página visível (como ↑ ↓): no fim da página o próximo fica desligado',
+          /data-ir="54"[^>]*>◂ anterior/.test(p2.h) && /data-ir="56"[^>]*>próximo/.test(p2.h) && /data-ir="98"[^>]*>◂ anterior/.test(borda.h) && /disabled aria-label="Próximo item"/.test(borda.h));
+        let r = null, er = '';
+        try {
+          r = vm.runInContext(`(()=>{__DB.nfe=__PG;const u=dnfUI('KPG');u.q='';u.pag=1;u.tam=50;u.abertos.clear();u.abertos.add('7');
+            const corpo={innerHTML:'',childElementCount:1};
+            const card={dataset:{chave:'KPG'},isConnected:true,querySelector:(s)=>s==='.body-detail'?corpo:null,querySelectorAll:()=>[]};
+            const em=(sel,obj)=>(s)=>s==='.nota-card[data-chave]'?card:s===sel?obj:null;
+            dnfClique({target:{closest:em('.dnf-pg',{disabled:false,dataset:{pag:'3'}})}});
+            const pagina=[u.pag,[...u.abertos][0],/itens 101–120 de 120/.test(corpo.innerHTML),/dnf-painel-nome">PASTILHA/.test(corpo.innerHTML)];
+            const alvoTam=(v)=>({classList:{contains:(c)=>c==='dnf-tam'},value:v,closest:em('',null)});
+            dnfEntrada({target:alvoTam('25')});const t1=[u.tam,u.pag,[...u.abertos][0]];
+            dnfEntrada({target:alvoTam('7')});const t2=u.tam;
+            /* teclado: ↓ na última linha da página não sai dela */
+            u.abertos.clear();u.abertos.add('49');u.tam=50;u.pag=1;
+            const linhas=['47','48','49'].map(k=>({dataset:{it:k}}));
+            const card2={dataset:{chave:'KPG'},isConnected:true,querySelector:(s)=>s==='.body-detail'?corpo:null,querySelectorAll:(s)=>s==='tr.dnf-it'?linhas:[]};
+            document.activeElement={tagName:'BUTTON',closest:()=>card2};
+            dnfTecla({key:'ArrowDown',preventDefault(){}});const fim=[...u.abertos][0];
+            dnfTecla({key:'ArrowUp',preventDefault(){}});const sobe=[...u.abertos][0];
+            document.activeElement=null;
+            /* clique na busca ou no paginador não fecha o item aberto */
+            u.abertos.clear();u.abertos.add('7');
+            const pn={closest:(s)=>s==='.nota-card[data-chave]'?card:null};
+            const q0=document.querySelector;document.querySelector=(s)=>s==='.dnf-painel'?pn:q0.call(document,s);
+            const alvo=(sel)=>({isConnected:true,closest:(s)=>s===sel?{}:null});
+            dnfForaClique({target:alvo('.dnf-busca')});const naBusca=u.abertos.size;
+            dnfForaClique({target:alvo('.dnf-pag')});const noPag=u.abertos.size;
+            dnfForaClique({target:alvo('.outra-coisa')});const fora=u.abertos.size;
+            document.querySelector=q0;
+            /* busca: redesenha só .dnf-itens, a faixa muda pelo texto (só quando muda), volta à página 1 */
+            const reg={innerHTML:''},st={_t:'itens 101–120 de 120',n:0,get textContent(){return this._t;},set textContent(v){this._t=v;this.n++;}};
+            const foc={};const alvoFoco=(nome)=>({focus(){foc.ultimo=nome;}});
+            const proxLigado=()=>!/data-dir="prox" aria-label="Próxima página" disabled/.test(reg.innerHTML);
+            const PROX='.dnf-pg[data-dir="prox"]:not(:disabled)';
+            const card3={dataset:{chave:'KPG'},isConnected:true,querySelectorAll:()=>[],querySelector:(s)=>s==='.dnf-itens'?reg:s==='.dnf-pag-info'?st:s==='.body-detail'?corpo:s===PROX?(proxLigado()?alvoFoco('prox'):null):s==='.dnf-pg.atual'?alvoFoco('atual'):s==='.dnf-q'?alvoFoco('busca'):s==='.dnf-painel'?{}:null};
+            corpo.innerHTML='INTACTO';u.pag=3;
+            const x3={card:card3,ch:'KPG',u};
+            dnfBusca(x3,'peca');const pecaPag=u.pag;u.pag=3;
+            dnfBusca(x3,'ceramica');const busca=[u.pag,u.q,st.textContent,(reg.innerHTML.match(/class="dnf-it[ "]/g)||[]).length,corpo.innerHTML,st.n];
+            dnfBusca(x3,'ceramica');const semMudar=st.n;
+            /* próxima página: o foco fica no botão "›" enquanto ele vale; na última, vai para a atual */
+            dnfBusca(x3,'');u.pag=1;dnfRepinta(x3);
+            const clica=(dir,pag)=>{foc.ultimo='';dnfClique({target:{closest:(s)=>s==='.nota-card[data-chave]'?card3:s==='.dnf-pg'?{disabled:false,dataset:{pag:String(pag),dir}}:null}});return foc.ultimo;};
+            const focoProx=clica('prox',2),focoUlt=clica('prox',3),focoNum=clica(undefined,1);
+            /* Esc no campo de busca fecha o item e devolve o foco ao campo */
+            u.abertos.clear();u.abertos.add('7');foc.ultimo='';
+            document.activeElement={tagName:'INPUT',classList:{contains:(c)=>c==='dnf-q'},closest:()=>card3};
+            let prevenido=false;dnfEsc({preventDefault(){prevenido=true;}});
+            const esc=[u.abertos.size,foc.ultimo,prevenido];document.activeElement=null;
+            __DB.nfe=[];
+            return {pagina,t1,t2,fim,sobe,naBusca,noPag,fora,busca,semMudar,focoProx,focoUlt,focoNum,esc,pecaPag};})()`, sb);
+        } catch (e) { er = e.message; }
+        ok('clique no paginador troca a página e mantém o item aberto (índice 7)',
+          !er && r.pagina[0] === 3 && r.pagina[1] === '7' && r.pagina[2] && r.pagina[3], er || JSON.stringify(r && r.pagina));
+        ok('itens por página: volta para a página 1, mantém o item aberto, e valor fora da lista vira o padrão (50)',
+          !er && r.t1[0] === 25 && r.t1[1] === 1 && r.t1[2] === '7' && r.t2 === 50, er || JSON.stringify(r && [r.t1, r.t2]));
+        ok('↑ ↓ andam só na página visível (↓ na última linha não sai dela)', !er && r.fim === '49' && r.sobe === '48', er || JSON.stringify(r && [r.fim, r.sobe]));
+        ok('clique na busca ou no paginador não fecha o item; fora deles, fecha',
+          !er && r.naBusca === 1 && r.noPag === 1 && r.fora === 0, er || JSON.stringify(r));
+        ok('a busca volta à página 1 e redesenha só a parte dos itens; a faixa muda pelo texto e só quando muda (o campo não é recriado)',
+          !er && r.busca[0] === 1 && r.busca[1] === 'ceramica' && r.busca[2] === 'itens 1–1 de 1 (filtrados de 120)' && r.busca[3] === 1 && r.busca[4] === 'INTACTO' && r.busca[5] === 2 && r.semMudar === 2 && r.pecaPag === 1,
+          er || JSON.stringify(r && [r.busca, r.semMudar]));
+        ok('paginador: o foco fica em "›" enquanto ele vale; na última página vai para a página atual; número clicado → atual',
+          !er && r.focoProx === 'prox' && r.focoUlt === 'atual' && r.focoNum === 'atual', er || JSON.stringify(r && [r.focoProx, r.focoUlt, r.focoNum]));
+        ok('Esc no campo de busca fecha o item aberto e devolve o foco ao campo',
+          !er && r.esc[0] === 0 && r.esc[1] === 'busca' && r.esc[2] === true, er || JSON.stringify(r && r.esc));
+        ok('a busca e o tamanho da página estão ligados à lista de NF-e (input e change), com uma espera por nota',
+          /raiz\.addEventListener\('input',e=>\{if\(e\.target\.classList&&e\.target\.classList\.contains\('dnf-q'\)\)dnfEntrada\(e\);\}\);/.test(html)
+          && /raiz\.addEventListener\('change',e=>\{if\(e\.target\.classList&&e\.target\.classList\.contains\('dnf-tam'\)\)dnfEntrada\(e\);\}\);/.test(html)
+          && /clearTimeout\(x\.u\.espera\);x\.u\.espera=setTimeout\(\(\)=>dnfBusca\(x,el\.value\),DNF_BUSCA_ESPERA_MS\)/.test(html)
+          && vm.runInContext('DNF_BUSCA_ESPERA_MS', sb) === 150 && !/let dnfTq/.test(html));
+      }
+      /* 9 · versão no rodapé de toda tela */
+      {
+        const iFoot = html.indexOf('<footer id="rodape">');
+        const depois = iFoot < 0 ? '' : html.slice(html.indexOf('</footer>', iFoot) + 9, html.indexOf('<script>', iFoot));
+        ok('o rodapé fica no fim do conteúdo, fora das abas (aparece em toda aba)',
+          iFoot > html.lastIndexOf('class="tab-content"') && iFoot > html.indexOf('id="content"') && /^\s*<\/div>\s*<\/div>\s*$/.test(depois), JSON.stringify(depois.slice(0, 40)));
+        ok('a versão do rodapé sai de APP_VERSAO (uma constante só, nada fixo no HTML)',
+          vm.runInContext('APP_VERSAO', sb) === '3.0' && vm.runInContext("document.getElementById('rod-versao').textContent", sb) === 'Versão 3.0'
+          && /<span id="rod-versao"><\/span><\/footer>/.test(html) && (html.match(/APP_VERSAO=/g) || []).length === 1);
+        ok('a aba de PDF vazia desconta o rodapé na altura (sem barra de rolagem)',
+          /#tab-pdfleitura\.active:has\(#pdfiso-filtros\[hidden\]\)\{[^}]*min-height:calc\(100vh - 190px\);min-height:calc\(100dvh - 190px\)\}/.test(html) && !/100dvh - 132px/.test(html));
+      }
+    }
   }
 }
 // ══════════════════════════════════════════════════════════════
