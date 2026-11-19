@@ -160,6 +160,27 @@ function reparaChave(dig){
    O piso de 44 protege o codigo interno de 9 digitos colado no CNPJ
    ("000004844 11.222.334/0001-26" = 23 digitos). */
 const RE_CNPJ=/\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2}/;
+/* CNPJ alfanumerico (NT 2026.004), em duas formas — ver o laco proprio em
+   cnpjsNoTexto. Sem espaco como separador, de proposito: com espaco, palavras
+   em maiuscula separadas viravam candidato.
+   - mascara completa ("12.ABC.345/01DE-35"): a mascara fixa as posicoes, entao
+     vale ate com rotulo colado a esquerda ("CNPJ/CPF12.ABC...");
+   - cru (14 caracteres seguidos): so com o rotulo CNPJ nos 24 caracteres antes
+     (cabe "CNPJ / CPF Nº.: " com folga, e nao alcanca o rotulo de outro campo).
+     O DV de 2 digitos aprova ~1 em 100 dos tokens que ja tem a forma (12
+     alfanumericos + 2 digitos). O codigo de verificacao da NFS-e tem essa forma
+     quando termina em 2 digitos: medido em codigos aleatorios de 14 posicoes,
+     ~1 em 1.400 vira CNPJ valido, e o que vem no cabecalho virava o CNPJ do
+     prestador.
+   Sem lookbehind de proposito: regex literal com lookbehind e erro de sintaxe
+   no Safari abaixo de 16.4, e o erro derruba o <script> inteiro, nao so este
+   recurso. A borda da esquerda e conferida no codigo (alfaBordaOk). */
+const RE_CNPJ_ALFA_MASC=/[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}(?![0-9A-Za-z])/g;
+const RE_CNPJ_ALFA_CRU=/[0-9A-Z]{12}\d{2}(?![0-9A-Za-z])/g;
+/* Caractere antes do candidato: na mascara so digito/minuscula invalida (o
+   rotulo maiusculo colado e aceito); no cru, qualquer letra ou digito. */
+function alfaBordaOk(txt,i,re){return i===0||!re.test(txt[i-1]);}
+const RE_ROTULO_CNPJ=/CNPJ(?:[\s:.\-–—\/]*(?:CPF|MF))?(?:[\s:.\-–—º°]|N[oº°]?\b)*$/i;
 /* Runs de dígito que NÃO podem conter CNPJ de ninguém.
    Dois tamanhos, e o segundo é o que faltava:
    - 44+: é a chave de acesso; dela só vale o CNPJ das posições 7-20, e só
@@ -209,20 +230,24 @@ function cnpjsNoTexto(txt){
     out.push({raw:m[0],dig,valida:vC(dig),idx:ini});
   }
   /* CNPJ alfanumerico ("12.ABC.345/01DE-35"). Fica num laco proprio, e com regra
-     mais dura que a do numerico: precisa ter letra, estar isolado (sem letra ou
-     digito encostado) e fechar o DV. Texto em maiuscula colado em digitos tem a
-     mesma forma, e um candidato de DV invalido aqui seria palavra, nao CNPJ — por
-     isso ele nem entra na lista. Dentro da chave de 44 o CNPJ vem colado nos
-     outros digitos, entao a borda ja o descarta sem precisar do span. */
-  for(const m of txt.matchAll(RE_CNPJ_ALFA)){
+     mais dura que a do numerico: precisa ter letra, fechar o DV e vir com a
+     mascara completa ou, cru, logo depois do rotulo CNPJ (ver RE_CNPJ_ALFA_*).
+     Candidato de DV invalido aqui seria palavra, nao CNPJ — por isso nem entra
+     na lista. Dentro da chave de 44 o CNPJ vem colado nos outros digitos e sem
+     mascara, entao a borda ja o descarta sem precisar do span. */
+  const alfa=(m)=>{
     const dig=dA(m[0]);
-    if(!/[A-Z]/.test(dig)||!vC(dig)) continue;
-    out.push({raw:m[0],dig,valida:true,idx:m.index});
+    if(/[A-Z]/.test(dig)&&vC(dig)) out.push({raw:m[0],dig,valida:true,idx:m.index});
+  };
+  for(const m of txt.matchAll(RE_CNPJ_ALFA_MASC)){
+    if(alfaBordaOk(txt,m.index,/[0-9a-z]/)) alfa(m);
+  }
+  for(const m of txt.matchAll(RE_CNPJ_ALFA_CRU)){
+    if(alfaBordaOk(txt,m.index,/[0-9A-Za-z]/)&&RE_ROTULO_CNPJ.test(txt.slice(Math.max(0,m.index-24),m.index))) alfa(m);
   }
   if(out.some(c=>/[A-Z]/.test(c.dig))) out.sort((a,b)=>a.idx-b.idx);
   return out;
 }
-const RE_CNPJ_ALFA=/(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])/g;
 function eJ(full){
   const cand=cnpjsNoTexto(full);
   const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};
@@ -322,12 +347,13 @@ const ROTULO_NOME=/^(NOME|RAZ[AÃ]O|SOCIAL|C[ÓO]D|DEALER|EMISS|IDENTIFICA|DESTI
 function ehRotulo(t,lista){return(lista||ROTULO_TABELA).test(String(t||'').trim());}
 /* Localiza o CNPJ no texto aceitando mascara: o DANFE imprime "11.222.333/0001-81"
    e o indexOf dos 14 digitos crus nunca encontrava, o que zerava nomePrestador e
-   nomeTomador em todas as notas com CNPJ formatado. Cada digito e literal e cada
+   nomeTomador em todas as notas com CNPJ formatado. Cada caractere [0-9A-Z] e literal e cada
    separador e uma classe de 1 caractere: sem quantificador aninhado, logo sem
    ReDoS. Medido (revisão de segurança): 1,5 ms no pior caso de 200 KB de entrada
    (a real tem 3,4 KB e leva 0,006 ms); o try/catch NAO e a guarda — `new RegExp`
    so lanca em entrada invalida, e metacaractere compila e devolve regex errado em
-   silencio, entao a guarda e o /^\d{14}$/ sobre a entrada. */
+   silencio, entao a guarda e o /^[0-9A-Z]{12}\d{2}$/ sobre a entrada (CNPJ
+   numerico ou alfanumerico; nenhum metacaractere passa). */
 function idxCnpj(full,dig){
   if(!/^[0-9A-Z]{12}\d{2}$/.test(String(dig||''))) return -1;
   try{const m=new RegExp(dig.split('').join('[\\s.\\-\\/]*')).exec(full);return m?m.index:-1;}catch(e){return full.indexOf(dig);}}
@@ -1561,8 +1587,8 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
           <h3 class="sec-title"><svg class="i" aria-hidden="true"><use href="#i-building"></use></svg> Consultar CNPJ <span class="tag">publica.cnpj.ws • grátis</span></h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
             <div style="flex:1;min-width:220px">
-              <label for="cnpj-input" style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">CNPJ (14 dígitos)</label>
-              <input type="text" id="cnpj-input" placeholder="00.000.000/0000-00" maxlength="18" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:monospace;letter-spacing:.5px">
+              <label for="cnpj-input" style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">CNPJ (14 caracteres, aceita letras)</label>
+              <input type="text" id="cnpj-input" placeholder="00.000.000/0000-00" maxlength="18" autocapitalize="characters" autocomplete="off" spellcheck="false" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);letter-spacing:.5px">
             </div>
             <button id="cnpj-btn" class="btn btn-prim" style="padding:10px 22px;white-space:nowrap">Consultar</button>
             <button id="cnpj-limpar" class="btn btn-out" style="padding:10px 14px" aria-label="Limpar" title="Limpar"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
@@ -2470,7 +2496,7 @@ function extrairCTe(nome,texto){
   const cobr=norm?norm.querySelector(':scope>cobr'):null;
   const emit=fi(':scope>emit');
   const c={
-    Chave_CTe:/^\d{6}[0-9A-Z]{12}\d{26}$/.test(id)?id:(t(prot,'chCTe')||id),
+    Chave_CTe:CTE_CHAVE.test(id)?id:(t(prot,'chCTe')||id),
     Modelo:t(ide,'mod'),Serie:t(ide,'serie'),Numero:t(ide,'nCT'),Data_Emissao:t(ide,'dhEmi'),CFOP:t(ide,'CFOP'),NatOp:t(ide,'natOp'),
     cUF:t(ide,'cUF'),cCT:t(ide,'cCT'),cDV:t(ide,'cDV'),tpImp:t(ide,'tpImp'),tpEmis:t(ide,'tpEmis'),tpAmb:t(ide,'tpAmb'),tpCTe:t(ide,'tpCTe'),
     procEmi:t(ide,'procEmi'),verProc:t(ide,'verProc'),modal:t(ide,'modal'),tpServ:t(ide,'tpServ'),retira:t(ide,'retira'),xDetRetira:t(ide,'xDetRetira'),
@@ -3677,7 +3703,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     const c=d(inp.value);
     /* Não há `e` neste escopo: o ${esc(e.message)} que estava aqui ReferenceError
        e tornava inalcançável a única mensagem que o usuário precisava. */
-    if(!CNPJ_FORMA.test(c)){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ Atenção: CNPJ deve ter 14 dígitos (no CNPJ alfanumérico, as 12 primeiras posições podem ter letras e as 2 últimas são sempre números)</div>`;return;}
+    if(!CNPJ_FORMA.test(c)){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ CNPJ precisa de 14 caracteres: 12 letras ou números e 2 números no fim</div>`;return;}
     const cacheKey=CHAVE_CACHE+c;
     const cached=lerCache(cacheKey);
     if(cached){try{render(cached,true);return;}catch(e){}}
@@ -3825,7 +3851,18 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
        no dígito verificador: assim número de cliente/produto que não é CNPJ
        não entra no lote e não gasta uma das 3 requisições por minuto. */
     const RE_CNPJ_CELULA=/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g;
-    const RE_CNPJ_CELULA_ALFA=/(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])/g;
+    /* CNPJ alfanumérico: com a máscara completa vale em qualquer lugar do texto;
+       cru (14 caracteres seguidos), só quando ocupa a célula inteira — no meio
+       de uma observação, palavra em maiúscula com 2 dígitos no fim fecha o DV
+       ~1 vez em 100 e gastaria uma consulta à toa.
+       Sem lookbehind (erro de sintaxe no Safari abaixo de 16.4, que derruba o
+       script inteiro): na máscara a borda esquerda é conferida no código; no cru
+       o separador da célula é consumido e o CNPJ vem no grupo 1. O espaço depois
+       do separador é ` *` e não `[ \t]*` de propósito: com tab ali, cada posição
+       de uma sequência de tabs consumia o resto — O(n²), 100 KB de tabs levavam
+       ~10 s e travavam a aba. */
+    const RE_CNPJ_CELULA_ALFA=/[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}(?![0-9A-Za-z])/g;
+    const RE_CNPJ_CELULA_ALFA_CRU=/(?:^|[;,\t"'\r\n]) *([0-9A-Z]{12}\d{2})[ \t]*(?=$|[;,\t"'\r\n])/gm;
     function cnpjsDoTexto(txt){
       const achados=new Set();
       for(const m of String(txt).matchAll(RE_CNPJ_CELULA)){
@@ -3836,14 +3873,19 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
            Iniciar nunca saía de disabled. */
         if(soDigitos.length===14&&window.ModPDFIsolado.vC(soDigitos))achados.add(soDigitos);
       }
-      /* CNPJ alfanumérico: precisa ter letra, estar isolado (nada de letra ou
-         dígito encostado) e fechar o DV — palavra em maiúscula colada num
-         número tem a mesma forma, e só o DV separa uma da outra. Só letra
-         maiúscula, que é a forma oficial: minúscula aqui seria texto corrido. */
-      for(const m of String(txt).matchAll(RE_CNPJ_CELULA_ALFA)){
-        const alfa=d(m[0]);
+      /* CNPJ alfanumérico: precisa ter letra, fechar o DV e vir na forma de
+         RE_CNPJ_CELULA_ALFA. Só letra maiúscula, que é a forma oficial:
+         minúscula aqui seria texto corrido (a consulta individual aceita
+         minúscula porque ali a pessoa digitou um CNPJ de propósito). */
+      const s=String(txt);
+      const aceitaAlfa=(bruto)=>{
+        const alfa=d(bruto);
         if(/[A-Z]/.test(alfa)&&CNPJ_FORMA.test(alfa)&&window.ModPDFIsolado.vC(alfa))achados.add(alfa);
+      };
+      for(const m of s.matchAll(RE_CNPJ_CELULA_ALFA)){
+        if(m.index===0||!/[0-9a-z]/.test(s[m.index-1])) aceitaAlfa(m[0]);
       }
+      for(const m of s.matchAll(RE_CNPJ_CELULA_ALFA_CRU)) aceitaAlfa(m[1]);
       return achados;
     }
     function baixarNome(nome,blob){
