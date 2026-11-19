@@ -1060,7 +1060,10 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .cte-painel,.nfse-painel{position:fixed;top:var(--painel-topo);right:0;bottom:0;width:min(860px,50vw);z-index:60;background:var(--card);border-left:3px solid var(--primary-cta);box-shadow:var(--shadow-painel);display:flex;flex-direction:column}
 .cte-painel-cab{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 10px;background:var(--card-2);border-bottom:1px solid var(--border)}
 .cte-painel-cab b{font-size:15px;flex:1 1 160px}
-.cte-fechar,.nfse-fechar,.nfse-ir,.nfse-conf{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+/* A situação vem do XML ("cStat - xMotivo") e pode ser longa: no cabeçalho ela quebra
+   linha em vez de estourar a largura e empurrar o Fechar para fora da tela. */
+.cte-painel-cab .cte-pill{white-space:normal;overflow-wrap:anywhere;min-width:0}
+.cte-fechar,.nfse-fechar,.nfse-ir,.cte-ir,.nfse-conf{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
 /* As colunas ficam num filho de altura livre: com column-count no próprio contêiner de
    rolagem (altura fixa), o conteúdo vira colunas para o lado em vez de descer. */
 .cte-painel-corpo{flex:1;overflow:auto}
@@ -1083,7 +1086,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .nfse-conf{color:var(--text2);margin-bottom:12px}
 .nfse-conf.on{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
 .nfse-conf[hidden]{display:none}
-.nfse-ir:disabled{color:var(--text3);cursor:default}
+.nfse-ir:disabled,.cte-ir:disabled{color:var(--text3);cursor:default}
 .nfse-painel .cte-painel-corpo{padding:10px 12px}
 .nfse-painel .cte-painel-corpo:focus-visible,.cte-painel .cte-painel-corpo:focus-visible{outline-offset:-2px}
 .nfse-corpo{display:flex;flex-direction:column;gap:10px}
@@ -2674,8 +2677,9 @@ function nfseConfRender(lista){
 function nfseRetCel(n){const por=nfseRetPor(n);
   if(por===null)return '<span class="cte-sub">não</span>';
   return '<b>sim</b><div class="cte-sub">'+esc(por||'retido')+'</div>';}
-/* A marca da linha aberta (classe e aria-current), movida sem redesenhar a tabela. */
-function nfseMarca(tr,on){tr.classList.toggle('sel',on);if(on)tr.setAttribute('aria-current','true');else tr.removeAttribute('aria-current');}
+/* A marca da linha aberta (classe e aria-current), movida sem redesenhar a tabela.
+   Serve às duas listas com painel lateral (NFS-e e CT-e). */
+function linhaMarca(tr,on){tr.classList.toggle('sel',on);if(on)tr.setAttribute('aria-current','true');else tr.removeAttribute('aria-current');}
 function renderNFSe(){
   const lista=DB.nfse,c=document.getElementById('nfse-list');
   const filtro=document.getElementById('filtro-nfse').value.toLowerCase();
@@ -2749,7 +2753,7 @@ function nfseAbre(i,foco){
   const trs=nfseLinhas(),is=trs.map(tr=>+tr.dataset.i),p=is.indexOf(i);
   if(!slot||p<0||!DB.nfse[i]){NFSE_UI.aberto=i;renderNFSe();}
   else{
-    c.querySelectorAll('tr.sel').forEach(tr=>nfseMarca(tr,false));nfseMarca(trs[p],true);
+    c.querySelectorAll('tr.sel').forEach(tr=>linhaMarca(tr,false));linhaMarca(trs[p],true);
     NFSE_UI.aberto=i;
     slot.innerHTML=nfsePainel(DB.nfse[i],p>0?is[p-1]:-1,p<is.length-1?is[p+1]:-1,nfseSubstPor(DB.nfse).get(DB.nfse[i]));
     if(trs[p].scrollIntoView)trs[p].scrollIntoView({block:'nearest'});
@@ -2762,7 +2766,7 @@ function nfseAbre(i,foco){
 function nfseFecha(foco){
   const i=NFSE_UI.aberto;if(i<0)return;NFSE_UI.aberto=-1;
   const c=document.getElementById('nfse-list'),slot=c.querySelector('.nfse-slot');
-  if(slot){slot.innerHTML='';c.querySelectorAll('tr.sel').forEach(tr=>nfseMarca(tr,false));}else renderNFSe();
+  if(slot){slot.innerHTML='';c.querySelectorAll('tr.sel').forEach(tr=>linhaMarca(tr,false));}else renderNFSe();
   nfseInerte();
   if(foco===false)return;
   const tr=c.querySelector(`tr[data-i="${i}"]`);if(tr)tr.focus();
@@ -2809,7 +2813,9 @@ function nfseFecha(foco){
     if(!ativa())return;
     const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
     if(!t||!t.isConnected||!t.closest||t.closest('.nfse-painel')||t.closest('#nfse-list tr[data-i]')||t.closest('#nfse-conf'))return;
-    nfseFecha();
+    /* Fecha sem puxar o foco para a linha: ele fica onde a pessoa clicou (a busca, por
+       exemplo), senão o que ela digita em seguida se perde. */
+    nfseFecha(false);
   });
 })();
 
@@ -2976,15 +2982,19 @@ function cteDocsHTML(c,carregadas){
     return`<div class="cte-doc"><div class="cte-doc-l1"><b>${esc(d.tipo)} ${esc(d.numero)}</b></div><div class="cte-sub">${[d.serie?'série '+esc(d.serie):'',d.data?esc(dataHoraBr(d.data,true)):'',d.valor?esc(moeda(d.valor)):'',esc(d.extra)].filter(Boolean).join(' · ')}</div></div>`;
   }).join('');
 }
-function ctePainel(c,carregadas){
+/* O painel aberto: ant/prx são os índices (em DB.cte) do CT-e vizinho na lista à mostra
+   (respeitando a busca), -1 na ponta, onde o botão sai desabilitado. */
+function ctePainel(c,carregadas,ant,prx){
   const [sit,cls]=cteSit(c);
   const remAviso=c.rem&&c.emit&&c.rem.doc&&c.rem.doc===c.emit.doc?' <span class="cte-pill cte-falta" title="O remetente é a própria transportadora">conferir</span>':'';
   const veic=c.veic.length?c.veic.map(v=>cteKV([['Chassi',`<span class="cte-mono">${cteV(v.chassi)}</span>`],['Cor',cteV([v.cCor,v.xCor].filter(Boolean).join(' - '))],
     ['Marca/modelo',cteV(v.cMod)],['Valor unitário',cteM(v.vUnit)],['Frete unitário',cteM(v.vFrete)]])).join(''):cteKV([['Veículos',CTE_NC]]);
   const lstHTML=(a)=>a.length?a.map(esc).join('<br>'):CTE_NC;
+  /* O nome acessível contém o texto visível ("anterior", "próximo"): o comando de voz acha o botão. */
+  const ir=(i,lado,txt,rot)=>`<button type="button" class="cte-ir" data-lado="${lado}" ${i>=0?'data-ir="'+i+'"':'disabled'} aria-label="${rot}">${txt}</button>`;
   return`<aside class="cte-painel" role="dialog" aria-label="CT-e ${esc(c.Numero)}">`
-  +`<div class="cte-painel-cab"><b>CT-e ${esc(c.Numero)} <span class="cte-sub">série ${esc(c.Serie)}</span></b><span class="cte-pill ${cls}">${esc(sit)}</span>`
-  +`<span class="cte-sub cte-dica">↑ ↓ passam de CT-e · Esc fecha</span><button type="button" class="cte-fechar">Fechar <span aria-hidden="true">✕</span></button></div>`
+  +`<div class="cte-painel-cab">${ir(ant,'ant','◂ anterior','CT-e anterior')}<b>CT-e ${esc(c.Numero)} <span class="cte-sub">série ${esc(c.Serie)}</span></b><span class="cte-pill ${cls}">${esc(sit)}</span>`
+  +`${ir(prx,'prx','próximo ▸','Próximo CT-e')}<span class="cte-sub cte-dica">↑ ↓ passam de CT-e · Esc fecha</span><button type="button" class="cte-fechar">Fechar <span aria-hidden="true">✕</span></button></div>`
   +`<div class="cte-painel-corpo" tabindex="0" role="region" aria-label="Detalhe do CT-e"><div class="cte-painel-cols">`
   +cteBloco('Chave de acesso',`<div class="cte-mono">${cteV(c.Chave_CTe)}${cteCopiar(c.Chave_CTe)}</div>`)
   +cteBloco('Identificação',cteKV([['Número / série',cteV(c.Numero)+' / '+cteV(c.Serie)],['Modelo',cteV(c.Modelo)],['Emissão',cteV(dataHoraBr(c.Data_Emissao))],
@@ -3064,11 +3074,13 @@ function cteAlertas(lista,carregadas){
   if(naoAut.length)al.push(`${naoAut.length} CT-e sem autorização de uso: `+naoAut.slice(0,CTE_ALERTA_MAX).map(c=>`${c.Numero} (${cteSit(c)[0]})`).join(', ')+'.');
   return al;
 }
+/* Chaves das NF-e carregadas: a lista e o painel do CT-e contam as vinculadas pelo mesmo conjunto. */
+function cteCarregadas(){return new Set(DB.nfe.map(r=>r.Chave_NFe).filter(Boolean));}
 function renderCTe(){
   const lista=DB.cte;
   const q=(document.getElementById('filtro-cte').value||'').trim().toLowerCase();
   const el=document.getElementById('cte-list'),av=document.getElementById('cte-alertas');
-  const carregadas=new Set(DB.nfe.map(r=>r.Chave_NFe).filter(Boolean));
+  const carregadas=cteCarregadas();
   const idx=lista.map((c,i)=>i).filter(i=>{
     if(!q)return true;const c=lista[i];
     return[c.Numero,c.Chave_CTe,c.proPred,c.Mun_Ini,c.Mun_Fim,c.emit&&c.emit.nome,c.dest&&c.dest.nome,c.rem&&c.rem.nome]
@@ -3087,7 +3099,7 @@ function renderCTe(){
     const c=lista[i],nf=c.docs.filter(d=>d.tipo==='NF-e'&&d.chave),k=nf.filter(d=>carregadas.has(d.chave)).length;
     const pill=!nf.length?`<span class="cte-pill">${c.docs.length} doc.</span>`:k===nf.length?`<span class="cte-pill cte-ok">${k}/${nf.length} carregadas</span>`:`<span class="cte-pill cte-falta">${k}/${nf.length} · falta ${nf.length-k}</span>`;
     const [sit,cls]=cteSit(c);
-    return`<tr data-i="${i}" tabindex="0" class="${i===CTE_UI.aberto?'sel':''}">`
+    return`<tr data-i="${i}" tabindex="0"${i===CTE_UI.aberto?' class="sel" aria-current="true"':''}>`
       +`<td><b>${esc(c.Numero)}</b><div class="cte-sub">série ${esc(c.Serie)}</div></td><td>${esc(dataHoraBr(c.Data_Emissao,true))}</td>`
       +`<td>${esc([c.Mun_Ini,c.UF_Ini].filter(Boolean).join('/'))} → ${esc([c.Mun_Fim,c.UF_Fim].filter(Boolean).join('/'))}</td>`
       +`<td>${esc(c.proPred)}${c.veic.length?`<div class="cte-sub cte-mono">${esc(c.veic.map(v=>v.chassi).join(', '))}</div>`:''}</td>`
@@ -3095,9 +3107,11 @@ function renderCTe(){
       +`<td class="n">${c.ICMS_pICMS?esc(pct(c.ICMS_pICMS)):'—'}</td><td class="n">${c.ICMS_vICMS?esc(moeda(c.ICMS_vICMS)):'—'}</td>`
       +`<td class="n">${esc(moeda(c.vCarga))}</td><td>${pill}</td><td><span class="cte-pill ${cls}">${esc(sit)}</span></td></tr>`;
   }).join('');
+  const p0=idx.indexOf(CTE_UI.aberto);
+  const pn=p0<0?'':ctePainel(lista[CTE_UI.aberto],carregadas,p0>0?idx[p0-1]:-1,p0<idx.length-1?idx[p0+1]:-1);
   el.innerHTML=`<div class="cte-tab-wrap" tabindex="0" role="region" aria-label="Tabela de CT-e"><table class="cte-tab"><thead><tr><th>CT-e</th><th>Emissão</th><th>Rota</th><th>Carga / chassi</th><th class="n">Frete</th>`
     +`<th>CST</th><th class="n">Alíq.</th><th class="n">ICMS</th><th class="n">Valor da carga</th><th>NF-e vinculadas</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`
-    +(CTE_UI.aberto>=0?ctePainel(lista[CTE_UI.aberto],carregadas):'');
+    +`<div class="cte-slot">${pn}</div>`;
   cteInerte();
 }
 /* Mesma regra da NFS-e: abaixo de 900px o painel cobre a tela; enquanto ele está aberto,
@@ -3112,14 +3126,35 @@ function cteInerte(){
   painelCobreTela();
   return on;
 }
+/* Abrir, trocar e fechar mexem só no painel (o .cte-slot) e na marca da linha, como na
+   NFS-e: a tabela não é redesenhada, então a linha clicada, a rolagem e o foco ficam onde
+   estavam. Sem o slot (ou com a linha fora da lista à mostra) o render inteiro refaz tudo.
+   `foco` é o seletor do que recebe o foco depois de trocar o painel. */
+function cteLinhas(){return [...document.querySelectorAll('#cte-list tr[data-i]')];}
 function cteAbre(i,foco){
-  CTE_UI.aberto=i;renderCTe();
-  /* Na tela estreita a lista ficou inerte: o foco vai para o painel mesmo no clique. */
-  if(foco||cteInerte()){const b=document.querySelector('.cte-painel .cte-fechar');if(b)b.focus();}
+  const el=document.getElementById('cte-list'),slot=el.querySelector('.cte-slot');
+  const trs=cteLinhas(),is=trs.map(tr=>+tr.dataset.i),p=is.indexOf(i);
+  if(!slot||p<0||!DB.cte[i]){CTE_UI.aberto=i;renderCTe();}
+  else{
+    el.querySelectorAll('tr.sel').forEach(tr=>linhaMarca(tr,false));linhaMarca(trs[p],true);
+    CTE_UI.aberto=i;
+    slot.innerHTML=ctePainel(DB.cte[i],cteCarregadas(),p>0?is[p-1]:-1,p<is.length-1?is[p+1]:-1);
+    if(trs[p].scrollIntoView)trs[p].scrollIntoView({block:'nearest'});
+  }
+  /* Na tela estreita a lista ficou inerte: o foco vai para o painel mesmo no clique.
+     O botão pedido que ficou desabilitado (a ponta da lista) passa o foco ao Fechar. */
+  if(cteInerte()||foco){const b=foco?document.querySelector(foco):null,fe=document.querySelector('.cte-painel .cte-fechar');
+    const alvo=b&&!b.disabled&&!(painelEstreito()&&!b.closest('.cte-painel'))?b:fe;if(alvo)alvo.focus();}
 }
-function cteFecha(){
-  const i=CTE_UI.aberto;if(i<0)return;CTE_UI.aberto=-1;renderCTe();
-  const tr=document.querySelector(`#cte-list tr[data-i="${i}"]`);if(tr)tr.focus();
+/* `foco` false: fecha sem devolver o foco à linha (ao sair da aba, a linha está escondida;
+   no clique fora, o foco fica onde a pessoa clicou). */
+function cteFecha(foco){
+  const i=CTE_UI.aberto;if(i<0)return;CTE_UI.aberto=-1;
+  const el=document.getElementById('cte-list'),slot=el.querySelector('.cte-slot');
+  if(slot){slot.innerHTML='';el.querySelectorAll('tr.sel').forEach(tr=>linhaMarca(tr,false));}else renderCTe();
+  cteInerte();
+  if(foco===false)return;
+  const tr=el.querySelector(`tr[data-i="${i}"]`);if(tr)tr.focus();
 }
 (function(){
   const raiz=document.getElementById('cte-list');
@@ -3129,13 +3164,17 @@ function cteFecha(){
       const aviso=document.getElementById('cte-aviso'),diz=(t)=>{cp.textContent=t;if(aviso)aviso.textContent=t==='copiado'?'Chave copiada':'A chave não foi copiada';};
       if(navigator.clipboard)navigator.clipboard.writeText(v).then(()=>diz('copiado'),()=>diz('não copiou'));else diz('não copiou');return;}
     if(e.target.closest('.cte-fechar')){cteFecha();return;}
+    /* "◂ anterior" e "próximo ▸": o foco fica no botão do mesmo lado (no Fechar, se ele
+       ficou desabilitado na ponta). */
+    const ir=e.target.closest('.cte-ir[data-ir]');
+    if(ir){cteAbre(+ir.dataset.ir,'.cte-painel .cte-ir[data-lado="'+(ir.dataset.lado==='ant'?'ant':'prx')+'"]');return;}
     const tr=e.target.closest('tr[data-i]');
-    if(tr){const i=+tr.dataset.i;if(i===CTE_UI.aberto)cteFecha();else cteAbre(i,false);}
+    if(tr){const i=+tr.dataset.i;if(i===CTE_UI.aberto)cteFecha();else cteAbre(i,null);}
   });
   raiz.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' ')return;
     const tr=e.target.closest&&e.target.closest('tr[data-i]');
-    if(tr){e.preventDefault();cteAbre(+tr.dataset.i,true);}
+    if(tr){e.preventDefault();cteAbre(+tr.dataset.i,'.cte-painel .cte-fechar');}
   });
   /* Os eventos ficam no document, então só valem com a aba CT-e à mostra: escondida,
      a aba continua no DOM e roubaria as setas, o Esc e os cliques da aba NF-e.
@@ -3149,15 +3188,19 @@ function cteFecha(){
     const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
     /* Com o foco no corpo do painel, as setas rolam o texto. */
     if(a&&a.closest&&a.closest('.cte-painel .cte-painel-corpo'))return;
-    const is=[...document.querySelectorAll('#cte-list tr[data-i]')].map(tr=>+tr.dataset.i),p=is.indexOf(CTE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
-    if(p<0||j<0||j>=is.length)return;e.preventDefault();cteAbre(is[j],true);
+    const is=cteLinhas().map(tr=>+tr.dataset.i),p=is.indexOf(CTE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
+    if(p<0||j<0||j>=is.length)return;e.preventDefault();
+    /* Quem anda pela lista continua na lista (na linha nova); quem está no painel continua no painel. */
+    const naLista=!painelEstreito()&&a&&a.closest&&a.closest('#cte-list tr[data-i]');
+    cteAbre(is[j],naLista?`#cte-list tr[data-i="${is[j]}"]`:'.cte-painel .cte-fechar');
   });
   /* Clique fora do painel e fora das linhas fecha, como no item da NF-e. */
   document.addEventListener('click',e=>{
     if(!ativa())return;
     const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
     if(!t||!t.isConnected||!t.closest||t.closest('.cte-painel')||t.closest('#cte-list tr[data-i]'))return;
-    cteFecha();
+    /* Sem mover o foco: ele fica no controle clicado (a busca não perde o que se digita). */
+    cteFecha(false);
   });
   /* A janela mudou de largura com o painel aberto: aplica ou devolve o inert. Ficou modal
      e o foco não está no painel (estava na lista, no menu lateral, na barra do topo ou
@@ -3283,7 +3326,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
       if(btn.dataset.tab==='dashboard')renderDashboard();
       if(btn.dataset.tab==='nfe')renderNFE();
       if(btn.dataset.tab==='nfse')renderNFSe();else nfseFecha(false);
-      if(btn.dataset.tab==='cte')renderCTe();else{CTE_UI.aberto=-1;cteInerte();}
+      if(btn.dataset.tab==='cte')renderCTe();else cteFecha(false);
     }
   });
 });
