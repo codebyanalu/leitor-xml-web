@@ -243,6 +243,11 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     '12.ABC.345/01DE-36', '12ABC34501DE36',
     '35260912ABC34501DE35550010000001231123456784',
     '35260912ABC34501DE35550010000001231123456783',
+    // Não são CNPJ: uma palavra do DANFE com 2 dígitos e um código de
+    // verificação de NFS-e inventado. Os dois fecham o DV alfanumérico por
+    // acaso e estão nos testes justamente para provar que o leitor NÃO os toma
+    // por CNPJ — por isso o gate os enxerga e eles precisam estar aqui.
+    'DESTINATARIO04', 'CS9Q9XK8QIOT18',
   ]);
   const ehSintetico = (v) => SINT.has(v) || SINT.has(String(v).replace(/[^0-9A-Z]/g, ''));
 
@@ -737,6 +742,10 @@ ok('chave com CNPJ alfanumérico aceita por vH',
 grupo('10 · REGRAS DO PROJETO');
 // ══════════════════════════════════════════════════════════════
 ok('erro de XML malformado é específico', /XML inválido ou malformado/.test(html));
+/* Lookbehind em regex literal é erro de SINTAXE no Safari/iOS abaixo de 16.4:
+   o <script> inteiro deixa de carregar, não só o recurso que usa a regex. */
+ok('nenhum lookbehind de regex no app (Safari < 16.4 não carregaria o script)',
+  !/\(\?<[=!]/.test(scripts.join('\n')), (scripts.join('\n').match(/.{0,30}\(\?<[=!].{0,20}/) || [''])[0]);
 ok('single-file: nenhum .js ou .css local', !/<script[^>]+src="(?!https:)[^"]+\.js"/.test(html));
 // A fonte precisa estar carregada, mas por um caminho só: <link> no <head>
 // (com preconnect, em paralelo) ou @import no <style>. Ter os dois fazia a
@@ -1109,8 +1118,8 @@ await (async () => {
     try { t.consultar(); r = 'ok'; } catch (e) { r = e.constructor.name + ': ' + e.message; }
     ok('consultar() com ' + n + ' dígitos não lança ReferenceError', r === 'ok', r);
     const html14 = els['cnpj-result'].innerHTML;
-    ok('consultar() com ' + n + ' dígitos mostra a mensagem de 14 dígitos',
-      /14 dígitos/.test(html14) && !/undefined/.test(html14), html14.slice(0, 160));
+    ok('consultar() com ' + n + ' dígitos mostra a mensagem de 14 caracteres',
+      /14 caracteres/.test(html14) && !/undefined/.test(html14), html14.slice(0, 160));
   });
 
   // ── B1: vC vem do módulo de PDF, não de uma função livre ──
@@ -1162,6 +1171,24 @@ await (async () => {
         doTexto('12.ABC.345/01DE-36').length === 0);
       ok('cnpjsDoTexto não pega palavra em maiúscula colada em número',
         doTexto('CODIGOINTERNO12 PRODUTOXYZABC99').length === 0);
+      /* DESTINATARIO04 fecha o DV: só a forma o separa de um CNPJ. */
+      ok('cnpjsDoTexto: palavra que fecha o DV no meio de uma observação não é CNPJ',
+        doTexto('entregar ao DESTINATARIO04 amanha').length === 0);
+      ok('cnpjsDoTexto: alfanumérico cru vale quando é a célula inteira (CSV)',
+        doTexto('CNPJ;Obs\n' + ALFA + ';x\n').join() === ALFA && doTexto('"' + ALFA + '"').join() === ALFA);
+      ok('cnpjsDoTexto: minúscula fica de fora no lote (a consulta individual aceita)',
+        doTexto('12.abc.345/01de-35').length === 0);
+      ok('cnpjsDoTexto: célula com espaço e tab nas bordas ainda vale',
+        doTexto('x;  ' + ALFA + ' \t;y').join() === ALFA);
+      /* ReDoS: a entrada hostil é a sequência do separador que o lookbehind
+         aceita. Com `[ \t]*` logo depois dele, 100 KB de tab levavam ~10 s. */
+      {
+        const ini = Date.now();
+        doTexto('\t'.repeat(100000) + 'X');
+        doTexto(' \t'.repeat(50000) + 'X');
+        const ms = Date.now() - ini;
+        ok('cnpjsDoTexto: 100 KB de tabs/espaços não travam (linear)', ms < 300, ms + ' ms');
+      }
       ok('cnpjsDoTexto continua lendo o numérico ao lado do alfanumérico',
         doTexto('12.ABC.345/01DE-35;11.222.333/0001-81').sort().join() === ['11222333000181', ALFA].sort().join());
       ok('o vC do módulo de PDF valida o alfanumérico (o lote usa o mesmo)', modPdf(ALFA) === true && modPdf('12ABC34501DE36') === false);
@@ -1176,7 +1203,7 @@ await (async () => {
       els['cnpj-input'].value = '12.ABC.345/01D';
       await t.consultar();
       ok('consultar() com alfanumérico incompleto não busca e mostra a mensagem',
-        pedidos.length === antes && /14 dígitos/.test(els['cnpj-result'].innerHTML));
+        pedidos.length === antes && /14 caracteres/.test(els['cnpj-result'].innerHTML));
       els['cnpj-input'].value = '12ABC34501DEA5';
       await t.consultar();
       ok('consultar() recusa letra na posição do DV', pedidos.length === antes);
@@ -2882,6 +2909,31 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       pf.chaveValida === true && pf.cnpjPrestador === ALFA && pf.cnpjFonte === 'chave 44' && pf.cnpjValido === true,
       'prest=' + pf.cnpjPrestador + ' fonte=' + pf.cnpjFonte);
     ok('parseFull: o destinatário numérico continua lido', pf.cnpjTomador === '11222333000181', pf.cnpjTomador);
+
+    /* Falso positivo medido: o DV de 2 dígitos aprova ~1% de qualquer token de
+       14 posições. Os dois tokens abaixo FECHAM o DV (pré-condição conferida),
+       então só a regra de forma (máscara completa, ou rótulo CNPJ antes do cru)
+       os separa de um CNPJ. */
+    const COD_NFSE = 'CS9Q9XK8QIOT18', PALAVRA = 'DESTINATARIO04';
+    ok('pré-condição: os dois tokens fecham o DV (senão o caso abaixo não prova nada)',
+      M.vC(COD_NFSE) === true && M.vC(PALAVRA) === true);
+    const nfse = M.parseFull('NFS-e Nº 456 CODIGO DE VERIFICACAO ' + COD_NFSE
+      + ' PRESTADOR DE SERVICOS CNPJ 11.222.333/0001-81 EXEMPLO LTDA TOMADOR CNPJ 11.222.334/0001-26', [], 'texto');
+    ok('o código de verificação da NFS-e não vira CNPJ do prestador',
+      nfse.cnpjPrestador === '11222333000181' && nfse.cnpjTomador === '11222334000126',
+      'prest=' + nfse.cnpjPrestador + ' toma=' + nfse.cnpjTomador);
+    ok('palavra em maiúscula com 2 dígitos que fecha o DV não é CNPJ',
+      M.cnpjsNoTexto('OBS ' + PALAVRA + ' X').length === 0);
+    ok('o alfanumérico cru vale com o rótulo CNPJ antes (CNPJ:, CNPJ/CPF)',
+      M.cnpjsNoTexto('CNPJ: ' + ALFA).length === 1 && M.cnpjsNoTexto('CNPJ/CPF ' + ALFA).length === 1
+      && M.cnpjsNoTexto('CNPJ ' + PALAVRA).length === 1
+      && M.cnpjsNoTexto('CNPJ – ' + ALFA).length === 1 && M.cnpjsNoTexto('CNPJ No.: ' + ALFA).length === 1
+      && M.cnpjsNoTexto('CNPJ Nº ' + ALFA).length === 1);
+    ok('o mascarado vale com o rótulo colado (texto de OCR)',
+      M.cnpjsNoTexto('CNPJ/CPF' + ALFA_MASC).map((c) => c.dig).join() === ALFA);
+    ok('máscara pela metade não basta sem o rótulo', M.cnpjsNoTexto('OBS 12ABC345/01DE-35 X').length === 0);
+    ok('eC recusa a chave alfanumérica em minúscula (a forma oficial é maiúscula)',
+      M.eC('CHAVE ' + CH_ALFA.toLowerCase()).valida !== true);
   }
 }
 

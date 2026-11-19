@@ -594,7 +594,9 @@ console.log('\n5.1 · AFIRMAÇÕES DO PAINEL CONFERIDAS NA FONTE');
   ok('o index.html escapa os campos da tabela do lote um a um',
     /esc\(r\.razao\)[\s\S]{0,200}?esc\(r\.fantasia\)[\s\S]{0,200}?esc\(r\.situacao\)/.test(htmlIndex),
     String(sinksIndex) + ' escapes de campo');
-  const csvAlertas = ['14 dígitos', 'publica.cnpj.ws'];
+  /* "14 caracteres" e não mais "14 dígitos": com o CNPJ alfanumérico
+     (NT 2026.004) o rótulo e o aviso do campo dizem caracteres. */
+  const csvAlertas = ['14 caracteres', 'publica.cnpj.ws'];
   ok('todo texto de privacidade do arquivo gerado é verdadeiro (o que o painel promete)',
     csvAlertas.every((t) => htmlIndex.includes(t)));
   // "tesseract fixado em 4.1.4" e "corePath" têm de existir no index.html
