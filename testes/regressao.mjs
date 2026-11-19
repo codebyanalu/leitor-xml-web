@@ -475,7 +475,7 @@ ok('Enter/Espaço dispara o toggle (nota)', /addEventListener\('keydown'[\s\S]{0
    (toggleDet, .det-body.open e a delegação na #nfse-list) não voltou. */
 ok('o código do card antigo da NFS-e saiu (toggleDet, .det-body.open, delegação de det-title)',
   !/toggleDet/.test(html) && !/\.det-body\.open/.test(html) && !/\['nfe-list','nfse-list'\]/.test(html)
-  && !/'\.det-title'/.test(html.slice(html.indexOf('// ═══ EVENT DELEGATION'), html.indexOf('// ═══ CT-e (modelo 57)'))));
+  && !/'\.det-title'/.test(html.slice(html.indexOf('// ═══ EVENT DELEGATION'), html.indexOf('// ═══ CT-e (modelos 57 e 67)'))));
 ok('Enter/Espaço abre a dropzone', /upload-area'\)\.addEventListener\('keydown'/.test(html));
 ok('live region do PDF é container permanente no HTML', /id="pdfiso-avisos" role="status" aria-live="polite"/.test(html));
 ok('a live region recebe conteúdo fora do innerHTML da tabela', /getElementById\('pdfiso-avisos'\)\.innerHTML=aviso/.test(html));
@@ -789,11 +789,14 @@ ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe)
     const painel = fs.readFileSync(path.join(RAIZ, 'painel-gerencial.html'), 'utf8');
     ok('README e painel não citam mais 93 nem 56 como total de campos do XML',
       !/XML (lê|extrai) \(?93\b/.test(readme + painel) && !/\+ 56\b/.test(painel));
-    /* O KPI "Schema coberto" é conferido contra a contagem real das duas listas: um
+    /* O KPI "Schema coberto" é conferido contra a contagem real das três listas: um
        número escrito à mão envelhece sem ninguém ver quando uma coluna entra. */
-    const kpi = /Schema coberto<\/span><\/div>\s*<div class="v">(\d+) \+ (\d+)<\/div>/.exec(painel);
-    ok('o KPI "Schema coberto" do painel bate com HNFE + HNFSE do código',
-      !!kpi && +kpi[1] === nHnfe && +kpi[2] === nHnfse, kpi ? kpi[1] + ' + ' + kpi[2] + ' (código: ' + nHnfe + ' + ' + nHnfse + ')' : 'KPI não encontrado');
+    const hcteM = /const HCTE=\[([\s\S]*?)\];/.exec(html);
+    const nHcte = hcteM ? (hcteM[1].match(/'[^']+'/g) || []).length : -1;
+    const kpi = /Schema coberto<\/span><\/div>\s*<div class="v">(\d+) \+ (\d+) \+ (\d+)<\/div>/.exec(painel);
+    ok('o KPI "Schema coberto" do painel bate com HNFE + HNFSE + HCTE do código',
+      !!kpi && +kpi[1] === nHnfe && +kpi[2] === nHnfse && +kpi[3] === nHcte,
+      kpi ? kpi[1] + ' + ' + kpi[2] + ' + ' + kpi[3] + ' (código: ' + nHnfe + ' + ' + nHnfse + ' + ' + nHcte + ')' : 'KPI não encontrado');
   }
   ok('as 24 colunas do veicProd vêm depois, todas Veic_* e com o chassi',
     cols.slice(93).length === 24 && cols.slice(93).every((c) => c.startsWith('Veic_')) && cols.includes('Veic_Chassi'),
@@ -814,6 +817,18 @@ ok('HNFSE tem 121 campos (56 + 65 da leitura completa)', nHnfse === 121, 'achou 
   ok('README diz 121 colunas NFS-e (bate com o código)', /121 NFS-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 }
 ok('README diz 117 colunas NF-e (bate com o código)', /117 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
+/* 61 colunas originais do CT-e + 29 da leitura do CT-e OS (modelo 67), anexadas no FIM. */
+{
+  const m = /const HCTE=\[([\s\S]*?)\];/.exec(html);
+  const cols = m ? (m[1].match(/'[^']+'/g) || []).map((s) => s.slice(1, -1)) : [];
+  ok('HCTE tem 90 campos (61 + 29 da leitura do CT-e OS)', cols.length === 90, 'achou ' + cols.length);
+  /* Quem lê a planilha do CT-e por posição não pode ver coluna andar: as 61 antigas continuam
+     iguais e na mesma ordem (impressão digital da lista), terminando em Arquivo_Origem. */
+  ok('as 61 colunas antigas do CT-e estão idênticas e na mesma ordem (impressão digital da lista)',
+    createHash('sha256').update(cols.slice(0, 61).join(',')).digest('hex') === '629b1654479b3b4185c77b4d480fc1a138b9426655addf8678adfeb6baaa037b'
+    && cols[60] === 'Arquivo_Origem', 'col61=' + cols[60]);
+  ok('README diz 90 colunas CT-e (bate com o código)', /90 CT-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
+}
 ok('README não fala 423 campos', !/423/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 ok('todo var(--x) usado está definido em :root',
   [...new Set([...html.matchAll(/var\((--[\w-]+)/g)].map(m => m[1]))].every(v => claro[v]),
@@ -3464,10 +3479,11 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
        A aba CT-e (lista + painel aberto + quadro "Para conferir") roda com o
        payload em TODO campo que ela lê. O universo vem do FONTE do módulo
        (c./pt./d./v./k./q.), como no NF-e/NFS-e: campo novo lido cru reprova sem
-       ninguém mexer no fixture. Dois registros: o segundo com tomador "4 - Outros",
-       que desenha o bloco do tomador (ramo que o primeiro não percorre). */
+       ninguém mexer no fixture. Três registros: o segundo com tomador "4 - Outros",
+       que desenha o bloco do tomador (ramo que o primeiro não percorre), e o terceiro um
+       CT-e OS (modelo 67), que desenha os blocos e a linha próprios dele. */
     {
-      const iniC = html.indexOf('// ═══ CT-e (modelo 57) ═══');
+      const iniC = html.indexOf('// ═══ CT-e (modelos 57 e 67) ═══');
       const iniTela = html.indexOf('/* ── Tela:', iniC);
       const fimC = html.indexOf('function cteAbre(', iniC);
       const fonteCte = iniC < 0 || iniTela < 0 || fimC < 0 ? '' : html.slice(iniTela, fimC);
@@ -3483,29 +3499,45 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         for (const k of ['emit', 'rem', 'exped', 'receb', 'dest', 'tomaOutro', 'resp']) r[k] = Object.fromEntries(daParte.map((x) => [x, val]));
         r.comp = [objDe('k', val)]; r.infQ = [objDe('q', val)]; r.veic = [objDe('v', val)]; r.dup = [objDe('d', val)];
         r.docs = [Object.assign(objDe('d', val), { tipo: 'NF-e', chave: val }), objDe('d', val)];
-        for (const k of ['docAnt', 'occ', 'obsCont', 'obsFisco']) r[k] = [val];
+        for (const k of ['docAnt', 'occ', 'obsCont', 'obsFisco', 'percurso', 'autXML']) r[k] = [val];
         r.fat = [val, val, val, val];
+        /* Listas do CT-e OS: documentos referenciados (dr.), seguro (sg.), GTV-e (gv.) com componentes (gk.).
+           O segundo documento referenciado sem chBPe percorre o ramo do documento com número. */
+        r.docRef = [objDe('dr', val), Object.assign(objDe('dr', val), { chBPe: '' })]; r.seg = [objDe('sg', val)];
+        r.gtve = [Object.assign(objDe('gv', val), { comp: [objDe('gk', val)] })];
+        r.ehOS = false;
         return Object.assign(r, extra || {});
       };
       ok('CT-e: o universo de campos do render vem do fonte (e não está vazio)',
         topo.length >= 60 && daParte.length >= 7 && campos('d').length >= 7 && campos('v').length >= 6, 'c.=' + topo.length + ' pt.=' + daParte.length);
+      ok('CT-e OS: o universo do render inclui os campos e as listas do modelo 67 (lidos do fonte)',
+        ['ehOS', 'xDescServ', 'placa', 'TAF', 'tpFretamento', 'Fed_vPIS', 'docRef', 'gtve', 'seg', 'percurso', 'autXML'].every((k) => topo.includes(k))
+        && campos('dr').length >= 6 && campos('sg').length >= 3 && campos('gv').length >= 2 && campos('gk').length >= 3, topo.filter((k) => /^[a-z]/.test(k)).slice(0, 12).join(','));
       const medeCte = (val, aberto) => {
         try {
-          vm.runInContext(`(()=>{__DB.cte=${JSON.stringify([regCte(val), regCte(val, { toma: '4' })])};__DB.nfe=[];CTE_UI.aberto=${aberto};renderCTe();})()`, sb);
+          vm.runInContext(`(()=>{__DB.cte=${JSON.stringify([regCte(val), regCte(val, { toma: '4' }), regCte(val, { ehOS: true })])};__DB.nfe=[];CTE_UI.aberto=${aberto};renderCTe();})()`, sb);
           return vm.runInContext("document.getElementById('cte-list').innerHTML+document.getElementById('cte-alertas').innerHTML", sb);
         } catch (e) { return 'ERRO: ' + e.message; }
       };
-      for (const ab of [0, 1]) {
+      for (const ab of [0, 1, 2]) {
         const hp = medeCte(PAY, ab), hb = medeCte(BENIGNO, ab), fp = forma(hp), fb = forma(hb);
-        ok('renderCTe com o painel ' + (ab ? 'do tomador "outros"' : 'aberto') + ': o payload não ganha tag nem handler e continua como texto',
+        ok('renderCTe com o painel ' + ['aberto', 'do tomador "outros"', 'do CT-e OS'][ab] + ': o payload não ganha tag nem handler e continua como texto',
           !/^ERRO/.test(hp) && /cte-painel/.test(hp) && fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0 && fp.img === 0 && fp.escapado > 0 && fb.escapado === 0,
           /^ERRO/.test(hp) ? hp : `payload ${fp.tags} tag(s)/${fp.handler} handler vs benigno ${fb.tags}/${fb.handler}`);
       }
       FORMAS.forEach((formaPay, i) => {
         const fp = forma(medeCte(formaPay, 0)), fb = forma(medeCte(BENIGNO, 0));
-        ok('a forma #' + (i + 1) + ' (' + formaPay.slice(0, 18) + '…) não vira HTML em renderCTe',
-          fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0, `tags=${fp.tags} vs benigno=${fb.tags}`);
+        const fo = forma(medeCte(formaPay, 2)), fob = forma(medeCte(BENIGNO, 2));
+        ok('a forma #' + (i + 1) + ' (' + formaPay.slice(0, 18) + '…) não vira HTML em renderCTe (CT-e e CT-e OS)',
+          fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0 && fo.tags === fob.tags && fo.handler === fob.handler && fo.script === 0,
+          `tags=${fp.tags} vs benigno=${fb.tags}; OS ${fo.tags} vs ${fob.tags}`);
       });
+      /* O painel do CT-e OS com campo vazio: o que não veio aparece como "não consta no XML". */
+      const vazioOS = (() => { try { vm.runInContext(`(()=>{__DB.cte=${JSON.stringify([regCte('', { ehOS: true, docRef: [], seg: [], gtve: [], percurso: [], autXML: [] })])};CTE_UI.aberto=0;renderCTe();})()`, sb);
+        return vm.runInContext("document.getElementById('cte-list').innerHTML", sb); } catch (e) { return 'ERRO: ' + e.message; } })();
+      ok('CT-e OS: campo ausente no XML aparece como "não consta no XML" nos blocos do modelo 67',
+        (vazioOS.match(/não consta no XML/g) || []).length >= 40 && /<h5>Seguro<\/h5><dl class="cte-kv"><dt>Seguro<\/dt><dd><span class="cte-nc">não consta no XML/.test(vazioOS) && !/<h5>GTV-e/.test(vazioOS),
+        /^ERRO/.test(vazioOS) ? vazioOS : (vazioOS.match(/não consta no XML/g) || []).length + ' ocorrência(s)');
       /* Campo que não veio no XML aparece como "não consta no XML", não some. */
       const vazio = medeCte('', 0);
       ok('CT-e: campo ausente no XML aparece como "não consta no XML" no painel',
@@ -3561,14 +3593,27 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         get textContent() { return this.txt + this.children.map((c) => c.textContent).join(''); }
         getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; }
         todos() { const out = []; const anda = (e) => { for (const c of e.children) { out.push(c); anda(c); } }; anda(this); return out; }
+        /* Seletor: grupos separados por vírgula; em cada grupo, tags ligadas por espaço
+           (descendente) ou ">" (filho). ":scope" é o próprio elemento da consulta e "*" casa
+           qualquer tag — o que o leitor do CT-e usa. */
         querySelectorAll(sel) {
-          const partes = sel.trim().split(/\s+/);
-          return this.todos().filter((e) => {
-            if (e.tagName !== partes[partes.length - 1]) return false;
-            let k = partes.length - 2, a = e.pai;
-            while (k >= 0 && a) { if (a.tagName === partes[k]) k--; a = a.pai; }
-            return k < 0;
+          const grupos = sel.split(',').map((g) => {
+            const tk = g.replace(/>/g, ' > ').trim().split(/\s+/), passos = [];
+            for (let i = 0; i < tk.length; i++) {
+              if (tk[i] === '>') continue;
+              passos.push({ tag: tk[i], filho: i > 0 && tk[i - 1] === '>' });
+            }
+            return passos;
           });
+          const casa = (e, ps, i) => {
+            const p = ps[i];
+            if (p.tag === ':scope' ? e !== this : (p.tag !== '*' && e.tagName !== p.tag)) return false;
+            if (i === 0) return true;
+            if (p.filho) return !!e.pai && casa(e.pai, ps, i - 1);
+            for (let a = e.pai; a; a = a.pai) if (casa(a, ps, i - 1)) return true;
+            return false;
+          };
+          return this.todos().filter((e) => grupos.some((ps) => casa(e, ps, ps.length - 1)));
         }
         querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
       }
@@ -3576,11 +3621,12 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
       class MiniDOMParser {
         parseFromString(xml) {
           const raiz = new El('#doc', {}, null);
-          let cur = raiz;
+          let cur = raiz, quebrado = false;
           for (const m of xml.matchAll(/<\?[^>]*>|<\/?[^>]+>|[^<]+/g)) {
             const tk = m[0];
             if (tk.startsWith('<?')) continue;
-            if (tk.startsWith('</')) { cur = cur.pai; continue; }
+            /* Fechamento que não casa com a tag aberta: XML malformado, como o navegador acusa. */
+            if (tk.startsWith('</')) { if (!cur.pai || cur.tagName !== tk.slice(2, -1).trim()) quebrado = true; cur = cur.pai || raiz; continue; }
             if (tk.startsWith('<')) {
               const auto = tk.endsWith('/>');
               const corpo = tk.slice(1, auto ? -2 : -1).trim();
@@ -3594,6 +3640,8 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             }
             cur.txt += ent(tk);
           }
+          /* Tag aberta que não fechou também é XML malformado: o documento ganha o parsererror. */
+          if (quebrado || cur !== raiz) { const pe = new El('parsererror', {}, raiz); pe.txt = 'tag sem fechamento'; raiz.children.push(pe); }
           return { documentElement: raiz.children[0], querySelector: (s) => raiz.querySelector(s) };
         }
       }
@@ -3841,7 +3889,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
 
         /* A frase de retenção do ISS tem uma fonte só (NFSE_RET_POR) e as três telas concordam. */
         const ret3 = vm.runInContext(`(()=>{const n={tpRetISSQN:'3',Valor_ISS:'197.00'};return [nfseCod('tpRetISSQN','3').h,nfseRetCel(n),nfsePainel(n,-1,-1,null)];})()`, sb);
-        const secNfse = html.slice(html.indexOf('const NFSE_UI='), html.indexOf('// ═══ CT-e (modelo 57)'));
+        const secNfse = html.slice(html.indexOf('const NFSE_UI='), html.indexOf('// ═══ CT-e (modelos 57 e 67)'));
         ok('retenção do ISS: rótulo do código, célula da lista e tabela de tributos saem da mesma fonte',
           /^Retido pelo intermediário/.test(ret3[0]) && ret3[1] === '<b>sim</b><div class="cte-sub">intermediário</div>' && /Retido <b>sim, pelo intermediário<\/b>/.test(ret3[2])
           && (secNfse.match(/'tomador'/g) || []).length === 1 && (secNfse.match(/'intermediário'/g) || []).length === 1 && !/(pelo|sim, pelo) (tomador|intermediário)'/.test(secNfse),
@@ -4198,7 +4246,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
                NFS-e e ao CT-e) e moram num bloco só, antes das duas seções. */
             {
               const iMq = html.indexOf('const PAINEL_MQ='), iEst = html.indexOf('function painelEstreito('), iCob = html.indexOf('function painelCobreTela(');
-              const iNfse = html.indexOf('// ═══ RENDER NFS-e'), iCte = html.indexOf('// ═══ CT-e (modelo 57)');
+              const iNfse = html.indexOf('// ═══ RENDER NFS-e'), iCte = html.indexOf('// ═══ CT-e (modelos 57 e 67)');
               const bloco = iMq >= 0 && iNfse > iMq ? html.slice(html.lastIndexOf('/*', iMq), iNfse) : '';
               const exec = R('typeof PAINEL_MQ!=="undefined"&&typeof painelEstreito==="function"&&typeof painelCobreTela==="function"?[PAINEL_MQ,painelEstreito()]:null');
               const exec2 = (largura(true), R('typeof painelEstreito==="function"?painelEstreito():null'));
@@ -4245,7 +4293,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             const ctes = [0, 1, 2].map((i) => ({
               Numero: String(501 + i), Serie: '1', Modelo: '57', Chave_CTe: 'C' + i, Data_Emissao: '2026-11-0' + (i + 1) + 'T10:00:00-03:00',
               Mun_Ini: 'Origem', UF_Ini: 'SP', Mun_Fim: 'Destino', UF_Fim: 'RJ', proPred: 'Veículo', vTPrest: '100', vCarga: '1000', ICMS_CST: '00',
-              docs: [], veic: [], comp: [], infQ: [], dup: [], fat: [], docAnt: [], occ: [], obsCont: [], obsFisco: [],
+              docs: [], veic: [], comp: [], infQ: [], dup: [], fat: [], docAnt: [], occ: [], obsCont: [], obsFisco: [], autXML: [],
             }));
             R('__DB.cte=' + JSON.stringify(ctes) + ';__DB.nfe=[];CTE_UI.aberto=-1;');
             doc.getElementById('filtro-cte').value = '';
@@ -4351,7 +4399,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
                 R('__DB.nfe=[{Chave_NFe:"N1"},{Chave_NFe:""},{Chave_NFe:"N2"}]');
                 const carr = R('typeof cteCarregadas==="function"?[...cteCarregadas()].join(","):"sem"');
                 R('__DB.nfe=[]');
-                const secC = html.slice(html.indexOf('// ═══ CT-e (modelo 57)'), html.indexOf('// ═══ DASHBOARD'));
+                const secC = html.slice(html.indexOf('// ═══ CT-e (modelos 57 e 67)'), html.indexOf('// ═══ DASHBOARD'));
                 const montagens = (secC.match(/new Set\(DB\.nfe\b/g) || []).length, usos = (secC.match(/cteCarregadas\(\)/g) || []).length;
                 ok('CT-e: o conjunto de NF-e carregadas é montado só em cteCarregadas(), usado pela lista e pelo painel',
                   carr === 'N1,N2' && montagens === 1 && usos === 3, JSON.stringify({ carr, montagens, usos }));
@@ -4495,6 +4543,268 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         });
       }
       vm.runInContext('__DB.nfse=[];NFSE_UI.aberto=-1;NFSE_UI.conf=false', sb);
+    }
+    /* ── CT-e OS (modelo 67): leitura, exportação, lista, painel e conferência ─────
+       XML sintético montado em tempo de execução, lido pelo mesmo extrairCTe com o
+       DOMParser mínimo do bloco da NFS-e (que fica no sandbox). Chaves e protocolo são
+       montados aqui (nenhum número longo fica escrito no arquivo); os CNPJs são os
+       sintéticos declarados na lista do gate de privacidade. */
+    {
+      const EMIT = '11222333000181', TOMA = '12345678000195', PROP = '00000000000191';
+      const chv = (mod, n) => '35' + '2611' + EMIT + mod + '001' + String(n).padStart(9, '0') + '1' + '00000001' + '1';
+      const prot = (n) => '135' + '26' + String(n).padStart(10, '0');
+      const tg = (nome, filhos) => '<' + nome + '>' + filhos + '</' + nome + '>';
+      const X = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const MAL = '<img src=x onerror="window.__XSS=1">';
+      const osXml = (o) => '<?xml version="1.0" encoding="UTF-8"?><cteOSProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><CTeOS versao="4.00">'
+        + '<infCte Id="CTe' + chv('67', o.num) + '" versao="4.00">'
+        + tg('ide', tg('cUF', '35') + tg('cCT', '00000001') + tg('CFOP', '5357') + tg('natOp', 'Transporte de passageiros') + tg('mod', '67') + tg('serie', '1')
+          + tg('nCT', String(o.num)) + tg('dhEmi', '2026-11-05T08:00:00-03:00') + tg('tpImp', '1') + tg('tpEmis', '1') + tg('cDV', '1') + tg('tpAmb', '2') + tg('tpCTe', '0')
+          + tg('procEmi', '0') + tg('verProc', 'ERP 1.0') + tg('cMunEnv', '3550308') + tg('xMunEnv', 'São Paulo') + tg('UFEnv', 'SP') + tg('modal', '01') + tg('tpServ', '6')
+          + tg('indIEToma', '1') + tg('cMunIni', '3550308') + tg('xMunIni', 'São Paulo') + tg('UFIni', 'SP') + tg('cMunFim', '2927408') + tg('xMunFim', 'Salvador') + tg('UFFim', 'BA')
+          + tg('infPercurso', tg('UFPer', 'MG')))
+        + tg('compl', tg('xObs', X(o.mal || 'Viagem de exemplo')) + '<ObsCont xCampo="Contrato">' + tg('xTexto', 'C-9') + '</ObsCont>')
+        + tg('emit', tg('CNPJ', EMIT) + tg('IE', '111111111111') + tg('xNome', 'VIACAO EXEMPLO LTDA')
+          + tg('enderEmit', tg('xLgr', 'Rua A') + tg('nro', '1') + tg('xBairro', 'Centro') + tg('cMun', '3550308') + tg('xMun', 'São Paulo') + tg('CEP', '01000000') + tg('UF', 'SP')) + tg('CRT', '3'))
+        + tg('toma', tg('CNPJ', TOMA) + tg('IE', '222222222222') + tg('xNome', X(o.mal || 'TOMADOR OS EXEMPLO LTDA'))
+          + tg('enderToma', tg('xLgr', 'Av. B') + tg('nro', '2') + tg('xBairro', 'Bela Vista') + tg('cMun', '3550308') + tg('xMun', 'São Paulo') + tg('CEP', '01310000') + tg('UF', 'SP'))
+          + tg('email', 'fiscal@tomador.exemplo'))
+        + tg('vPrest', tg('vTPrest', '1500.00') + tg('vTPrestLiq', '1320.00') + tg('vRec', '1500.00') + tg('Comp', tg('xNome', 'FRETAMENTO') + tg('vComp', '1200.00')) + tg('Comp', tg('xNome', 'PEDAGIO') + tg('vComp', '300.00')))
+        + tg('imp', (o.icmsPrev ? tg('ICMS', tg('gICMSPrevistoPagtoAntecip', tg('vICMSPrevisto', '35.00')))
+          : tg('ICMS', tg('ICMS00', tg('CST', '00') + tg('vBC', '1500.00') + tg('pICMS', '12.00') + tg('vICMS', '180.00')))) + tg('vTotTrib', '250.00')
+          + tg('infTribFed', tg('vPIS', '9.75') + tg('vCOFINS', '45.00') + tg('vIR', '22.50') + tg('vINSS', '0.00') + tg('vCSLL', '15.00'))
+          + tg('IBSCBS', tg('CST', '000') + tg('cClassTrib', '000001')))
+        + tg('infCTeNorm', tg('infServico', tg('xDescServ', X(o.mal || 'FRETAMENTO EVENTUAL')) + tg('infQ', tg('qCarga', '42.0000')))
+          + tg('infDocRef', tg('nDoc', 'OS-77') + tg('serie', '1') + tg('subserie', '2') + tg('dEmi', '2026-11-01') + tg('vDoc', '1500.00'))
+          + tg('infDocRef', tg('chBPe', chv('63', 5)))
+          + tg('seg', tg('respSeg', '4') + tg('xSeg', X(o.mal || 'SEGURADORA EXEMPLO')) + tg('nApol', 'AP-123'))
+          + '<infModal versaoModal="4.00">' + tg('rodoOS', tg('TAF', '123456789012')
+            + tg('veic', tg('placa', X(o.mal || 'ABC1D23')) + tg('RENAVAM', '12345678901')
+              + tg('prop', tg('CNPJ', PROP) + tg('TAF', '210987654321') + tg('xNome', 'LOCADORA EXEMPLO SA') + tg('IE', '333333333333') + tg('UF', 'MG') + tg('tpProp', '2'))
+              + tg('UF', 'SP'))
+            + tg('infFretamento', tg('tpFretamento', '1') + tg('dhViagem', '2026-11-10T07:30:00-03:00'))) + '</infModal>'
+          + tg('refCTeCanc', chv('67', 8999))
+          + tg('cobr', tg('fat', tg('nFat', 'F-OS') + tg('vOrig', '1500.00') + tg('vLiq', '1500.00')))
+          + tg('infGTVe', tg('chCTe', chv('64', 7)) + tg('Comp', tg('tpComp', '1') + tg('vComp', '50.00')) + tg('Comp', tg('tpComp', '6') + tg('vComp', '10.00') + tg('xComp', 'ESCOLTA'))))
+        + tg('autXML', tg('CNPJ', TOMA))
+        + tg('infRespTec', tg('CNPJ', EMIT) + tg('xContato', 'Suporte') + tg('email', 'ti@viacao.exemplo') + tg('fone', '1130000000'))
+        + '</infCte>' + tg('infCTeSupl', tg('qrCodCTe', 'https://exemplo.invalid/qr')) + '</CTeOS>'
+        + tg('protCTe', '<infProt>' + tg('tpAmb', '2') + tg('verAplic', 'SP-1') + tg('chCTe', chv('67', o.num)) + tg('dhRecbto', '2026-11-05T08:01:00-03:00')
+          + tg('nProt', prot(o.num)) + tg('cStat', '100') + tg('xMotivo', 'Autorizado o uso do CT-e') + '</infProt>')
+        + '</cteOSProc>';
+      /* Um CT-e 57 com partes, carga, NF-e vinculada, modal e veículo novo: a tela e a
+         exportação dele não podem mudar com a leitura do CT-e OS. */
+      const xml57 = '<?xml version="1.0" encoding="UTF-8"?><cteProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><CTe><infCte Id="CTe' + chv('57', 40) + '" versao="4.00">'
+        + tg('ide', tg('cUF', '35') + tg('CFOP', '6932') + tg('natOp', 'Prestação de serviço de transporte') + tg('mod', '57') + tg('serie', '1') + tg('nCT', '40')
+          + tg('dhEmi', '2026-10-22T13:26:43-03:00') + tg('tpAmb', '2') + tg('tpCTe', '0') + tg('modal', '01') + tg('tpServ', '0') + tg('retira', '1')
+          + tg('xMunIni', 'Cidade A') + tg('UFIni', 'SP') + tg('xMunFim', 'Cidade C') + tg('UFFim', 'GO') + tg('toma3', tg('toma', '3')))
+        + tg('emit', tg('CNPJ', EMIT) + tg('xNome', 'TRANSPORTADORA EXEMPLO') + tg('CRT', '1'))
+        + tg('rem', tg('CNPJ', EMIT) + tg('xNome', 'TRANSPORTADORA EXEMPLO')) + tg('dest', tg('CNPJ', TOMA) + tg('xNome', 'CLIENTE EXEMPLO'))
+        + tg('vPrest', tg('vTPrest', '2490.00') + tg('vRec', '2490.00') + tg('Comp', tg('xNome', 'FRETE PESO') + tg('vComp', '2490.00')))
+        + tg('imp', tg('ICMS', tg('ICMS00', tg('CST', '00') + tg('vBC', '2490.00') + tg('pICMS', '12.00') + tg('vICMS', '298.80'))))
+        + tg('infCTeNorm', tg('infCarga', tg('vCarga', '409900.00') + tg('proPred', 'VEICULO') + tg('infQ', tg('cUnid', '03') + tg('qCarga', '1.0000')))
+          + tg('infDoc', tg('infNFe', tg('chave', chv('55', 100))))
+          + '<infModal versaoModal="4.00">' + tg('rodo', tg('RNTRC', '12345678')) + '</infModal>'
+          + tg('veicNovos', tg('chassi', '9BWEXEMPLO0000040') + tg('vUnit', '359900.00')))
+        + tg('compl', tg('xObs', 'Entrega agendada'))
+        + '</infCte></CTe>' + tg('protCTe', '<infProt>' + tg('cStat', '100') + tg('xMotivo', 'Autorizado') + tg('nProt', prot(40)) + '</infProt>') + '</cteProc>';
+      /* O mesmo CT-e 57 com tomador "outros" (toma4) e um autorizado a obter o XML. */
+      const xml57t = xml57.replace(tg('toma3', tg('toma', '3')), tg('toma4', tg('toma', '4') + tg('CNPJ', TOMA) + tg('xNome', 'TOMADOR OUTROS EXEMPLO') + tg('enderToma', tg('xMun', 'Cidade T') + tg('UF', 'MG'))))
+        .replace('</infCte></CTe>', tg('autXML', tg('CNPJ', PROP)) + '</infCte></CTe>');
+      const lerCte = (xml) => {
+        vm.runInContext('__X=' + JSON.stringify(xml), sb);
+        return vm.runInContext('(()=>{try{const r=extrairCTe("os.xml",__X);return r.ok?r.cte:{erro:r.msg};}catch(e){return{erro:e.message};}})()', sb);
+      };
+      const os = lerCte(osXml({ num: 9001 }));
+      const c57 = lerCte(xml57);
+      ok('CT-e OS: o leitor aceita o modelo 67 e lê o CT-e 57',
+        !!os && !os.erro && os.Numero === '9001' && !!c57 && !c57.erro && c57.Numero === '40', JSON.stringify(os && os.erro ? os : c57).slice(0, 160));
+      /* A detecção: cada raiz do CT-e OS (cteOSProc ou CTeOS) basta sozinha; o resto do documento
+         fica além da janela da detecção. */
+      const longe = ' '.repeat(4100);
+      const detOS = vm.runInContext('[detectType(' + JSON.stringify('<?xml version="1.0" encoding="UTF-8"?><cteOSProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte">' + longe + '<CTeOS>')
+        + '),detectType(' + JSON.stringify('<?xml version="1.0"?><CTeOS versao="4.00" xmlns="x">' + longe + '<infCte Id="CTe1">')
+        + '),detectType(' + JSON.stringify(osXml({ num: 9001 })) + ')].join()', sb);
+      ok('detectType: cteOSProc e CTeOS (depois do prólogo) vão para o CT-e', detOS === 'cte,cte,cte', detOS);
+      /* Prólogo longo (comentário do emissor) antes da raiz: a raiz fica além dos 600 caracteres. */
+      const prologo = '<?xml version="1.0" encoding="UTF-8"?><!-- ' + 'comentário do emissor '.repeat(80) + '-->';
+      const detLongo = vm.runInContext('detectType(' + JSON.stringify(prologo + '<cteOSProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><CTeOS versao="4.00">') + ')', sb);
+      ok('detectType: CT-e OS com prólogo longo (raiz depois dos 600 primeiros caracteres) vai para o CT-e',
+        prologo.length > 1000 && detLongo === 'cte', detLongo + ' (prólogo de ' + prologo.length + ' caracteres)');
+      /* O tipo vem do mesmo dado que o Modelo: um infCte solto com mod 67 é CT-e OS. */
+      const frag = (mod) => '<infCte Id="CTe' + chv(mod, 77) + '" versao="4.00">' + tg('ide', tg('mod', mod) + tg('serie', '1') + tg('nCT', '77')) + tg('emit', tg('CNPJ', EMIT)) + '</infCte>';
+      const f67 = lerCte(frag('67')), f57 = lerCte(frag('57'));
+      ok('CT-e OS: sem a raiz CTeOS, o mod 67 do ide basta para ler como CT-e OS (o mod 57 continua CT-e)',
+        f67.ehOS === true && f67.Modelo === '67' && f57.ehOS === false && f57.Modelo === '57', JSON.stringify([f67.ehOS, f67.Modelo, f57.ehOS, f57.Modelo, f67.erro]));
+      if (os && !os.erro && c57 && !c57.erro) {
+        const esperado = {
+          Modelo: '67', ehOS: true, Serie: '1', CFOP: '5357', tpServ: '6', modal: '01', indIEToma: '1', cMunIni: '3550308', Mun_Ini: 'São Paulo', UF_Ini: 'SP', Mun_Fim: 'Salvador', UF_Fim: 'BA',
+          Chave_CTe: chv('67', 9001), nProt: prot(9001), cStat: '100', toma: '', xDescServ: 'FRETAMENTO EVENTUAL', qServ: '42.0000',
+          TAF: '123456789012', NroRegEstadual: '', placa: 'ABC1D23', RENAVAM: '12345678901', veicUF: 'SP', propDoc: PROP, propNome: 'LOCADORA EXEMPLO SA', propReg: '210987654321',
+          propIE: '333333333333', propUF: 'MG', tpProp: '2', tpFretamento: '1', dhViagem: '2026-11-10T07:30:00-03:00',
+          vTPrest: '1500.00', vRec: '1500.00', ICMS_Grupo: 'ICMS00', ICMS_CST: '00', ICMS_vBC: '1500.00', ICMS_pICMS: '12.00', ICMS_vICMS: '180.00', vTotTrib: '250.00',
+          Fed_vPIS: '9.75', Fed_vCOFINS: '45.00', Fed_vIR: '22.50', Fed_vINSS: '0.00', Fed_vCSLL: '15.00', IBS_CST: '000', cClassTrib: '000001',
+          outroModal: '', RNTRC: '', refCTeCanc: chv('67', 8999), xObs: 'Viagem de exemplo', vTPrestLiq: '1320.00', ICMS_vICMSPrevisto: '',
+        };
+        const dif = Object.keys(esperado).filter((k) => JSON.stringify(os[k]) !== JSON.stringify(esperado[k]));
+        ok('CT-e OS: identificação, serviço, modal rodoviário OS, fretamento, valores e impostos lidos do XML',
+          dif.length === 0, dif.map((k) => k + '=' + JSON.stringify(os[k])).join(' '));
+        ok('CT-e OS: o tomador vem do grupo toma (documento, nome, IE e endereço) e não há remetente, destinatário, expedidor nem recebedor',
+          !!os.tomaOutro && os.tomaOutro.doc === TOMA && os.tomaOutro.nome === 'TOMADOR OS EXEMPLO LTDA' && os.tomaOutro.IE === '222222222222' && /São Paulo\/SP/.test(os.tomaOutro.end)
+          && os.rem === null && os.dest === null && os.exped === null && os.receb === null, JSON.stringify(os.tomaOutro));
+        ok('CT-e OS: listas lidas — percurso, componentes, documentos referenciados (nº e BP-e), seguro, GTV-e e autorizados',
+          JSON.stringify(os.percurso) === '["MG"]'
+          && JSON.stringify(os.comp) === '[{"nome":"FRETAMENTO","valor":"1200.00"},{"nome":"PEDAGIO","valor":"300.00"}]'
+          && !!os.docRef && os.docRef.length === 2 && os.docRef[0].numero === 'OS-77' && os.docRef[0].serie === '1' && os.docRef[0].subserie === '2' && os.docRef[0].data === '2026-11-01'
+          && os.docRef[0].valor === '1500.00' && os.docRef[1].chBPe === chv('63', 5)
+          && JSON.stringify(os.seg) === '[{"resp":"4","seguradora":"SEGURADORA EXEMPLO","apolice":"AP-123"}]'
+          && !!os.gtve && os.gtve.length === 1 && os.gtve[0].chave === chv('64', 7) && JSON.stringify(os.gtve[0].comp) === '[{"tp":"1","valor":"50.00","nome":""},{"tp":"6","valor":"10.00","nome":"ESCOLTA"}]'
+          && JSON.stringify(os.autXML) === JSON.stringify([TOMA]) && os.docs.length === 0 && os.veic.length === 0,
+          JSON.stringify({ p: os.percurso, r: os.docRef, s: os.seg, g: os.gtve, a: os.autXML }).slice(0, 300));
+        let rot = '';
+        try { rot = vm.runInContext("[cteRot('tpServ','6'),cteRot('tpServ','7'),cteRot('tpServ','8'),cteRot('tpFretamento','1'),cteRot('tpProp','2'),cteRot('respSeg','4'),cteRot('tpComp','1'),cteTipo({ehOS:true}),cteTipo({})].join('|')", sb); } catch (e) { rot = e.message; }
+        ok('CT-e OS: os códigos do leiaute do modelo 67 saem por extenso (tipo de serviço, fretamento, proprietário, seguro, GTV-e)',
+          rot === '6 - Transporte de pessoas|7 - Transporte de valores|8 - Excesso de bagagem|1 - Eventual|2 - Outros|4 - Emitente do CT-e|1 - Custódia|CT-e OS|CT-e', rot);
+
+        /* Exportação: todas as colunas do HCTE, as do CT-e OS no fim, as do 57 vazias. */
+        vm.runInContext('__OS=' + JSON.stringify(os) + ';__C57=' + JSON.stringify(c57), sb);
+        const lin = vm.runInContext('cteLinha(__OS)', sb), hcte = vm.runInContext('HCTE', sb);
+        ok('CT-e OS: a linha exportada tem exatamente as colunas do HCTE, na ordem',
+          Object.keys(lin).join('|') === hcte.join('|'), Object.keys(lin).length + ' x ' + hcte.length);
+        const espLin = {
+          Modelo: '67', Tipo_Documento: 'CT-e OS', Tipo_Servico: '6 - Transporte de pessoas', Tomador: '', CNPJ_Tomador: TOMA, IE_Tomador: '222222222222', Nome_Tomador: 'TOMADOR OS EXEMPLO LTDA',
+          UF_Percurso: 'MG', Descricao_Servico: 'FRETAMENTO EVENTUAL', Quantidade_Servico: '42.0000', Docs_Referenciados: 'OS-77 série 1 subsérie 2 | BP-e ' + chv('63', 5),
+          Seguro: '4 - Emitente do CT-e · SEGURADORA EXEMPLO · apólice AP-123', TAF: '123456789012', Registro_Estadual: '', Placa_Veiculo: 'ABC1D23', RENAVAM_Veiculo: '12345678901',
+          UF_Veiculo: 'SP', CNPJ_Proprietario: PROP, Nome_Proprietario: 'LOCADORA EXEMPLO SA', Tipo_Proprietario: '2 - Outros', Tipo_Fretamento: '1 - Eventual',
+          Data_Viagem: '2026-11-10T07:30:00-03:00', GTVe: chv('64', 7), CTe_Cancelado_Ref: chv('67', 8999), Valor_PIS: '9.75', Valor_COFINS: '45.00', Valor_IR: '22.50', Valor_INSS: '0.00',
+          Valor_CSLL: '15.00', Autorizados_XML: TOMA, Valor_Prestacao_Liquido: '1320.00', ICMS_Previsto: '',
+          CNPJ_Remetente: '', Nome_Destinatario: '', CNPJ_Expedidor: '', Nome_Recebedor: '', Qtd_Docs: '0', Docs_Vinculados: '', Chassis: '', Valor_Carga: '', RNTRC: '',
+        };
+        const difL = Object.keys(espLin).filter((k) => lin[k] !== espLin[k]);
+        ok('CT-e OS: as colunas novas trazem tipo, tomador, serviço, documentos, seguro, modal OS, fretamento, GTV-e e tributos federais; as do CT-e 57 ficam vazias',
+          difL.length === 0, difL.map((k) => k + '=' + JSON.stringify(lin[k])).join(' '));
+        const nov = hcte.slice(61);
+        ok('CT-e OS: as colunas novas vêm todas depois de Arquivo_Origem (a 61ª), sem repetir nome',
+          hcte[60] === 'Arquivo_Origem' && nov.length === 29 && nov[0] === 'Tipo_Documento' && nov[28] === 'ICMS_Previsto' && nov.includes('Placa_Veiculo') && new Set(hcte).size === hcte.length, nov.join(','));
+
+        /* ICMS previsto (gICMSPrevistoPagtoAntecip, opção do TImpOS): rótulo, valor na lista e no painel, e coluna própria. */
+        const prev = lerCte(osXml({ num: 9006, icmsPrev: true }));
+        vm.runInContext('__PREV=' + JSON.stringify(prev), sb);
+        const hPrev = vm.runInContext("(()=>{__DB.cte=[__PREV];__DB.nfe=[];CTE_UI.aberto=0;document.getElementById('filtro-cte').value='';renderCTe();return document.getElementById('cte-list').innerHTML;})()", sb);
+        const lPrev = vm.runInContext('cteLinha(__PREV)', sb);
+        const linPrev = (hPrev.match(/<tr data-i="0"[\s\S]*?<\/tr>/) || [''])[0];
+        ok('CT-e OS com ICMS previsto (pagamento antecipado): lido, rotulado, na lista (CST e ICMS não ficam em branco), no painel e exportado',
+          prev.ICMS_Grupo === 'gICMSPrevistoPagtoAntecip' && prev.ICMS_vICMSPrevisto === '35.00' && lPrev.ICMS_Previsto === '35.00' && lPrev.ICMS_Grupo === 'gICMSPrevistoPagtoAntecip'
+          && /<td>—<div class="cte-sub">ICMS previsto<\/div><\/td>/.test(linPrev) && /<td class="n">R\$ 35,00<\/td>/.test(linPrev)
+          && /gICMSPrevistoPagtoAntecip - ICMS previsto \(pagamento antecipado\)/.test(hPrev) && /ICMS previsto \(pagamento antecipado\)<\/dt><dd>R\$ 35,00/.test(hPrev),
+          JSON.stringify([prev.ICMS_Grupo, prev.ICMS_vICMSPrevisto, lPrev.ICMS_Previsto]) + ' ' + linPrev.slice(0, 300));
+
+        /* Impressão digital do CT-e 57: a tela (lista com o painel aberto) e os valores das 61
+           colunas antigas da exportação ficam fixos; qualquer mudança no 57 aparece aqui. */
+        const h57 = vm.runInContext("(()=>{__DB.cte=[__C57];__DB.nfe=[];CTE_UI.aberto=0;document.getElementById('filtro-cte').value='';renderCTe();return document.getElementById('cte-list').innerHTML;})()", sb);
+        const l57 = vm.runInContext('(()=>{const r=cteLinha(__C57);return JSON.stringify(HCTE.slice(0,61).map(h=>r[h]));})()', sb);
+        const dig = (s) => createHash('sha256').update(s).digest('hex');
+        ok('CT-e 57: a lista com o painel aberto tem a impressão digital fixada do CT-e 57', dig(h57) === 'eeafb76ca42a96ebcdc151367ea979fa226da71576ffd2fe24cc195542dad19e', dig(h57));
+        ok('CT-e 57: as 61 colunas antigas da exportação têm a impressão digital fixada dos valores do CT-e 57', dig(l57) === '147541d27bbb5cd080119ded850462f7b2f5ed8e31643d623bbcbc369051574d', dig(l57));
+        const l57n = vm.runInContext('cteLinha(__C57)', sb);
+        const depoisDoTipo = hcte.slice(hcte.indexOf('Tipo_Documento') + 1);
+        ok('CT-e 57 sem tomador "outros" nem autorizados: nas colunas novas, só o tipo do documento é preenchido',
+          l57n.Tipo_Documento === 'CT-e' && hcte.indexOf('Tipo_Documento') === 61 && depoisDoTipo.length === 28 && depoisDoTipo.every((h) => l57n[h] === ''),
+          depoisDoTipo.filter((h) => l57n[h] !== '').join(','));
+        /* No CT-e 57 com toma4 e autXML, as colunas do tomador e dos autorizados também valem, e o painel mostra os autorizados. */
+        const c57t = lerCte(xml57t);
+        vm.runInContext('__C57T=' + JSON.stringify(c57t), sb);
+        const l57t = vm.runInContext('cteLinha(__C57T)', sb);
+        const h57t = vm.runInContext("(()=>{__DB.cte=[__C57T];CTE_UI.aberto=0;renderCTe();return document.getElementById('cte-list').innerHTML;})()", sb);
+        ok('CT-e 57 com tomador "outros" e autorizado: CNPJ_Tomador, Nome_Tomador e Autorizados_XML preenchidos, e o painel mostra os autorizados',
+          !c57t.erro && c57t.ehOS === false && l57t.CNPJ_Tomador === TOMA && l57t.Nome_Tomador === 'TOMADOR OUTROS EXEMPLO' && l57t.Autorizados_XML === PROP && l57t.Tipo_Documento === 'CT-e'
+          && /<h5>Tomador \(outros\)<\/h5>/.test(h57t) && /<h5>Autorizados a obter o XML<\/h5><dl class="cte-kv"><dt>CNPJ\/CPF<\/dt><dd>00000000000191<\/dd>/.test(h57t),
+          JSON.stringify([l57t.CNPJ_Tomador, l57t.Nome_Tomador, l57t.Autorizados_XML, c57t.erro]));
+
+        /* Lista e painel do CT-e OS. */
+        const hOS = vm.runInContext("(()=>{__DB.cte=[__OS];CTE_UI.aberto=0;renderCTe();return document.getElementById('cte-list').innerHTML;})()", sb);
+        const linhaOS = (hOS.match(/<tr data-i="0"[\s\S]*?<\/tr>/) || [''])[0];
+        ok('CT-e OS na lista: a linha diz "CT-e OS", traz a rota, o serviço e a placa no lugar da carga, e os documentos referenciados no lugar das NF-e',
+          /série 1 · CT-e OS/.test(linhaOS) && /São Paulo\/SP → Salvador\/BA/.test(linhaOS) && /FRETAMENTO EVENTUAL<div class="cte-sub cte-mono">ABC1D23<\/div>/.test(linhaOS)
+          && /<span class="cte-pill" title="documentos referenciados">2 doc\. ref\.<\/span>/.test(linhaOS) && !/R\$ 0,00/.test(linhaOS), linhaOS.slice(0, 400));
+        const tit = [...hOS.matchAll(/<h5>([^<]*)<\/h5>/g)].map((m) => m[1]);
+        const tem = ['Tomador do serviço', 'Serviço', 'Percurso', 'Documentos referenciados (2)', 'Modal rodoviário OS', 'Seguro', 'GTV-e (1)', 'Tributos federais', 'Autorizados a obter o XML'];
+        const naoTem = ['Remetente', 'Destinatário', 'Expedidor', 'Recebedor', 'Carga', 'Modal rodoviário', 'Documentos anteriores', 'Veículos novos transportados'];
+        ok('CT-e OS no painel: aparecem tomador, serviço, percurso, documentos referenciados, modal rodoviário OS, seguro, GTV-e, tributos federais e autorizados',
+          tem.every((x) => tit.includes(x)), tem.filter((x) => !tit.includes(x)).join(',') + ' | ' + tit.join(','));
+        ok('CT-e OS no painel: remetente, destinatário, expedidor, recebedor, carga, NF-e vinculadas, modal do 57 e veículos novos não aparecem',
+          tit.length > 0 && naoTem.every((x) => !tit.includes(x)) && !tit.some((x) => /^Documentos vinculados/.test(x)), tit.join(','));
+        ok('CT-e OS no painel: o cabeçalho diz "CT-e OS" e os valores do modelo 67 aparecem por extenso',
+          /<b>CT-e OS 9001 <span class="cte-sub">série 1<\/span><\/b>/.test(hOS) && /aria-label="CT-e OS 9001"/.test(hOS) && /6 - Transporte de pessoas/.test(hOS)
+          && /1 - Eventual/.test(hOS) && /10\/11\/2026 07:30/.test(hOS) && /123456789012/.test(hOS) && /LOCADORA EXEMPLO SA/.test(hOS) && /SP → MG → BA/.test(hOS)
+          && /OS-77/.test(hOS) && /BP-e/.test(hOS) && /AP-123/.test(hOS) && /6 - Outros · ESCOLTA · R\$ 10,00/.test(hOS) && /R\$ 9,75/.test(hOS) && !/<dt>Retira<\/dt>/.test(hOS)
+          && hOS.includes('<dt>CT-e cancelado referenciado</dt><dd>' + chv('67', 8999) + '</dd>') && /<dt>Valor líquido \(sem tributos\)<\/dt><dd>R\$ 1\.320,00<\/dd>/.test(hOS),
+          hOS.length + ' caracteres');
+        /* Grupo de modal que o leitor não detalha: a linha "Outro modal" sai no CT-e OS e no CT-e 57. */
+        const outro = vm.runInContext("(()=>{const r=[];for(const c of [__OS,__C57]){__DB.cte=[Object.assign({},c,{outroModal:'aereoX'})];CTE_UI.aberto=0;renderCTe();r.push(document.getElementById('cte-list').innerHTML);}return r;})()", sb);
+        ok('CT-e: o grupo de modal não detalhado aparece como "Outro modal" no painel do CT-e OS e do CT-e 57',
+          outro.every((h) => h.includes('<dt>Outro modal</dt><dd>aereoX <span class="cte-nc">(detalhe não mostrado)</span></dd>')), outro.map((h) => h.length).join(','));
+        ok('CT-e OS no painel: quantidade inteira sem casas forçadas e o documento do proprietário em fonte de código, como nos outros blocos',
+          /<dt>Quantidade<\/dt><dd>42<\/dd>/.test(hOS) && /<dt>CNPJ\/CPF do proprietário<\/dt><dd><span class="cte-mono">00000000000191<\/span><\/dd>/.test(hOS), hOS.length + ' caracteres');
+        /* Chave de 44 numa linha (rola na horizontal, não quebra no meio) e o botão copiar diz qual chave. */
+        const chaveEm = (h, ch, doc) => h.includes('<div class="cte-mono"><span class="cte-ch">' + ch + '</span> <button type="button" class="cte-copiar" data-copiar="' + ch + '" aria-label="Copiar chave ' + doc + '">');
+        ok('CT-e: as chaves (CT-e, CT-e OS, NF-e, BP-e, GTV-e) ficam numa linha e o botão copiar diz de qual documento é a chave',
+          chaveEm(hOS, chv('67', 9001), 'do CT-e OS') && chaveEm(hOS, chv('63', 5), 'do BP-e') && chaveEm(hOS, chv('64', 7), 'do GTV-e')
+          && chaveEm(h57, chv('57', 40), 'do CT-e') && chaveEm(h57, chv('55', 100), 'da NF-e')
+          && /\.cte-ch\{[^}]*overflow-x:auto[^}]*white-space:nowrap[^}]*word-break:normal/.test(html) && /\.cte-mono\{font-family:var\(--font-mono\)/.test(html), 'marcação ou CSS da chave');
+        /* O contador do lote soma os documentos referenciados dos CT-e OS. */
+        const cont = vm.runInContext("(()=>{__DB.cte=[__C57,__OS];CTE_UI.aberto=-1;renderCTe();const a=document.getElementById('cte-count').textContent;__DB.cte=[__C57];renderCTe();return a+' || '+document.getElementById('cte-count').textContent;})()", sb);
+        ok('CT-e OS: o contador do lote mostra os documentos vinculados e os referenciados (só os vinculados quando não há CT-e OS)',
+          cont === '2 de 2 CT-e · 1 documentos vinculados · 2 referenciados || 1 de 1 CT-e · 1 documentos vinculados', cont);
+        /* A busca acha o CT-e OS pelos campos do modelo 67 (cada termo só existe naquele campo). */
+        const termos = { servico: 'fretamento eventual', placa: 'abc1d23', docRef: 'os-77', bpe: chv('63', 5), gtve: chv('64', 7), proprietario: 'locadora', docProp: PROP, tomador: 'tomador os' };
+        const achou = vm.runInContext('(()=>{__DB.cte=[__C57,__OS];CTE_UI.aberto=-1;const o={};for(const [k,v] of Object.entries(' + JSON.stringify(termos) + ')){'
+          + "document.getElementById('filtro-cte').value=v;renderCTe();o[k]=(document.getElementById('cte-list').innerHTML.match(/<tr data-i=\"1\"/g)||[]).length;}"
+          + "document.getElementById('filtro-cte').value='';renderCTe();return o;})()", sb);
+        ok('CT-e OS: a busca acha pelo serviço, placa, documento referenciado, chave do BP-e, chave do GTV-e, proprietário (nome e documento) e tomador',
+          Object.keys(termos).every((k) => achou[k] === 1), JSON.stringify(achou));
+
+        /* "Para conferir": a conta de NF-e vinculada ignora o CT-e OS (que não tem NF-e) e a
+           numeração do modelo 67 é contada à parte da do 57 (séries independentes). */
+        const nfA = chv('55', 100);
+        /* NF-e de outro CNPJ e remetente igual ao emitente postos à mão no registro do CT-e OS:
+           as duas conferências do CT-e 57 não valem para ele. */
+        const nfOutro = '35' + '2610' + '11222334000126' + '55' + '001' + '000000100' + '1' + '00000001' + '1';
+        const osNF = Object.assign({}, os, { docs: [{ tipo: 'NF-e', chave: nfOutro }], rem: { doc: EMIT } });
+        const alOS = vm.runInContext('cteAlertas(' + JSON.stringify([osNF]) + ',new Set())', sb);
+        ok('CT-e OS: o quadro "Para conferir" não aponta NF-e vinculada nem remetente igual à transportadora para o CT-e OS',
+          !alOS.some((a) => /NF-e|própria transportadora/.test(a)), alOS.join(' || '));
+        /* Emitente e série vêm do XML: com "|" no texto, a chave da numeração não pode juntar
+           emitente "X|1" série "1" com emitente "X" série "1|1". */
+        const p1 = Object.assign({}, c57, { Numero: '10', Chave_CTe: 'P1', emit: { doc: 'X|1' }, Serie: '1', docs: [] });
+        const p2 = Object.assign({}, c57, { Numero: '12', Chave_CTe: 'P2', emit: { doc: 'X' }, Serie: '1|1', docs: [] });
+        const alPipe = vm.runInContext('cteAlertas(' + JSON.stringify([p1, p2]) + ',new Set())', sb).join(' || ');
+        ok('CT-e: a numeração de emitentes e séries diferentes não se mistura, mesmo com "|" no texto do XML',
+          !/faltam 11/.test(alPipe), alPipe);
+        const osSem = Object.assign({}, os, { cStat: '', Chave_CTe: 'OSSEM' });
+        const alSem = vm.runInContext('cteAlertas(' + JSON.stringify([osSem, Object.assign({}, c57, { cStat: '' })]) + ',new Set([' + JSON.stringify(nfA) + ']))', sb).join(' || ');
+        ok('CT-e OS: no aviso de CT-e sem autorização, o número do CT-e OS vem marcado (OS)',
+          /2 CT-e sem autorização de uso: 9001 \(OS\) \(Sem protocolo\), 40 \(Sem protocolo\)\./.test(alSem), alSem);
+        const c57b = Object.assign({}, c57, { Numero: '9000' });
+        const os3 = Object.assign({}, os, { Numero: '9003', Chave_CTe: 'OS3' });
+        const alSeq = vm.runInContext('cteAlertas(' + JSON.stringify([c57b, os, os3]) + ',new Set([' + JSON.stringify(nfA) + ']))', sb).join(' || ');
+        ok('CT-e OS: a numeração do CT-e OS é conferida separada da do CT-e 57 (sem salto falso entre os modelos)',
+          /série 1 do CT-e OS\): faltam 9002 /.test(alSeq) && !/faltam 9001/.test(alSeq) && !/série 1\): faltam/.test(alSeq), alSeq);
+
+        /* XSS: texto hostil nos campos só do CT-e OS (serviço, tomador, seguro, placa, observação) fica texto. */
+        const mau = lerCte(osXml({ num: 9002, mal: MAL }));
+        vm.runInContext('__MAU=' + JSON.stringify(mau), sb);
+        const hMau = vm.runInContext("(()=>{__DB.cte=[__MAU];CTE_UI.aberto=0;renderCTe();return document.getElementById('cte-list').innerHTML;})()", sb);
+        ok('CT-e OS: texto hostil nos campos do modelo 67 aparece escapado na lista e no painel',
+          !mau.erro && mau.xDescServ === MAL && mau.placa === MAL && !/<img/i.test(hMau) && (hMau.match(/&lt;img src=x onerror=/g) || []).length >= 7,
+          mau.erro || (hMau.match(/&lt;img src=x onerror=/g) || []).length + ' ocorrência(s) escapada(s)');
+        vm.runInContext('__DB.cte=[];CTE_UI.aberto=-1', sb);
+      }
+      /* CT-e OS malformado: o mesmo erro de XML inválido do resto do leitor. */
+      const quebrado = osXml({ num: 9004 }).replace('</infServico>', '');
+      const errQ = lerCte(quebrado);
+      ok('CT-e OS malformado: detectado como CT-e e recusado com o erro de XML inválido',
+        vm.runInContext('detectType(' + JSON.stringify(quebrado) + ')', sb) === 'cte' && !!errQ.erro && /XML inválido ou malformado/.test(errQ.erro), JSON.stringify(errQ).slice(0, 160));
     }
     ok('o extrator lê o grupo veicProd de dentro de <prod>',
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));
