@@ -460,17 +460,25 @@ ok('theme-btn tem aria-pressed estático no HTML', /id="theme-btn"[^>]*aria-pres
 ok('dropzone de XML é alcançável por teclado', /id="upload-area" role="button" tabindex="0"/.test(html));
 ok('dropzone de PDF é alcançável por teclado', /id="pdfiso-upload" role="button" tabindex="0"/.test(html));
 /* DANFE completo: o header da NF-e nasce com aria-expanded do estado (nota aberta
-   continua aberta ao redesenhar), e o toggleNota mantém o atributo. */
-ok('header de nota é botão acessível', (html.match(/class="header" role="button" tabindex="0" aria-expanded="/g) || []).length >= 2);
+   continua aberta ao redesenhar), e o toggleNota mantém o atributo. A NFS-e deixou
+   de ser card (virou lista com painel), então resta o header da NF-e. */
+ok('header de nota é botão acessível', (html.match(/class="header" role="button" tabindex="0" aria-expanded="/g) || []).length >= 1);
 ok('o toggleNota atualiza aria-expanded', /function toggleNota\(el\)\{[\s\S]{0,300}?el\.setAttribute\('aria-expanded'/.test(html));
-/* DANFE completo: os det-title que restam são os do NFS-e (CSRF e IBS/CBS). */
-ok('det-title é botão acessível', (html.match(/class="det-title" role="button" tabindex="0" aria-expanded="false"/g) || []).length >= 2);
+/* Os det-title eram os do card de NFS-e (CSRF e IBS/CBS); a NFS-e virou lista com
+   painel, e a linha é que precisa ser alcançável por teclado (Tab + Enter/Espaço). */
+ok('a linha da NFS-e é alcançável por teclado e abre com Enter/Espaço',
+  /<tr data-i="\$\{i\}" tabindex="0"/.test(html.slice(html.indexOf('function renderNFSe('), html.indexOf('// ═══ EVENT DELEGATION')))
+  && /if\(tr\)\{e\.preventDefault\(\);nfseAbre\(\+tr\.dataset\.i,/.test(html));
 ok('Enter/Espaço dispara o toggle (nota)', /addEventListener\('keydown'[\s\S]{0,600}?toggleNota/.test(html));
-ok('Enter/Espaço dispara o toggle (det)', /addEventListener\('keydown'[\s\S]{0,600}?toggleDet/.test(html));
+/* O Enter/Espaço da linha e a marca da linha aberta (aria-current) são EXECUTADOS no
+   grupo 15 ("NFS-e na tela"); aqui fica só a garantia de que o código do card antigo
+   (toggleDet, .det-body.open e a delegação na #nfse-list) não voltou. */
+ok('o código do card antigo da NFS-e saiu (toggleDet, .det-body.open, delegação de det-title)',
+  !/toggleDet/.test(html) && !/\.det-body\.open/.test(html) && !/\['nfe-list','nfse-list'\]/.test(html)
+  && !/'\.det-title'/.test(html.slice(html.indexOf('// ═══ EVENT DELEGATION'), html.indexOf('// ═══ CT-e (modelo 57)'))));
 ok('Enter/Espaço abre a dropzone', /upload-area'\)\.addEventListener\('keydown'/.test(html));
 ok('live region do PDF é container permanente no HTML', /id="pdfiso-avisos" role="status" aria-live="polite"/.test(html));
 ok('a live region recebe conteúdo fora do innerHTML da tabela', /getElementById\('pdfiso-avisos'\)\.innerHTML=aviso/.test(html));
-ok('toggleDet sincroniza aria-expanded', /setAttribute\('aria-expanded'/.test(html));
 ok('prefers-reduced-motion presente', /@media \(prefers-reduced-motion:reduce\)/.test(html));
 ok('barra de progresso não reintroduz transição no reduced-motion', /transition:none!important/.test(html));
 
@@ -779,14 +787,32 @@ ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe)
   {
     const readme = fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8');
     const painel = fs.readFileSync(path.join(RAIZ, 'painel-gerencial.html'), 'utf8');
-    ok('README e painel não citam mais 93 como total de campos do XML',
-      !/XML (lê|extrai) \(?93\b/.test(readme + painel) && !/93 \+ 56/.test(painel));
+    ok('README e painel não citam mais 93 nem 56 como total de campos do XML',
+      !/XML (lê|extrai) \(?93\b/.test(readme + painel) && !/\+ 56\b/.test(painel));
+    /* O KPI "Schema coberto" é conferido contra a contagem real das duas listas: um
+       número escrito à mão envelhece sem ninguém ver quando uma coluna entra. */
+    const kpi = /Schema coberto<\/span><\/div>\s*<div class="v">(\d+) \+ (\d+)<\/div>/.exec(painel);
+    ok('o KPI "Schema coberto" do painel bate com HNFE + HNFSE do código',
+      !!kpi && +kpi[1] === nHnfe && +kpi[2] === nHnfse, kpi ? kpi[1] + ' + ' + kpi[2] + ' (código: ' + nHnfe + ' + ' + nHnfse + ')' : 'KPI não encontrado');
   }
   ok('as 24 colunas do veicProd vêm depois, todas Veic_* e com o chassi',
     cols.slice(93).length === 24 && cols.slice(93).every((c) => c.startsWith('Veic_')) && cols.includes('Veic_Chassi'),
     cols.slice(93).join(','));
 }
-ok('HNFSE tem 56 campos', nHnfse === 56, 'achou ' + nHnfse);
+/* 56 colunas originais + 65 da leitura completa da NFS-e, anexadas no FIM. */
+ok('HNFSE tem 121 campos (56 + 65 da leitura completa)', nHnfse === 121, 'achou ' + nHnfse);
+{
+  const cols = (hnfse.match(/'[^']+'/g) || []).map((s) => s.slice(1, -1));
+  /* Quem lê a planilha da NFS-e por posição não pode ver coluna andar: as 56 antigas
+     continuam iguais e na mesma ordem (impressão digital da lista), terminando em
+     Arquivo_Origem; as novas vêm todas depois, sem repetir nenhum nome. */
+  ok('as 56 colunas antigas da NFS-e estão idênticas e na mesma ordem (impressão digital da lista)',
+    createHash('sha256').update(cols.slice(0, 56).join(',')).digest('hex') === '7e6da78c2e259e4e57827bdc4ed1987054dc4d0b67740aff093f9c394f604bb2'
+    && cols[55] === 'Arquivo_Origem', 'col56=' + cols[55]);
+  ok('as colunas novas da NFS-e vêm depois de Arquivo_Origem e nenhum nome se repete',
+    new Set(cols).size === cols.length && cols.indexOf('Descricao_Completa') > 55 && cols.indexOf('Cod_Mun_Tomador') > 55, cols.slice(56, 60).join(','));
+  ok('README diz 121 colunas NFS-e (bate com o código)', /121 NFS-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
+}
 ok('README diz 117 colunas NF-e (bate com o código)', /117 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 ok('README não fala 423 campos', !/423/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 ok('todo var(--x) usado está definido em :root',
@@ -3197,7 +3223,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
      o gate é para o dia em que alguém plugar. */
     ok('nenhum export usa dataBr (escapar no CSV/XLSX mudaria o arquivo da cliente)',
       !/function export(CSV|XLSX)\(tipo\)\{[\s\S]{0,900}?\bdataBr\(/.test(html)
-      && (html.match(/dataBr\(/g) || []).length === 5, /* 1 definição + 4 consumidores de render (o DANFE usa dnfData, que também escapa) */
+      && (html.match(/dataBr\(/g) || []).length === 2, /* 1 definição + 1 consumidor de render (o header do NF-e; o DANFE usa dnfData e a lista da NFS-e esc(dataHoraBr), que também escapam) */
       (html.match(/dataBr\(/g) || []).length + ' ocorrência(s) de dataBr');
     /* dataBr com data legítima: escapa não pode virar "escapa a data também". */
     ok('dataBr devolve a data, não a entidade',
@@ -3414,7 +3440,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         ok('nota fechada não desenha o DANFE (só o header); nota aberta desenha',
           !erro && /class="nota-card"/.test(r.fechada) && !/dnf-prod/.test(r.fechada) && /dnf-prod/.test(r.aberta), erro);
         ok('abrir a nota pelo header (clique e teclado) desenha o corpo',
-          (html.match(/toggleNota\(h\);if\(id==='nfe-list'\)dnfGaranteCorpo\(h\);/g) || []).length === 2 && !/dnfSinc/.test(html));
+          (html.match(/toggleNota\(h\);dnfGaranteCorpo\(h\);/g) || []).length === 2 && !/dnfSinc/.test(html));
         /* Cobertura por construção: todo campo de imposto do item está em DNF_TRIB... */
         const trib = vm.runInContext('JSON.stringify(DNF_TRIB)', sb);
         const imp = vm.runInContext("DNF_COLS.filter(g=>['ICMS','IPI','PIS','COFINS','IBS / CBS'].includes(g[0])).reduce((a,g)=>a.concat(g[1].map(c=>c[0])),[])", sb);
@@ -3523,6 +3549,646 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
       ok('o botão copiar só aparece para chave de 44 dígitos',
         vm.runInContext("cteCopiar('12345')+'|'+(cteCopiar('1'.repeat(44)).includes('data-copiar'))", sb) === '|true');
       vm.runInContext('__DB.cte=[];CTE_UI.aberto=-1', sb);
+    }
+    /* ── NFS-e: leitura completa, conferência e painel ─────────────────────────
+       O teste não tem navegador: um DOMParser mínimo (só o que os extratores usam:
+       seletor de descendente, atributo, texto, filhos) lê o XML sintético dentro do
+       mesmo sandbox do render. A chave de 50 posições é montada em tempo de
+       execução; os CNPJs são os sintéticos declarados na lista do gate de privacidade. */
+    {
+      class El {
+        constructor(tag, attrs, pai) { this.tagName = tag; this.attrs = attrs; this.children = []; this.pai = pai; this.txt = ''; }
+        get textContent() { return this.txt + this.children.map((c) => c.textContent).join(''); }
+        getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; }
+        todos() { const out = []; const anda = (e) => { for (const c of e.children) { out.push(c); anda(c); } }; anda(this); return out; }
+        querySelectorAll(sel) {
+          const partes = sel.trim().split(/\s+/);
+          return this.todos().filter((e) => {
+            if (e.tagName !== partes[partes.length - 1]) return false;
+            let k = partes.length - 2, a = e.pai;
+            while (k >= 0 && a) { if (a.tagName === partes[k]) k--; a = a.pai; }
+            return k < 0;
+          });
+        }
+        querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+      }
+      const ent = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+      class MiniDOMParser {
+        parseFromString(xml) {
+          const raiz = new El('#doc', {}, null);
+          let cur = raiz;
+          for (const m of xml.matchAll(/<\?[^>]*>|<\/?[^>]+>|[^<]+/g)) {
+            const tk = m[0];
+            if (tk.startsWith('<?')) continue;
+            if (tk.startsWith('</')) { cur = cur.pai; continue; }
+            if (tk.startsWith('<')) {
+              const auto = tk.endsWith('/>');
+              const corpo = tk.slice(1, auto ? -2 : -1).trim();
+              const tag = corpo.split(/\s/)[0];
+              const attrs = {};
+              for (const a of corpo.matchAll(/([\w:.-]+)="([^"]*)"/g)) attrs[a[1]] = ent(a[2]);
+              const e = new El(tag, attrs, cur);
+              cur.children.push(e);
+              if (!auto) cur = e;
+              continue;
+            }
+            cur.txt += ent(tk);
+          }
+          return { documentElement: raiz.children[0], querySelector: (s) => raiz.querySelector(s) };
+        }
+      }
+      sb.DOMParser = MiniDOMParser;
+      const X = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const tg = (nome, filhos) => '<' + nome + '>' + filhos + '</' + nome + '>';
+      const PREST = '11222333000181', TOMA = '12345678000195', INTERM = '00000000000191';
+      /* Chave da NFS-e: município (7) + ambiente + tipo de inscrição + CNPJ (14) + número (13) + AAMM + código (9) + DV. */
+      const chave = (num) => '3509502' + '2' + '2' + PREST + String(num).padStart(13, '0') + '2611' + String(num * 7 + 13).padStart(9, '0') + '7';
+      const DESC = Array.from({ length: 12 }, (_, i) => 'Linha ' + (i + 1) + ' da discriminação do serviço prestado conforme contrato').join('\n');
+      const MAL = '<img src=x onerror="window.__XSS=1">';
+      const nfseXml = (o) => '<?xml version="1.0" encoding="UTF-8"?><NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">'
+        + '<infNFSe Id="NFS' + chave(o.num) + '">'
+        + tg('xLocEmi', 'Campinas') + tg('xLocPrestacao', 'Barueri') + tg('nNFSe', String(o.num)) + tg('cLocIncid', '3505708') + tg('xLocIncid', 'Barueri')
+        + tg('xTribNac', 'Suporte técnico em informática') + tg('xTribMun', 'Suporte técnico') + tg('xNBS', 'Serviços de suporte em TI') + tg('verAplic', 'SefinNac_1.4.0')
+        + tg('ambGer', '2') + tg('tpEmis', '1') + tg('procEmi', '1') + tg('cStat', '100') + tg('dhProc', '2026-11-03T10:42:00-03:00') + tg('nDFSe', '880' + o.num)
+        + tg('emit', tg('CNPJ', PREST) + tg('IM', '98765') + tg('xNome', 'ALFA SERVICOS DE EXEMPLO LTDA') + tg('xFant', 'Alfa Exemplo')
+          + tg('enderNac', tg('xLgr', 'Rua das Flores') + tg('nro', '100') + tg('xBairro', 'Centro') + tg('cMun', '3509502') + tg('UF', 'SP') + tg('CEP', '13010000'))
+          + tg('fone', '1930000000') + tg('email', 'fiscal@alfa.exemplo'))
+        + tg('valores', tg('vCalcDR', '50.00') + (o.semVBC ? '' : tg('vBC', '9850.00')) + tg('pAliqAplic', '2.00') + tg('vISSQN', '197.00') + tg('vTotalRet', o.vTotalRet || '1012.25') + (o.vLiq == null ? '' : tg('vLiq', o.vLiq)))
+        + (o.semDPS ? '' : tg('DPS', '<infDPS Id="DPS1">' + tg('tpAmb', '1') + tg('dhEmi', '2026-11-03T10:15:00-03:00') + tg('verAplic', 'ERP 2.0') + tg('serie', '900') + tg('nDPS', '5' + o.num)
+          + tg('dCompet', o.compet || '2026-11-03') + tg('tpEmit', '1') + tg('cLocEmi', '3509502')
+          + tg('subst', tg('chSubstda', chave(o.num - 1)) + tg('cMotivo', '99') + tg('xMotivo', 'Erro no valor do contrato'))
+          + tg('prest', tg('CNPJ', PREST) + tg('IM', '98765') + tg('fone', '1930000000') + tg('regTrib', tg('opSimpNac', o.sn || '1') + tg('regApTribSN', '1') + tg('regEspTrib', '0')))
+          + tg('toma', tg('CNPJ', TOMA) + tg('IM', '7777') + tg('xNome', 'TOMADOR DE EXEMPLO LTDA')
+            + tg('end', tg('endNac', tg('cMun', o.munToma) + tg('CEP', '01000000')) + tg('xLgr', 'Av. Exemplo') + tg('nro', '123') + tg('xBairro', 'Bela Vista'))
+            + tg('fone', '1133334444') + tg('email', 'fiscal@tomador.exemplo'))
+          + tg('interm', tg('CNPJ', INTERM) + tg('xNome', 'INTERMEDIARIO DE EXEMPLO SA') + tg('end', tg('endNac', tg('cMun', '3505708') + tg('CEP', '06454000')) + tg('xLgr', 'Al. Exemplo') + tg('nro', '500')))
+          + tg('serv', tg('locPrest', tg('cLocPrestacao', '3505708')) + tg('cServ', tg('cTribNac', '010701') + tg('cTribMun', '107') + tg('xDescServ', X(DESC)) + tg('cNBS', '115013000'))
+            + tg('obra', tg('cObra', 'OB-77')) + tg('infoCompl', tg('idDocTec', 'DT-1') + tg('docRef', 'Pedido 42') + tg('xInfComp', X(o.inf || 'Contrato de exemplo'))))
+          + tg('valores', tg('vServPrest', tg('vReceb', '0.00') + tg('vServ', '10000.00')) + tg('vDescCondIncond', tg('vDescIncond', '100.00') + tg('vDescCond', '0.00'))
+            + tg('vDedRed', tg('vDR', '50.00'))
+            + tg('trib', tg('tribMun', tg('tribISSQN', o.trib || '1') + tg('tpImunidade', '') + tg('exigSusp', tg('tpSusp', '1') + tg('nProcesso', 'PROC-9')) + tg('pAliq', o.aliq || '2.00') + tg('tpRetISSQN', o.ret))
+              + tg('tribFed', tg('piscofins', tg('CST', '01') + tg('vBCPisCofins', '10000.00') + tg('pAliqPis', '0.65') + tg('pAliqCofins', '3.00') + tg('vPis', '65.00') + tg('vCofins', '300.00') + tg('tpRetPisCofins', o.retPC || '1'))
+                + tg('vRetCP', '110.00') + tg('vRetIRRF', '150.00') + tg('vRetCSLL', '100.00'))
+              + tg('totTrib', tg('vTotTrib', tg('vTotTribFed', '1345.00') + tg('vTotTribEst', '0.00') + tg('vTotTribMun', '200.00')))))
+          + tg('IBSCBS', tg('finNFSe', '0') + tg('cIndOp', '020101') + tg('valores', tg('trib', tg('gIBSCBS', tg('CST', '000') + tg('cClassTrib', '000001'))))) + '</infDPS>'))
+        + '</infNFSe></NFSe>';
+      /* ISS não retido: 10000 − 100 (desconto) − 65 − 300 − 110 − 150 − 100 = 9175,00 */
+      const ler = (xml) => {
+        vm.runInContext('__X=' + JSON.stringify(xml), sb);
+        return vm.runInContext('(()=>{const r=extrairNFSe("a.xml",__X);return r.ok?r.notas[0]:r;})()', sb);
+      };
+      let d = null, d2 = null, erro = '';
+      try {
+        d = ler(nfseXml({ num: 1042, munToma: '3509502', ret: '1', vLiq: '9175.00' }));
+        d2 = ler(nfseXml({ num: 1043, munToma: '4106902', ret: '2', vLiq: '8978.00', inf: MAL }));
+      } catch (e) { erro = e.message; }
+      ok('NFS-e Nacional: o leitor sobe o XML sintético (DOMParser mínimo no sandbox)', !erro && d && d.Numero_NFSe === '1042', erro || JSON.stringify(d).slice(0, 160));
+      if (!erro && d) {
+        const hnfseCols = vm.runInContext('HNFSE', sb);
+        ok('NFS-e: o registro lido tem todas as colunas do HNFSE (nenhuma fica de fora da exportação)',
+          hnfseCols.every((c) => Object.prototype.hasOwnProperty.call(d, c)), hnfseCols.filter((c) => !(c in d)).join(','));
+        const esperado = {
+          Chave_NFSe: chave(1042), Numero_DFSe: '8801042', Data_Processamento: '2026-11-03T10:42:00-03:00', cStat_NFSe: '100', Ambiente: '1', Tipo_Emitente: '1',
+          Cod_Local_Emissao: '3509502', Local_Emissao: 'Campinas', Versao_Aplicativo: 'SefinNac_1.4.0', Numero_DPS: '51042', Serie_RPS: '900', Tipo_Emissao: '1',
+          Chave_Substituida: chave(1041), Motivo_Substituicao: '99', Desc_Motivo_Substituicao: 'Erro no valor do contrato',
+          cTribNac: '010701', Cod_Servico_Mun: '107', Desc_Servico_Mun: 'Suporte técnico', Cod_Local_Prestacao: '3505708', Municipio_Prestacao: 'Barueri', Obra: 'obra OB-77',
+          Valor_Bruto: '10000.00', Valor_Recebido: '0.00', Desc_Incondicionado: '100.00', Desc_Condicionado: '0.00', Deducoes_Reducoes: '50.00', Valor_Total_Retido: '1012.25', Valor_Liquido: '9175.00',
+          Trib_ISSQN: '1', Cod_Mun_Incidencia: '3505708', Mun_Incidencia: 'Barueri', Exig_Suspensa: '1', Processo_Suspensao: 'PROC-9', Regime_Especial: '0', Apuracao_SN: '1',
+          PISCOFINS_CST: '01', Aliq_PIS: '0.65', Aliq_COFINS: '3.00', Ret_PISCOFINS: '1', Valor_PIS: '65.00', Valor_COFINS: '300.00', Valor_INSS: '110.00', Valor_IRRF: '150.00', Valor_CSLL: '100.00',
+          IBSCBS_CST: '000', cClassTrib: '000001', cIndOp: '020101', vTotTrib_Fed: '1345.00', vTotTrib_Mun: '200.00',
+          Endereco_Prestador: 'Rua das Flores, 100, Centro · CEP 13010000', Cod_Mun_Prestador: '3509502', Fone_Prestador: '1930000000', UF_Prestador: 'SP',
+          Endereco_Tomador: 'Av. Exemplo, 123, Bela Vista · CEP 01000000', Fone_Tomador: '1133334444',
+          CNPJ_Intermediario: INTERM, Nome_Intermediario: 'INTERMEDIARIO DE EXEMPLO SA', Cod_Mun_Intermediario: '3505708', Mun_Intermediario: 'Barueri',
+          Info_Complementar: 'Contrato de exemplo', Doc_Tecnico: 'DT-1', Doc_Referencia: 'Pedido 42',
+        };
+        const difere = Object.keys(esperado).filter((k) => d[k] !== esperado[k]);
+        ok('NFS-e Nacional: o leitor lê identificação, DPS, serviço, valores, ISS, PIS/COFINS, IBS/CBS, aproximados, partes e complemento',
+          difere.length === 0, difere.map((k) => k + '=' + JSON.stringify(d[k]) + ' (esperado ' + JSON.stringify(esperado[k]) + ')').join(' | '));
+        ok('NFS-e: a chave sai sem espaço nenhum, com as 50 posições', /^\d{50}$/.test(d.Chave_NFSe), d.Chave_NFSe);
+        ok('NFS-e: a discriminação inteira é guardada (com as quebras de linha); a coluna antiga continua em 200',
+          d.Descricao_Completa === DESC && DESC.length > 600 && d.xDescServ.length === 200 && d.Discriminacao.length === 200, d.Descricao_Completa.length + '/' + d.xDescServ.length);
+        ok('NFS-e: o município do tomador é o do endereço dele, não o local da prestação',
+          d.Mun_Tomador === 'Campinas' && d.UF_Tomador === 'SP' && d.Cod_Mun_Tomador === '3509502' && d.Municipio_Prestacao === 'Barueri'
+          && d2.Mun_Tomador === '' && d2.UF_Tomador === 'PR' && d2.Cod_Mun_Tomador === '4106902',
+          [d.Mun_Tomador, d.UF_Tomador, d2.Mun_Tomador, d2.UF_Tomador].join('|'));
+        const ret = vm.runInContext("['1','2','3','9','','constructor'].map(c=>nfseCod('tpRetISSQN',c)).map(x=>x.h+(x.z?'#z':''))", sb);
+        ok('tpRetISSQN sai por extenso, com o código ao lado; código fora da tabela sai cru, vazio sai —',
+          /^Não retido <span class="nfse-cod">\(1\)<\/span>$/.test(ret[0]) && /^Retido pelo tomador/.test(ret[1]) && /^Retido pelo intermediário/.test(ret[2])
+          && ret[3] === '9' && ret[4] === '—#z' && ret[5] === 'constructor', ret.join(' | '));
+        ok('opSimpNac, tribISSQN e regEspTrib também saem por extenso',
+          vm.runInContext("[nfseCod('opSimpNac','3').h,nfseCod('tribISSQN','3').h,nfseCod('regEspTrib','6').h].join('|')", sb)
+          === 'Optante ME/EPP <span class="nfse-cod">(3)</span>|Exportação de serviço <span class="nfse-cod">(3)</span>|Sociedade de profissionais <span class="nfse-cod">(6)</span>');
+
+        /* O painel: os blocos na ordem pedida, a chave inteira numa linha, a descrição inteira. */
+        let hp = '', hv = '';
+        try {
+          vm.runInContext('__DB.nfse=' + JSON.stringify([d, d2]) + ';NFSE_UI.aberto=0;NFSE_UI.conf=false;renderNFSe();', sb);
+          hp = vm.runInContext("document.getElementById('nfse-list').innerHTML", sb);
+          vm.runInContext('NFSE_UI.aberto=1;renderNFSe();', sb);
+          hv = vm.runInContext("document.getElementById('nfse-list').innerHTML", sb);
+        } catch (e) { hp = 'ERRO: ' + e.message; }
+        const BLOCOS = ['Tributos', 'Valores', 'Identificação', 'DPS (declaração do prestador)', 'Serviço', 'ISS', 'PIS / COFINS', 'IBS / CBS',
+          'Tributos aproximados (Lei 12.741)', 'Prestador', 'Tomador', 'Intermediário', 'Informações complementares'];
+        const pos = BLOCOS.map((b) => hp.indexOf('<h5 class="dnf-sub">' + b + '</h5>'));
+        ok('painel da NFS-e: os 13 blocos aparecem, na ordem pedida', pos.every((p, i) => p > 0 && (i === 0 || p > pos[i - 1])), BLOCOS.filter((b, i) => pos[i] < 0).join(',') || pos.join(','));
+        ok('painel da NFS-e: a chave aparece inteira, sem espaço, num span de uma linha só',
+          hp.includes('<span class="nfse-ch">' + chave(1042) + '</span>') && /\.nfse-ch\{[^}]*white-space:nowrap/.test(html), hp.slice(0, 120));
+        const TRIB = ['ISS', 'PIS', 'COFINS', 'CSLL', 'IRRF', 'INSS (CP)', 'IBS UF', 'IBS município', 'CBS'];
+        const tab = (hp.match(/<table class="nfse-trib">[\s\S]*?<\/table>/) || [''])[0];
+        ok('painel da NFS-e: a tabela de tributos tem Tributo | CST | Base | Alíquota | Valor | Detalhes, uma linha por tributo e o total retido',
+          /<th>Tributo<\/th><th>CST<\/th><th class="n">Base<\/th><th class="n">Alíquota<\/th><th class="n">Valor<\/th><th>Detalhes<\/th>/.test(tab)
+          && TRIB.every((x) => tab.includes('<td class="nome">' + x + '</td>')) && /<tr class="tot"><td class="nome">Total retido<\/td>[\s\S]*?<td class="n">725,00<\/td>/.test(tab)
+          && /Retido <b>não<\/b> · Incidência <b>Barueri\/SP \(3505708\)<\/b>/.test(tab), tab.slice(0, 300));
+        const linhaTrib = (nome) => (tab.match(new RegExp('<tr><td class="nome">' + nome.replace(/[()]/g, '\\$&') + '</td>[\\s\\S]*?</tr>')) || [''])[0];
+        const baseAliq = (nome) => (linhaTrib(nome).match(/<td class="n(?: z)?">[^<]*<\/td>/g) || []).slice(0, 2);
+        const vazias = ['CSLL', 'IRRF', 'INSS (CP)'].map((x) => [x, baseAliq(x)]);
+        ok('painel da NFS-e: base/alíquota ausente sai 0,00 em cinza em todas as linhas (CSLL igual a IRRF/INSS), nunca —',
+          vazias.every(([, c]) => c.length === 2 && c.every((td) => td === '<td class="n z">0,00</td>'))
+          && !/<td class="n z">—<\/td>/.test(tab), vazias.map(([x, c]) => x + ':' + c.join('')).join(' | '));
+        ok('painel da NFS-e: alíquota presente sai com %, sem cinza (o padrão não apaga o que veio)',
+          baseAliq('PIS')[1] === '<td class="n">0,65%</td>' && baseAliq('COFINS')[1] === '<td class="n">3,00%</td>', baseAliq('PIS').join(''));
+        ok('painel da NFS-e: Competência no bloco Identificação sai MM/AAAA, igual à coluna Compet. da lista',
+          /<dt>Competência<\/dt><dd class="txt">11\/2026<\/dd>/.test(hp) && !/<dt>Competência<\/dt><dd[^>]*>\d{2}\/\d{2}\/\d{4}/.test(hp),
+          (hp.match(/<dt>Competência<\/dt><dd[^>]*>[^<]*<\/dd>/) || [''])[0]);
+        ok('painel da NFS-e: a descrição do serviço sai inteira (sem corte de 80/200), em texto pré-formatado',
+          hp.includes('<p class="nfse-txt">' + DESC + '</p>') && /\.nfse-txt\{[^}]*white-space:pre-wrap/.test(html));
+        ok('painel da NFS-e: o que não veio no XML sai 0,00 (valor) ou — (texto) em cinza, nunca some',
+          /<dt>Valor recebido \(intermediário\)<\/dt><dd class="z">0,00<\/dd>/.test(hp) && /<dt>Telefone<\/dt><dd class="txt z">—<\/dd>/.test(hp)
+          && /<dt>Inscrição municipal<\/dt><dd class="txt z">—<\/dd>/.test(hp), (hp.match(/<dt>Telefone<\/dt><dd[^>]*>[^<]*<\/dd>/g) || []).join(' '));
+        ok('painel da NFS-e: tomador com o município do endereço; ISS retido pelo tomador aparece com quem reteve',
+          /<dt>Município<\/dt><dd class="txt">Campinas\/SP \(3509502\)<\/dd>/.test(hp) && /<dt>Município<\/dt><dd class="txt">PR \(4106902\)<\/dd>/.test(hv)
+          && /Retido <b>sim, pelo tomador<\/b>/.test(hv));
+        ok('painel da NFS-e: o texto hostil do XML (informações complementares) sai escapado',
+          hv.includes(vm.runInContext('esc(' + JSON.stringify(MAL) + ')', sb)) && !/<img/i.test(hv));
+        ok('painel da NFS-e: cabeçalho com anterior/próximo, título, dica e Fechar; a 1ª nota tem o anterior desabilitado',
+          /<button type="button" class="nfse-ir" data-lado="ant" disabled aria-label="NFS-e anterior">◂ anterior<\/button><b>NFS-e 1042 · Alfa Exemplo<\/b><button type="button" class="nfse-ir" data-lado="prx" data-ir="1"/.test(hp)
+          && /↑ ↓ passam de NFS-e · Esc fecha/.test(hp) && /class="nfse-fechar"/.test(hp) && /data-lado="prx" disabled/.test(hv), hp.slice(hp.indexOf('<aside'), hp.indexOf('<aside') + 300));
+
+        /* A situação: só o estado do documento; a substituída é apontada pela substituta. */
+        const subst = vm.runInContext(`(()=>{const a=${JSON.stringify(d)},b=Object.assign({},a,{Numero_NFSe:'1043',Chave_NFSe:'K1043',Chave_Substituida:a.Chave_NFSe});
+          __DB.nfse=[a,b];NFSE_UI.aberto=-1;renderNFSe();return document.getElementById('nfse-list').innerHTML;})()`, sb);
+        const pills = (subst.match(/<span class="cte-pill[^"]*">[^<]*<\/span>/g) || []);
+        ok('lista da NFS-e: situação é "autorizada" ou "substituída pela N", sem pílula de aviso',
+          pills.length === 2 && pills[0] === '<span class="cte-pill cte-falta">substituída pela 1043</span>' && pills[1] === '<span class="cte-pill cte-ok">autorizada</span>', pills.join(' '));
+        ok('lista da NFS-e: uma linha por nota, com as 12 colunas pedidas',
+          /<th>NFS-e<\/th><th>Emissão<\/th><th>Compet\.<\/th><th>Prestador<\/th><th>Tomador<\/th><th>Serviço<\/th><th class="n">Valor serviço<\/th><th class="n">ISS<\/th><th>Retido\?<\/th><th class="n">Ret\. federais<\/th><th class="n">Líquido<\/th><th>Situação<\/th>/.test(subst)
+          && (subst.match(/<tr data-i="/g) || []).length === 2 && /<td>11\/2026<\/td>/.test(subst) && /11\.222\.333\/0001-81/.test(subst));
+
+        /* O botão "Conferir valores": nasce fechado; abre o quadro só a pedido. */
+        const conf = vm.runInContext(`(()=>{NFSE_UI.conf=false;renderNFSe();const bt=document.getElementById('nfse-conf'),box=document.getElementById('nfse-alertas');
+          const fechado=[bt.hidden,box.hidden,bt.textContent,bt.getAttribute('aria-expanded')];
+          NFSE_UI.conf=true;nfseConfRender(__DB.nfse);const aberto=[box.hidden,bt.getAttribute('aria-expanded'),box.innerHTML];
+          NFSE_UI.conf=false;__DB.nfse=[];renderNFSe();const vazio=[bt.hidden,box.hidden];return {fechado,aberto,vazio};})()`, sb);
+        ok('"Conferir valores (N)" aparece com NFS-e carregada e o quadro nasce fechado; sem NFS-e o botão some',
+          conf.fechado[0] === false && conf.fechado[1] === true && /^Conferir valores \(\d+\)$/.test(conf.fechado[2]) && conf.fechado[3] === 'false'
+          && conf.vazio[0] === true && conf.vazio[1] === true, JSON.stringify(conf.fechado));
+        ok('o clique no botão abre o quadro "Para conferir" (aria-expanded acompanha)',
+          conf.aberto[0] === false && conf.aberto[1] === 'true' && /<b>Para conferir<\/b><ul>/.test(conf.aberto[2]), JSON.stringify(conf.aberto).slice(0, 200));
+        ok('o quadro de conferência não tem handler inline e o botão é ligado por addEventListener',
+          /<button type="button" id="nfse-conf" class="nfse-conf" aria-expanded="false" aria-controls="nfse-alertas" hidden>/.test(html)
+          && /getElementById\('nfse-conf'\)\.addEventListener\('click'/.test(html));
+
+        /* A conferência: cada regra com um caso que dispara e o caso limpo que não dispara. */
+        const base = Object.assign({}, d, { Chave_Substituida: '' });
+        const nota = (o) => Object.assign({}, base, o);
+        const lote = [
+          nota({ Numero_NFSe: '10', Chave_NFSe: 'C10' }),
+          nota({ Numero_NFSe: '12', Chave_NFSe: 'C12', Valor_Liquido: '9325.00' }),
+          nota({ Numero_NFSe: '13', Chave_NFSe: 'C13', Aliq_ISS: '1.50' }),
+          nota({ Numero_NFSe: '14', Chave_NFSe: 'C14', Simples_Nacional: '3' }),
+          nota({ Numero_NFSe: '15', Chave_NFSe: 'C15', Data_Competencia: '2026-09-01' }),
+          nota({ Numero_NFSe: '16', Chave_NFSe: 'C16', Chave_Substituida: 'C10' }),
+          nota({ Numero_NFSe: '17', Chave_NFSe: 'C17', tpRetISSQN: '2', Valor_Liquido: '8978.00', Cod_Mun_Incidencia: '3505708', Cod_Mun_Prestador: '3509502' }),
+        ];
+        /* O líquido declarado (vLiqXML) é propriedade não enumerável gravada pelo leitor: o
+           JSON da ida ao sandbox a perde, então o lote a recebe de volta lá dentro. */
+        vm.runInContext('var __comLiq=(L)=>{L.forEach(n=>Object.defineProperty(n,"vLiqXML",{value:n.Valor_Liquido}));return L;}', sb);
+        const al = vm.runInContext('nfseAlertas(__comLiq(' + JSON.stringify(lote) + '))', sb);
+        const txt = al.join(' || ');
+        ok('conferência da NFS-e: salto, líquido, alíquota, Simples, competência, substituída e ISS fora do município — cada uma uma vez',
+          al.length === 7 && /prestador ALFA SERVICOS DE EXEMPLO LTDA · 11222333000181, NFSe Nacional\): faltam 11 no que foi importado/.test(txt)
+          && /O líquido não fecha[^|]*NFS-e 12 \(XML R\$ 9\.325,00, a conta dá R\$ 9\.175,00\)\./.test(txt)
+          && /Alíquota de ISS fora[^|]*NFS-e 13 \(1,50%\)\./.test(txt) && /Simples Nacional \(ME\/EPP\)[^|]*NFS-e 14\./.test(txt)
+          && /Competência em mês diferente[^|]*NFS-e 15 \(competência 09\/2026, emitida em 03\/11\/2026\)\./.test(txt)
+          && /NFS-e 10 substituída pela 16\./.test(txt) && /ISS retido pelo tomador[^|]*NFS-e 17 \(devido em Barueri\/SP \(3505708\), prestador em Campinas\/SP \(3509502\)\)\./.test(txt), txt);
+        const limpo = vm.runInContext('nfseAlertas(__comLiq(' + JSON.stringify([nota({ Numero_NFSe: '20', Chave_NFSe: 'C20' }), nota({ Numero_NFSe: '21', Chave_NFSe: 'C21', Valor_Liquido: '9175.01' })]) + '))', sb);
+        ok('conferência da NFS-e: nota que fecha (tolerância de 1 centavo) não gera aviso nenhum', limpo.length === 0, limpo.join(' || '));
+        const cond = vm.runInContext('nfseAlertas(__comLiq(' + JSON.stringify([nota({ Numero_NFSe: '30', Chave_NFSe: 'C30', Desc_Condicionado: '25.00', Valor_Liquido: '9150.00' })]) + '))', sb);
+        ok('conferência da NFS-e: o desconto condicionado descontado do líquido (regra do leiaute) não é apontado', cond.length === 0, cond.join(' || '));
+        /* O quadro com dado hostil: o aviso cita o número da nota e o nome do prestador. */
+        const hal = vm.runInContext(`(()=>{__DB.nfse=${JSON.stringify(lote.map((x) => Object.assign({}, x, { Nome_Prestador: MAL })))};NFSE_UI.conf=true;nfseConfRender(__DB.nfse);
+          const h=document.getElementById('nfse-alertas').innerHTML;NFSE_UI.conf=false;__DB.nfse=[];return h;})()`, sb);
+        const fa = forma(hal);
+        ok('o quadro "Para conferir" da NFS-e escapa o dado do arquivo', fa.img === 0 && fa.handler === 0 && fa.script === 0 && fa.escapado > 0, JSON.stringify(fa));
+        /* O botão de navegação: o texto visível está contido no nome acessível (WCAG 2.5.3),
+           para quem comanda por voz dizer o que vê. */
+        const irs = [...hp.matchAll(/<button type="button" class="nfse-ir"[^>]*aria-label="([^"]*)">([^<]*)<\/button>/g)];
+        const foraDoNome = irs.filter((m) => !(m[2].toLowerCase().match(/[a-zà-ú-]+/g) || []).every((w) => m[1].toLowerCase().includes(w)));
+        ok('painel da NFS-e: o texto visível de anterior/próxima está contido no nome acessível ("próxima ▸" / "Próxima NFS-e")',
+          irs.length === 2 && foraDoNome.length === 0 && irs[1][2] === 'próxima ▸', irs.map((m) => m[2] + ' ⇢ ' + m[1]).join(' | '));
+
+        /* A base do ISS só vem do XML: nota imune sem vBC fica com a base vazia. */
+        let im = null;
+        try { im = ler(nfseXml({ num: 2001, munToma: '3509502', ret: '1', vLiq: '9175.00', trib: '2', semVBC: true })); } catch (e) { im = { erro: e.message }; }
+        ok('NFS-e imune sem vBC: BC_ISS sai vazia (não herda o valor do serviço)',
+          im && im.BC_ISS === '' && im.Trib_ISSQN === '2' && im.Valor_Bruto === '10000.00', im && (im.erro || 'BC_ISS=' + JSON.stringify(im.BC_ISS)));
+
+        /* O líquido só é conferido quando o XML o declarou e a DPS foi lida. */
+        const alDe = (n) => { sb.__n = n; return vm.runInContext('nfseAlertas([__n])', sb); };
+        const liqDe = (al) => al.filter((a) => /O líquido não fecha/.test(a));
+        let semLiq = null, semDps = null, errado = null;
+        try {
+          semLiq = ler(nfseXml({ num: 2002, munToma: '3509502', ret: '1' }));
+          semDps = ler(nfseXml({ num: 2003, munToma: '3509502', ret: '1', vLiq: '9175.00', semDPS: true }));
+          errado = ler(nfseXml({ num: 2004, munToma: '3509502', ret: '1', vLiq: '9325.00' }));
+        } catch (e) { semLiq = { erro: e.message }; }
+        ok('o líquido declarado fica numa propriedade fora das colunas (não exporta, não entra na busca)',
+          d.vLiqXML === '9175.00' && !Object.keys(d).includes('vLiqXML') && !vm.runInContext('HNFSE', sb).includes('vLiqXML'), String(d.vLiqXML));
+        ok('NFS-e sem a tag vLiq: Valor_Liquido continua preenchido para a planilha, e a conferência não acusa líquido',
+          semLiq && semLiq.Valor_Liquido === '10000.00' && semLiq.vLiqXML === undefined && liqDe(alDe(semLiq)).length === 0,
+          semLiq && (semLiq.erro || liqDe(alDe(semLiq)).join(' | ')));
+        ok('NFS-e sem DPS (retenções não lidas): nenhum alerta falso de líquido',
+          semDps && !semDps.erro && semDps.vLiqXML === undefined && liqDe(alDe(semDps)).length === 0, semDps && (semDps.erro || liqDe(alDe(semDps)).join(' | ')));
+        ok('NFS-e com vLiq e DPS que não fecham: o alerta de líquido continua saindo',
+          errado && liqDe(alDe(errado)).length === 1 && /NFS-e 2004 \(XML R\$ 9\.325,00, a conta dá R\$ 9\.175,00\)/.test(liqDe(alDe(errado))[0]),
+          errado && liqDe(alDe(errado)).join(' | '));
+
+        /* Salto de numeração: por CNPJ e por formato; sem CNPJ, pelo nome; sem nada, fora. */
+        const salto = (ns) => vm.runInContext('nfseAlertas(' + JSON.stringify(ns) + ')', sb).filter((a) => /^Numeração com salto/.test(a));
+        const s1 = salto([{ CNPJ_Prestador: PREST, Nome_Prestador: 'A', Formato: 'NFSe Nacional', Numero_NFSe: '5' },
+          { CNPJ_Prestador: PREST, Nome_Prestador: 'A', Formato: 'CompNFe', Numero_NFSe: '9' }]);
+        const s2 = salto([{ CNPJ_Prestador: PREST, Nome_Prestador: 'A', Formato: 'NFSe Nacional', Numero_NFSe: '5' },
+          { CNPJ_Prestador: PREST, Nome_Prestador: 'A', Formato: 'NFSe Nacional', Numero_NFSe: '9' }]);
+        const s3 = salto([{ Nome_Prestador: 'X', Formato: 'CompNFe', Numero_NFSe: '1' }, { Nome_Prestador: 'Y', Formato: 'CompNFe', Numero_NFSe: '3' },
+          { Formato: 'CompNFe', Numero_NFSe: '7' }, { Formato: 'CompNFe', Numero_NFSe: '9' }]);
+        const s4 = salto([{ Nome_Prestador: 'X', Formato: 'CompNFe', Numero_NFSe: '1' }, { Nome_Prestador: 'X', Formato: 'CompNFe', Numero_NFSe: '3' }]);
+        ok('salto de numeração: Nacional nº 5 + CompNFe nº 9 do mesmo CNPJ não é salto (séries diferentes)', s1.length === 0, s1.join(' | '));
+        ok('salto de numeração: o mesmo CNPJ e formato com 5 e 9 continua acusando 6 a 8', s2.length === 1 && /faltam 6 a 8/.test(s2[0]), s2.join(' | '));
+        ok('salto de numeração: prestadores sem CNPJ não se juntam (nem por nome diferente, nem sem nome)', s3.length === 0, s3.join(' | '));
+        ok('salto de numeração: sem CNPJ, o mesmo nome no mesmo formato é a mesma série', s4.length === 1 && /prestador X, CompNFe\): faltam 2 /.test(s4[0]), s4.join(' | '));
+
+        /* Total retido zerado sai em cinza, igual às outras células vazias da tabela. */
+        const zero = vm.runInContext("nfsePainel({Numero_NFSe:'1'},-1,-1,null)", sb);
+        ok('linha "Total retido" com zero sai 0,00 em cinza (mesmo helper de célula)',
+          /<tr class="tot"><td class="nome">Total retido<\/td><td><\/td><td><\/td><td><\/td><td class="n z">0,00<\/td>/.test(zero), (zero.match(/<tr class="tot">[\s\S]*?<\/tr>/) || [''])[0]);
+
+        /* A mesma alíquota sai igual na lista e no painel (2 casas). */
+        const aliq = vm.runInContext(`(()=>{__DB.nfse=[Object.assign(${JSON.stringify(d)},{Aliq_ISS:'2.5025'})];NFSE_UI.aberto=0;renderNFSe();
+          const h=document.getElementById('nfse-list').innerHTML;__DB.nfse=[];NFSE_UI.aberto=-1;return h;})()`, sb);
+        const issLin = (aliq.match(/<tr><td class="nome">ISS<\/td>[\s\S]*?<\/tr>/) || [''])[0];
+        ok('alíquota: a lista e o painel usam o mesmo formatador (2 casas)',
+          /<div class="cte-sub">2,50%<\/div>/.test(aliq) && /<td class="n">2,50%<\/td>/.test(issLin) && !/2,5025/.test(aliq), issLin.slice(0, 200));
+
+        /* A frase de retenção do ISS tem uma fonte só (NFSE_RET_POR) e as três telas concordam. */
+        const ret3 = vm.runInContext(`(()=>{const n={tpRetISSQN:'3',Valor_ISS:'197.00'};return [nfseCod('tpRetISSQN','3').h,nfseRetCel(n),nfsePainel(n,-1,-1,null)];})()`, sb);
+        const secNfse = html.slice(html.indexOf('const NFSE_UI='), html.indexOf('// ═══ CT-e (modelo 57)'));
+        ok('retenção do ISS: rótulo do código, célula da lista e tabela de tributos saem da mesma fonte',
+          /^Retido pelo intermediário/.test(ret3[0]) && ret3[1] === '<b>sim</b><div class="cte-sub">intermediário</div>' && /Retido <b>sim, pelo intermediário<\/b>/.test(ret3[2])
+          && (secNfse.match(/'tomador'/g) || []).length === 1 && (secNfse.match(/'intermediário'/g) || []).length === 1 && !/(pelo|sim, pelo) (tomador|intermediário)'/.test(secNfse),
+          ret3[1]);
+
+        /* Retenções: tpRetISSQN 3 (intermediário) é ISS retido; tpRetPisCofins 2 (não retidos) fica fora do total. */
+        let rr = null;
+        try { rr = ler(nfseXml({ num: 2005, munToma: '3509502', ret: '3', retPC: '2', vLiq: '9118.00' })); } catch (e) { rr = { erro: e.message }; }
+        const kk = rr && !rr.erro ? vm.runInContext('nfseConta(' + JSON.stringify(rr) + ')', sb) : {};
+        ok('tpRetISSQN=3 (intermediário) conta como ISS retido no total',
+          kk.issRet === 197 && vm.runInContext("nfseIssRet({tpRetISSQN:'3'})&&!nfseIssRet({tpRetISSQN:'1'})&&!nfseIssRet({tpRetISSQN:'constructor'})", sb), JSON.stringify(kk));
+        ok('tpRetPisCofins=2 (não retidos): PIS e COFINS ficam fora do total retido',
+          rr && rr.Ret_PISCOFINS === '2' && kk.fed === 360 && kk.tot === 557, JSON.stringify(kk));
+
+        /* CompNFe: a discriminação inteira e a herança da DPS (só no que o leiaute não tem). */
+        const DISC = Array.from({ length: 8 }, (_, i) => 'Item ' + (i + 1) + ' do contrato de manutenção mensal').join('\n');
+        const compXml = (comDps) => '<?xml version="1.0"?><CompNFe><NFe>' + tg('NumeroNFe', '9') + tg('CodigoVerificador', 'ABCD1234') + tg('DataEmissaoNFe', '2026-11-03T10:00:00')
+          + tg('CodigoServicoMunicipal', '0107') + tg('ValorNFe', '500.00') + tg('Discriminacao', X(DISC))
+          + tg('Prestador', tg('CnpjCpf', PREST) + tg('RazaoSocialNome', 'ALFA SERVICOS DE EXEMPLO LTDA')) + tg('Tomador', tg('CnpjCpf', TOMA) + tg('RazaoSocialNome', 'TOMADOR DE EXEMPLO LTDA'))
+          + (comDps ? tg('DPS', tg('infDPS', tg('tpAmb', '1') + tg('nDPS', '77')
+            + tg('toma', tg('end', tg('endNac', tg('cMun', '4106902'))))
+            + tg('serv', tg('cServ', tg('cTribMun', '999') + tg('xDescServ', 'descrição da DPS')))
+            + tg('valores', tg('trib', tg('tribMun', tg('tribISSQN', '1') + tg('tpRetISSQN', '2') + tg('pAliq', '3.00')))))) : '')
+          + '</NFe></CompNFe>';
+        let c1 = null, c2 = null;
+        try { c1 = ler(compXml(false)); c2 = ler(compXml(true)); } catch (e) { c1 = { erro: e.message }; }
+        ok('CompNFe gera Descricao_Completa (a discriminação inteira, com as quebras de linha)',
+          c1 && c1.Formato === 'CompNFe' && c1.Descricao_Completa === DISC && DISC.length > 200 && c1.Discriminacao.length === 200 && !/\n/.test(c1.Discriminacao),
+          c1 && (c1.erro || JSON.stringify(c1.Descricao_Completa).slice(0, 80)));
+        ok('CompNFe com DPS herda os campos dela, sem passar por cima do que o próprio leiaute traz',
+          c2 && c2.Numero_DPS === '77' && c2.Ambiente === '1' && c2.Trib_ISSQN === '1' && c2.Cod_Mun_Tomador === '4106902' && c2.tpRetISSQN === '2'
+          && c2.Cod_Servico_Mun === '0107' && c2.Descricao_Completa === DISC && c1.Numero_DPS === '',
+          c2 && (c2.erro || [c2.Numero_DPS, c2.Trib_ISSQN, c2.Cod_Mun_Tomador, c2.Cod_Servico_Mun].join('|')));
+
+        /* formatoBr: o mesmo conjunto de textos da regex antiga, em tempo linear. */
+        {
+          const antigo = (v) => { if (v === null || v === undefined || v === '') return ''; const s = String(v).trim(); if (/^\d+\.?\d*$/.test(s)) return s.replace('.', ','); return s; };
+          const casos = ['5', '5.', '5.25', '.5', '5..2', '  7.10 ', 'a1', '1e5', '-3.2', '', null, 0, 12.5, '0012.300'];
+          const novo = vm.runInContext('(' + JSON.stringify(casos) + ').map(formatoBr)', sb);
+          const dif = casos.filter((c, i) => novo[i] !== antigo(c));
+          ok('formatoBr devolve o mesmo que a regex antiga em todos os formatos de número', dif.length === 0, dif.map((c) => JSON.stringify(c)).join(','));
+          let ms = -1, r = '';
+          try {
+            sb.__longo = '1'.repeat(100000) + 'x';
+            const t0 = Date.now();
+            r = vm.runInContext('formatoBr(__longo)', sb, { timeout: 2000 });
+            ms = Date.now() - t0;
+          } catch (e) { r = e.message; }
+          ok('formatoBr com 100 mil dígitos e uma letra no fim responde rápido (sem retrocesso quadrático)',
+            ms >= 0 && ms < 200 && r.length === 100001, ms < 0 ? r : ms + ' ms');
+          delete sb.__longo;
+        }
+
+        /* ── NFS-e na tela: abrir, trocar, fechar, teclado, aba e tela estreita ──────────
+           O stub acima guarda o innerHTML como texto; os gestos precisam de árvore. Este
+           DOM mínimo monta a árvore do HTML que o render escreve (tags, atributos, texto),
+           com seletor de tag/classe/id/atributo, descendente e filho, closest, foco (que
+           respeita inert e disabled) e eventos que sobem até o document. A marcação da aba
+           é a do próprio index.html; o script é o mesmo do render. */
+        {
+          const VAZIAS = new Set(['input', 'br', 'img', 'hr', 'meta', 'link', 'wbr', 'col', 'source']);
+          const desEnt = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+          const attrEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+          const doc = { activeElement: null, _ls: {} };
+          const compostos = new Map();
+          const composto = (c) => {
+            if (compostos.has(c)) return compostos.get(c);
+            let r = null;
+            if (!/:/.test(c)) {
+              const m = /^([a-zA-Z][\w-]*|\*)?(.*)$/.exec(c);
+              const partes = [...m[2].matchAll(/([#.])([\w-]+)|\[([\w-]+)(?:="([^"]*)")?\]/g)];
+              if (partes.map((p) => p[0]).join('') === m[2]) r = { tag: m[1] && m[1] !== '*' ? m[1].toUpperCase() : null, partes };
+            }
+            compostos.set(c, r);
+            return r;
+          };
+          const casaComp = (el, c) => {
+            const k = composto(c);
+            if (!k || !el || !el.attrs) return false;
+            if (k.tag && el.tagName !== k.tag) return false;
+            for (const p of k.partes) {
+              if (p[1] === '#' && el.attrs.id !== p[2]) return false;
+              if (p[1] === '.' && !(el.attrs.class || '').split(/\s+/).includes(p[2])) return false;
+              if (p[3] && (!Object.prototype.hasOwnProperty.call(el.attrs, p[3]) || (p[4] !== undefined && el.attrs[p[3]] !== p[4]))) return false;
+            }
+            return true;
+          };
+          const casaDe = (el, ps, i) => {
+            if (!casaComp(el, ps[i])) return false;
+            if (i === 0) return true;
+            if (ps[i - 1] === '>') return casaDe(el.parentElement, ps, i - 2);
+            for (let a = el.parentElement; a; a = a.parentElement) if (casaDe(a, ps, i - 2)) return true;
+            return false;
+          };
+          const casa = (el, sel) => sel.split(',').some((s) => {
+            const ps = s.trim().replace(/\s*>\s*/g, ' > ').split(/\s+/);
+            const seq = [];
+            for (const p of ps) { if (p === '>') seq.push('>'); else { if (seq.length && seq[seq.length - 1] !== '>') seq.push(' '); seq.push(p); } }
+            return casaDe(el, seq, seq.length - 1);
+          });
+          let raiz = null;
+          class E {
+            constructor(tag, attrs) { this.tagName = tag.toUpperCase(); this.attrs = attrs || {}; this.kids = []; this.parentNode = null; this._ls = {}; this.inert = false; this.style = {}; this._valor = null; this.escritas = 0; }
+            get children() { return this.kids.filter((k) => k instanceof E); }
+            get parentElement() { return this.parentNode instanceof E ? this.parentNode : null; }
+            get lastElementChild() { const c = this.children; return c[c.length - 1] || null; }
+            get nextElementSibling() { const p = this.parentNode; if (!p) return null; const c = p.children; return c[c.indexOf(this) + 1] || null; }
+            get id() { return this.attrs.id || ''; }
+            get className() { return this.attrs.class || ''; }
+            get classList() {
+              const el = this, lista = () => (el.attrs.class || '').split(/\s+/).filter(Boolean), grava = (l) => { el.attrs.class = l.join(' '); };
+              return {
+                contains: (c) => lista().includes(c),
+                add: (...cs) => grava([...new Set(lista().concat(cs))]),
+                remove: (...cs) => grava(lista().filter((x) => !cs.includes(x))),
+                toggle: (c, f) => { const tem = lista().includes(c), on = f === undefined ? !tem : !!f; if (on && !tem) grava(lista().concat(c)); if (!on && tem) grava(lista().filter((x) => x !== c)); return on; },
+              };
+            }
+            getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; }
+            setAttribute(k, v) { this.attrs[k] = String(v); }
+            removeAttribute(k) { delete this.attrs[k]; }
+            hasAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k); }
+            get hidden() { return this.hasAttribute('hidden'); }
+            set hidden(v) { if (v) this.attrs.hidden = ''; else delete this.attrs.hidden; }
+            get disabled() { return this.hasAttribute('disabled'); }
+            get value() { return this._valor != null ? this._valor : (this.attrs.value || ''); }
+            set value(v) { this._valor = String(v); }
+            get dataset() { const o = {}; for (const k of Object.keys(this.attrs)) if (k.startsWith('data-')) o[k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = this.attrs[k]; return o; }
+            get textContent() { return this.kids.map((k) => (k instanceof E ? k.textContent : desEnt(k.t))).join(''); }
+            set textContent(v) { this.kids = [{ t: X(v) }]; }
+            get innerHTML() { return this.kids.map(serial).join(''); }
+            set innerHTML(h) { this.escritas++; if (doc.activeElement && doc.activeElement !== this && this.contains(doc.activeElement)) doc.activeElement = body; for (const k of this.kids) if (k instanceof E) k.parentNode = null; this.kids = []; monta(this, String(h)); }
+            appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; this.kids.push(c); return c; }
+            removeChild(c) { this.kids = this.kids.filter((k) => k !== c); c.parentNode = null; return c; }
+            remove() { if (this.parentNode) this.parentNode.removeChild(this); }
+            contains(o) { for (let a = o; a; a = a.parentNode) if (a === this) return true; return false; }
+            get isConnected() { let a = this; while (a.parentNode) a = a.parentNode; return a === raiz; }
+            addEventListener(t, f) { (this._ls[t] = this._ls[t] || []).push(f); }
+            removeEventListener() {}
+            focus() { for (let a = this; a; a = a.parentNode) if (a.inert) return; if (this.disabled || !this.isConnected) return; doc.activeElement = this; }
+            blur() {}
+            scrollIntoView() {}
+            matches(sel) { return casa(this, sel); }
+            closest(sel) { for (let a = this; a; a = a.parentElement) if (casa(a, sel)) return a; return null; }
+            querySelectorAll(sel) { const out = []; const anda = (e) => { for (const c of e.children) { if (casa(c, sel)) out.push(c); anda(c); } }; anda(this); return out; }
+            querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+          }
+          const serial = (k) => {
+            if (!(k instanceof E)) return k.t;
+            const tag = k.tagName.toLowerCase(), at = Object.keys(k.attrs).map((a) => ' ' + a + (k.attrs[a] === '' && a !== 'value' ? '' : '="' + attrEsc(k.attrs[a]) + '"')).join('');
+            return '<' + tag + at + '>' + (VAZIAS.has(tag) ? '' : k.kids.map(serial).join('') + '</' + tag + '>');
+          };
+          const monta = (pai, h) => {
+            let cur = pai;
+            for (const m of h.matchAll(/<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*>|[^<]+/g)) {
+              const tk = m[0];
+              if (tk.startsWith('<!--')) continue;
+              if (tk.startsWith('</')) {
+                const tag = tk.slice(2, -1).trim().toUpperCase();
+                for (let a = cur; a && a !== pai.parentNode; a = a.parentNode) if (a.tagName === tag) { cur = a.parentNode; break; }
+                continue;
+              }
+              if (tk.startsWith('<')) {
+                const corpo = tk.slice(1, tk.endsWith('/>') ? -2 : -1), tag = corpo.split(/[\s/]/)[0], attrs = {};
+                for (const a of corpo.slice(tag.length).matchAll(/([^\s=/]+)(?:\s*=\s*"([^"]*)")?/g)) attrs[a[1]] = a[2] === undefined ? '' : desEnt(a[2]);
+                const e = new E(tag, attrs);
+                cur.appendChild(e);
+                if (!VAZIAS.has(tag.toLowerCase()) && !tk.endsWith('/>')) cur = e;
+                continue;
+              }
+              cur.kids.push({ t: tk });
+            }
+          };
+          raiz = new E('html');
+          const body = new E('body');
+          raiz.appendChild(body);
+          const soltos = new Map(), limbo = new E('div');
+          const solto = (id) => { if (!soltos.has(id)) { const e = new E('div', { id }); limbo.appendChild(e); soltos.set(id, e); } return soltos.get(id); };
+          Object.assign(doc, {
+            documentElement: raiz, body,
+            getElementById: (id) => raiz.querySelector('#' + id) || solto(id),
+            querySelector: (s) => raiz.querySelector(s), querySelectorAll: (s) => raiz.querySelectorAll(s),
+            createElement: (t) => new E(t), createTextNode: (t) => ({ t: X(t) }),
+            addEventListener(t, f) { (doc._ls[t] = doc._ls[t] || []).push(f); }, removeEventListener() {},
+          });
+          /* Evento que sobe do alvo até o document; o clique num elemento inerte não acontece. */
+          const fire = (alvo, tipo, extra) => {
+            if (!alvo) return null;
+            if (tipo === 'click') for (let a = alvo; a; a = a.parentNode) if (a.inert) return null;
+            const ev = Object.assign({ type: tipo, target: alvo, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.parou = true; } }, extra || {});
+            for (let a = alvo; a && !ev.parou; a = a.parentNode) for (const f of (a._ls[tipo] || [])) f.call(a, ev);
+            if (!ev.parou) for (const f of (doc._ls[tipo] || [])) f(ev);
+            return ev;
+          };
+          const tecla = (key) => fire(doc.activeElement || body, 'keydown', { key });
+          const iT = html.indexOf('<div class="tab-content" id="tab-nfse">'), fT = html.indexOf('<div id="nfse-list"></div>', iT);
+          body.innerHTML = '<nav><button class="nav-btn" data-tab="importar"><span>Importar XMLs</span></button><button class="nav-btn active" data-tab="nfse"><span>NFS-e</span></button></nav>'
+            + '<div class="tab-content" id="tab-importar"></div>'
+            + html.slice(iT, fT).replace('class="tab-content"', 'class="tab-content active"') + '<div id="nfse-list"></div></div>';
+          const mql = { matches: false, ls: [], addEventListener(t, f) { if (t === 'change') this.ls.push(f); }, addListener(f) { this.ls.push(f); } };
+          const largura = (estreita) => { mql.matches = estreita; mql.ls.forEach((f) => f({ matches: estreita })); };
+          const janela = {
+            matchMedia: (q) => (/max-width:900px/.test(q) ? mql : { matches: false, addEventListener() {}, addListener() {} }),
+            addEventListener() {}, removeEventListener() {}, GCON_CDN_TESSERACT: 0, GCON: {},
+          };
+          const sbT = {
+            document: doc, window: janela, DOMParser: MiniDOMParser,
+            localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+            getComputedStyle: () => ({ getPropertyValue: () => '' }),
+            setTimeout, clearTimeout, Date, Math, JSON, console,
+          };
+          let erroT = '';
+          try { vm.createContext(sbT); vm.runInContext(scriptRender, sbT, { filename: 'index.html#tela-nfse' }); vm.runInContext(';this.__DB=DB;', sbT); } catch (e) { erroT = e.message; }
+          ok('NFS-e na tela: o script sobe sobre o DOM mínimo com a marcação real da aba', erroT === '' && !!doc.querySelector('#tab-nfse .filter-bar #filtro-nfse'), erroT);
+          if (!erroT) try {
+            const R = (c) => vm.runInContext(c, sbT);
+            const lista = doc.getElementById('nfse-list');
+            const tr = (i) => lista.querySelector('tr[data-i="' + i + '"]');
+            const aberto = () => R('NFSE_UI.aberto');
+            const painel = () => lista.querySelector('.nfse-painel');
+            const sel = () => lista.querySelectorAll('tr.sel').map((x) => x.dataset.i + (x.getAttribute('aria-current') === 'true' ? '*' : '')).join(',');
+            /* Quatro notas; a 2ª (índice 1) é de outro prestador, para o filtro. */
+            const notas = [0, 1, 2, 3].map((i) => Object.assign({}, d, { Numero_NFSe: String(3001 + i), Chave_NFSe: 'K' + i, Chave_Substituida: '', CNPJ_Prestador: i === 1 ? TOMA : PREST }));
+            R('__DB.nfse=' + JSON.stringify(notas) + ';NFSE_UI.aberto=-1;NFSE_UI.conf=false;renderNFSe();');
+            const tabela = lista.querySelector('table.nfse-tab');
+            const box = doc.getElementById('nfse-alertas');
+            R('var __nAl=0,__alOrig=nfseAlertas;nfseAlertas=function(l){__nAl++;return __alOrig(l);};');
+            const escritasBox = box.escritas;
+
+            /* Enter e Espaço na linha abrem com o foco no Fechar; a marca da linha acompanha. */
+            tr(0).focus(); const evE = tecla('Enter');
+            const r1 = { ab: aberto(), pn: !!painel(), foco: doc.activeElement && doc.activeElement.className, sel: sel(), prev: evE.defaultPrevented };
+            ok('NFS-e na tela: Enter na linha abre o painel com o foco no Fechar e marca a linha (sel + aria-current)',
+              r1.ab === 0 && r1.pn && r1.foco === 'nfse-fechar' && r1.sel === '0*' && r1.prev, JSON.stringify(r1));
+            tecla('Escape');
+            tr(2).focus(); tecla(' ');
+            ok('NFS-e na tela: Espaço na linha também abre', aberto() === 2 && sel() === '2*' && !!painel(), 'aberto=' + aberto());
+
+            /* Trocar de nota não redesenha a tabela: a mesma tabela, só a marca anda. */
+            tr(2).focus(); tecla('ArrowUp');
+            ok('NFS-e na tela: ↑ com o foco na lista troca de nota, move a marca e o foco para a linha nova, sem redesenhar a tabela',
+              aberto() === 1 && sel() === '1*' && lista.querySelector('table.nfse-tab') === tabela && doc.activeElement === tr(1), 'aberto=' + aberto() + ' sel=' + sel());
+            fire(lista.querySelector('.nfse-ir[data-lado="prx"]'), 'click');
+            ok('NFS-e na tela: "próxima ▸" troca de nota sem redesenhar a tabela e o foco fica no próprio botão',
+              aberto() === 2 && sel() === '2*' && lista.querySelector('table.nfse-tab') === tabela && doc.activeElement && doc.activeElement.dataset.lado === 'prx', 'aberto=' + aberto());
+
+            /* O corpo do painel rola pelo teclado: recebe foco e as setas não trocam de nota. */
+            const corpo = lista.querySelector('.nfse-painel .cte-painel-corpo');
+            corpo.focus(); const evC = tecla('ArrowDown');
+            ok('NFS-e na tela: o corpo do painel tem foco (tabindex, rótulo) e ↑ ↓ nele rolam em vez de trocar de nota',
+              corpo.getAttribute('tabindex') === '0' && corpo.getAttribute('aria-label') === 'Detalhe da NFS-e' && doc.activeElement === corpo
+              && aberto() === 2 && !evC.defaultPrevented, 'aberto=' + aberto() + ' prevented=' + evC.defaultPrevented);
+
+            /* Esc fecha e devolve o foco à linha. */
+            lista.querySelector('.nfse-fechar').focus(); const evX = tecla('Escape');
+            ok('NFS-e na tela: Esc fecha o painel, tira a marca e devolve o foco à linha',
+              aberto() === -1 && !painel() && sel() === '' && doc.activeElement === tr(2) && evX.defaultPrevented, 'aberto=' + aberto() + ' sel=' + sel());
+
+            /* Filtro: ↑ ↓ e próxima andam só pelo que está na tela. */
+            doc.getElementById('filtro-nfse-cnpj').value = PREST; R('renderNFSe()');
+            const tabF = lista.querySelector('table.nfse-tab');
+            fire(tr(0), 'click');
+            const prx0 = lista.querySelector('.nfse-ir[data-lado="prx"]').getAttribute('data-ir');
+            lista.querySelector('.nfse-fechar').focus(); tecla('ArrowDown');
+            const depoisSeta = aberto();
+            fire(lista.querySelector('.nfse-ir[data-lado="prx"]'), 'click');
+            const prxB = lista.querySelector('.nfse-ir[data-lado="prx"]'), depoisPrx = aberto(), prxFim = !!prxB && prxB.disabled;
+            lista.querySelector('.nfse-fechar').focus(); tecla('ArrowUp'); tecla('ArrowUp');
+            ok('NFS-e na tela: com filtro, ↑ ↓ e "próxima" pulam a nota filtrada (0 → 2 → 3, e voltam 3 → 2 → 0)',
+              !tr(1) && prx0 === '2' && depoisSeta === 2 && depoisPrx === 3 && prxFim && aberto() === 0 && lista.querySelector('table.nfse-tab') === tabF,
+              [prx0, depoisSeta, depoisPrx, prxFim, aberto()].join(','));
+
+            /* A conferência não é refeita ao filtrar/abrir/trocar, e o quadro role=status não é reescrito. */
+            ok('NFS-e na tela: abrir, trocar e filtrar não refazem a conferência nem reescrevem o quadro "Para conferir"',
+              R('__nAl') === 0 && box.escritas === escritasBox, 'nfseAlertas chamada ' + R('__nAl') + 'x, quadro reescrito ' + (box.escritas - escritasBox) + 'x');
+            R('__DB.nfse=__DB.nfse.slice(0,3);renderNFSe();');
+            ok('NFS-e na tela: a conferência é refeita quando DB.nfse muda', R('__nAl') === 1, 'chamadas=' + R('__nAl'));
+            R('nfseAlertas=__alOrig;');
+            doc.getElementById('filtro-nfse-cnpj').value = '';
+            R('__DB.nfse=' + JSON.stringify(notas) + ';NFSE_UI.aberto=-1;renderNFSe();');
+
+            /* Trocar de aba fecha o painel; voltar não o reabre. */
+            fire(tr(1), 'click');
+            const abriu = aberto();
+            fire(doc.querySelector('.nav-btn[data-tab="importar"]'), 'click');
+            const fora = { ab: aberto(), pn: !!painel() };
+            fire(doc.querySelector('.nav-btn[data-tab="nfse"]'), 'click');
+            ok('NFS-e na tela: trocar de aba fecha o painel, e voltar à aba não o reabre',
+              abriu === 1 && fora.ab === -1 && !fora.pn && aberto() === -1 && !painel(), JSON.stringify(fora));
+
+            /* Abaixo de 900px: o que fica por baixo do painel é inerte enquanto ele está aberto. */
+            const inertes = () => [doc.querySelector('#tab-nfse .filter-bar'), doc.getElementById('nfse-conf'), doc.getElementById('nfse-alertas'), lista.querySelector('.cte-tab-wrap')].map((e) => !!(e && e.inert));
+            largura(true);
+            fire(tr(2), 'click');
+            const est = { in: inertes(), modal: painel() && painel().getAttribute('aria-modal'), foco: !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar') };
+            ok('NFS-e na tela estreita: com o painel aberto, filtros, "Conferir valores", quadro e tabela ficam inertes; o painel é modal e recebe o foco',
+              est.in.every(Boolean) && est.modal === 'true' && est.foco, JSON.stringify(est));
+            const cliqueInerte = fire(tr(0), 'click');
+            ok('NFS-e na tela estreita: a lista inerte não responde ao clique', cliqueInerte === null && aberto() === 2, 'aberto=' + aberto());
+            lista.querySelector('.nfse-fechar').focus(); tecla('ArrowDown');
+            ok('NFS-e na tela estreita: ↓ troca de nota e mantém o foco no painel (a lista está inerte)',
+              aberto() === 3 && inertes().every(Boolean) && !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar'), 'aberto=' + aberto());
+            largura(false);
+            const larga = { in: inertes(), modal: painel() && painel().getAttribute('aria-modal') };
+            ok('NFS-e na tela: ao alargar a janela com o painel aberto, o inert e o aria-modal saem',
+              larga.in.every((x) => !x) && larga.modal === null && !!painel(), JSON.stringify(larga));
+            largura(true);
+            tr(3).focus();
+            const reaplica = inertes().every(Boolean);
+            lista.querySelector('.nfse-fechar').focus(); tecla('Escape');
+            ok('NFS-e na tela estreita: estreitar de novo reaplica o inert, e fechar o painel o remove (foco volta à linha)',
+              reaplica && inertes().every((x) => !x) && aberto() === -1 && doc.activeElement === tr(3), 'reaplica=' + reaplica + ' depois=' + JSON.stringify(inertes()));
+            {
+              const fn = /function nfseInerte\(\)\{[\s\S]*?\n\}/.exec(html);
+              ok('NFS-e na tela estreita: o menu lateral e a barra do topo, que o painel também cobre, entram no inert',
+                !!fn && /getElementById\('sidebar'\)/.test(fn[0]) && /getElementById\('topbar'\)/.test(fn[0]), fn ? '' : 'nfseInerte não encontrada');
+              ok('NFS-e: no CompNFe o painel chama o identificador de "Código de verificação", não de chave de acesso',
+                /n\.Formato==='CompNFe'\?'Código de verificação':'Chave de acesso'/.test(html));
+            }
+            largura(false);
+            R('__DB.nfse=[];NFSE_UI.aberto=-1;renderNFSe();');
+          } catch (e) {
+            ok('NFS-e na tela: os gestos rodam sem exceção', false, e.message);
+          }
+        }
+      }
+
+      /* O painel aberto com o payload em TODO campo que o render lê (o mesmo universo do
+         grupo 15): mesma forma do benigno, nenhum handler, o dado continua como texto. */
+      const medeNfse = (val) => {
+        try {
+          vm.runInContext(`(()=>{__DB.nfse=${JSON.stringify([linha(undefined, val)])};NFSE_UI.aberto=0;renderNFSe();})()`, sb);
+          return vm.runInContext("document.getElementById('nfse-list').innerHTML", sb);
+        } catch (e) { return 'ERRO: ' + e.message; }
+      };
+      {
+        const hp = medeNfse(PAY), hb = medeNfse(BENIGNO), fp = forma(hp), fb = forma(hb);
+        ok('renderNFSe com o painel aberto: o payload não ganha tag nem handler e continua como texto',
+          !/^ERRO/.test(hp) && /nfse-painel/.test(hp) && fp.tags === fb.tags && fp.handler === fb.handler && fp.script === 0 && fp.img === 0 && fp.escapado > 0 && fb.escapado === 0,
+          /^ERRO/.test(hp) ? hp : `payload ${fp.tags} tag(s)/${fp.handler} handler vs benigno ${fb.tags}/${fb.handler}`);
+        FORMAS.forEach((formaPay, i) => {
+          const f1 = forma(medeNfse(formaPay)), f2 = forma(medeNfse(BENIGNO));
+          ok('a forma #' + (i + 1) + ' (' + formaPay.slice(0, 18) + '…) não vira HTML no painel da NFS-e',
+            f1.tags === f2.tags && f1.handler === f2.handler && f1.script === 0, `tags=${f1.tags} vs benigno=${f2.tags}`);
+        });
+      }
+      vm.runInContext('__DB.nfse=[];NFSE_UI.aberto=-1;NFSE_UI.conf=false', sb);
     }
     ok('o extrator lê o grupo veicProd de dentro de <prod>',
       /const veic=prod\.querySelector\('veicProd'\)/.test(html) && /["']chassi["']/.test(html));

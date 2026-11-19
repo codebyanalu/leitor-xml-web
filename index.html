@@ -984,7 +984,6 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .det-section .det-title{padding:8px 12px;background:var(--card-2);font-size:10px;font-weight:600;color:var(--primary-ink);cursor:pointer;user-select:none;transition:background .2s;display:flex;align-items:center;gap:6px}
 .det-section .det-title:hover{background:var(--row-hover)}
 .det-section .det-body{padding:10px;display:none;overflow-x:auto}
-.det-section .det-body.open{display:block;animation:fadeUp .2s ease}
 .det-section .det-body table{font-size:10px;margin-bottom:0}
 .det-section .det-body table th{font-size:9px;background:var(--primary-dark);color:#fff;padding:4px 7px}
 .det-section .det-body table td{padding:4px 7px}
@@ -1028,7 +1027,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 @media (max-width:767.98px){.dnf-painel{top:0}.dnf-painel-cab .dnf-dica-tecla{display:none}}
 @media (max-width:600px){.dnf-painel .dnf-veic .dnf-lst{grid-template-columns:auto 1fr}}
 /* transform na animação de entrada prende o painel fixo dentro da aba; aqui só esmaece */
-#tab-nfe.tab-content,#nfe-list .nota-card .body-detail.open{animation-name:dnfSurge}
+#tab-nfe.tab-content,#tab-nfse.tab-content,#nfe-list .nota-card .body-detail.open{animation-name:dnfSurge}
 @keyframes dnfSurge{from{opacity:0}to{opacity:1}}
 .dnf-painel-cab{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 10px;background:var(--card-2);border-bottom:1px solid var(--border)}
 .dnf-painel-cab b{font-size:15px}
@@ -1058,10 +1057,10 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .cte-ok{color:var(--success);background:var(--card);border:1px solid currentColor}
 .cte-falta{color:var(--warn-ink);background:var(--warn-bg);border:1px solid var(--warn-line)}
 .cte-err{color:var(--err-ink);background:var(--err-bg);border:1px solid var(--err-line)}
-.cte-painel{position:fixed;top:var(--painel-topo);right:0;bottom:0;width:min(860px,50vw);z-index:60;background:var(--card);border-left:3px solid var(--primary-cta);box-shadow:var(--shadow-painel);display:flex;flex-direction:column}
+.cte-painel,.nfse-painel{position:fixed;top:var(--painel-topo);right:0;bottom:0;width:min(860px,50vw);z-index:60;background:var(--card);border-left:3px solid var(--primary-cta);box-shadow:var(--shadow-painel);display:flex;flex-direction:column}
 .cte-painel-cab{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 10px;background:var(--card-2);border-bottom:1px solid var(--border)}
 .cte-painel-cab b{font-size:15px;flex:1 1 160px}
-.cte-fechar{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+.cte-fechar,.nfse-fechar,.nfse-ir,.nfse-conf{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
 /* As colunas ficam num filho de altura livre: com column-count no próprio contêiner de
    rolagem (altura fixa), o conteúdo vira colunas para o lado em vez de descer. */
 .cte-painel-corpo{flex:1;overflow:auto}
@@ -1078,8 +1077,34 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 /* O visual fica compacto e a área de toque chega a 44px pelo pseudo-elemento. */
 .cte-copiar::after{content:"";position:absolute;inset:-13px -4px}
 @media (max-width:1100px){.cte-painel-cols{column-count:1}}
-@media (max-width:900px){.cte-painel{width:100vw}}
-@media (max-width:767.98px){.cte-painel{top:0}.cte-dica{display:none}}
+@media (max-width:900px){.cte-painel,.nfse-painel{width:100vw}}
+@media (max-width:767.98px){.cte-painel,.nfse-painel{top:0}.cte-dica{display:none}}
+/* ── NFS-e: a lista e o painel do CT-e; o corpo no desenho do item da NF-e ── */
+.nfse-conf{color:var(--text2);margin-bottom:12px}
+.nfse-conf.on{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.nfse-conf[hidden]{display:none}
+.nfse-ir:disabled{color:var(--text3);cursor:default}
+.nfse-painel .cte-painel-corpo{padding:10px 12px}
+.nfse-painel .cte-painel-corpo:focus-visible{outline-offset:-2px}
+.nfse-corpo{display:flex;flex-direction:column;gap:10px}
+.nfse-box{background:var(--card);border:1px solid var(--border)}
+.nfse-box .dnf-sub{margin:0}
+.nfse-painel .dnf-lst dt.forte,.nfse-painel .dnf-lst dd.forte{font-weight:700;color:var(--text)}
+/* A chave numa linha só, sem espaço nenhum: rola de lado em vez de quebrar. */
+.nfse-painel .dnf-lst dd:has(.nfse-ch){overflow-x:auto;overflow-wrap:normal}
+.nfse-ch{font-family:var(--font-mono);font-size:12px;white-space:nowrap}
+.nfse-cod{color:var(--text3);font-size:12px}
+.nfse-txt{margin:0;padding:8px 10px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.nfse-txt.z{color:var(--text3)}
+.nfse-trib-wrap{overflow-x:auto}
+table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
+.nfse-trib th{background:var(--card-2);color:var(--primary-ink);font-size:12.5px;text-transform:uppercase;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.nfse-trib th.n,.nfse-trib td.n{text-align:right;font-variant-numeric:tabular-nums}
+.nfse-trib td{padding:6px 10px;border-bottom:1px solid var(--border-light);white-space:nowrap;background:var(--card)}
+.nfse-trib td.nome{font-weight:700}
+.nfse-trib td.det{white-space:normal;font-size:13px;color:var(--text2)}
+.nfse-trib .z{color:var(--text3)}
+.nfse-trib tr.tot td{background:var(--card-2);font-weight:700}
 .nota-card .dnf-prod > table > tbody > tr.dnf-it:hover td{background:var(--row-hover)}
 .nota-card .dnf-prod td.n{text-align:right;font-variant-numeric:tabular-nums}
 .nota-card .dnf-prod td.z{color:var(--text3)}
@@ -1490,6 +1515,8 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
         <select id="filtro-nfse-cnpj" onchange="renderNFSe()"><option value="">Todos prestadores</option></select>
         <span class="count" id="nfse-count"></span>
       </div>
+      <button type="button" id="nfse-conf" class="nfse-conf" aria-expanded="false" aria-controls="nfse-alertas" hidden>Conferir valores</button>
+      <div id="nfse-alertas" class="cte-alertas" role="status" hidden></div>
       <div id="nfse-list"></div>
     </div>
 
@@ -1694,7 +1721,21 @@ const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
   'CNPJ_Prestador','IM_Prestador','Nome_Prestador','NomeFantasia_Prestador',
   'UF_Prestador','Mun_Prestador','Email_Prestador','Simples_Nacional',
   'CNPJ_Tomador','IM_Tomador','Nome_Tomador','Mun_Tomador','UF_Tomador','Email_Tomador',
-  'Arquivo_Origem'];
+  'Arquivo_Origem',
+  /* Leitura completa da NFS-e: no FIM da lista, para não deslocar nenhuma coluna de
+     quem lê a planilha por posição. Vazias quando o leiaute não tem o campo. */
+  'Numero_DFSe','Data_Processamento','cStat_NFSe','Ambiente','Tipo_Emitente','Cod_Local_Emissao','Local_Emissao','Versao_Aplicativo',
+  'Numero_DPS','Tipo_Emissao','Chave_Substituida','Motivo_Substituicao','Desc_Motivo_Substituicao',
+  'Desc_Servico_Mun','Cod_Local_Prestacao','Pais_Prestacao','Obra','Evento','Comercio_Exterior','Descricao_Completa',
+  'Valor_Recebido','Desc_Incondicionado','Desc_Condicionado','Deducoes_Reducoes','Valor_Total_Retido',
+  'Trib_ISSQN','Cod_Mun_Incidencia','Mun_Incidencia','Tipo_Imunidade','Exig_Suspensa','Processo_Suspensao','Beneficio_Municipal','Regime_Especial',
+  'PISCOFINS_CST','Aliq_PIS','Aliq_COFINS','Ret_PISCOFINS',
+  'IBSCBS_CST','cIndOp','IBSCBS_Reducao','IBSCBS_CredPres',
+  'vTotTrib_Fed','vTotTrib_Est','vTotTrib_Mun','pTotTrib_Fed','pTotTrib_Est','pTotTrib_Mun',
+  'Endereco_Prestador','Cod_Mun_Prestador','Fone_Prestador','Apuracao_SN',
+  'Endereco_Tomador','Cod_Mun_Tomador','Fone_Tomador',
+  'CNPJ_Intermediario','IM_Intermediario','Nome_Intermediario','Endereco_Intermediario','Cod_Mun_Intermediario','Mun_Intermediario','Fone_Intermediario','Email_Intermediario',
+  'Info_Complementar','Doc_Tecnico','Doc_Referencia'];
 
 /* Grupo veicProd (veículo novo): UMA tabela [tag do XML, coluna da exportação].
    A inicialização do item e a leitura saem daqui; a cauda do HNFE acima repete
@@ -1733,7 +1774,10 @@ const esc=ESC;
 /* Data e hora do XML (2026-10-22T13:26:43-03:00) no formato da tela, SEM escapar
    (quem põe no HTML escapa). Fonte única: o DANFE (dnfData) e o CT-e usam esta. */
 function dataHoraBr(v,soData){const s=String(v||'');const m=/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(s);if(!m)return s;return m[3]+'/'+m[2]+'/'+m[1]+(!soData&&m[4]?' '+m[4]+':'+m[5]:'');}
-function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+\.?\d*$/.test(s))return s.replace('.',',');return s}
+/* Os dígitos depois do ponto ficam dentro do grupo opcional: com `\d+\.?\d*` cada divisão
+   possível entre os dois `\d` era tentada, e um texto longo de dígitos com uma letra no
+   fim travava a exportação (tempo quadrático). Aceita o mesmo conjunto de textos. */
+function formatoBr(v){if(v===null||v===undefined||v==='')return'';const s=String(v).trim();if(/^\d+(?:\.\d*)?$/.test(s))return s.replace('.',',');return s}
 function agora(){const d=new Date();return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 
 // ═══ FILE READING ═══
@@ -1845,6 +1889,72 @@ function extrairNFE(nome,texto){
 }
 
 // ═══ EXTRACT NFS-e ═══
+/* Código IBGE da UF: os 2 primeiros dígitos do código do município. O endereço
+   nacional da DPS (tomador, intermediário) traz só o cMun, sem nome nem UF: a UF
+   sai daqui e o nome só quando o mesmo código aparece com nome em outro grupo da nota. */
+const NFSE_UF_IBGE={'11':'RO','12':'AC','13':'AM','14':'RR','15':'PA','16':'AP','17':'TO','21':'MA','22':'PI','23':'CE','24':'RN','25':'PB','26':'PE','27':'AL','28':'SE','29':'BA','31':'MG','32':'ES','33':'RJ','35':'SP','41':'PR','42':'SC','43':'RS','50':'MS','51':'MT','52':'GO','53':'DF'};
+function nfseUF(cMun){const k=String(cMun==null?'':cMun).trim().slice(0,2);return /^\d{7}$/.test(String(cMun==null?'':cMun).trim())&&Object.prototype.hasOwnProperty.call(NFSE_UF_IBGE,k)?NFSE_UF_IBGE[k]:'';}
+/* Endereço numa linha só: <end> da DPS (endNac ou endExt) ou <enderNac> do emitente. */
+function nfseEnd(e){
+  if(!e)return{end:'',cMun:'',uf:''};
+  const nac=e.querySelector('endNac'),ext=e.querySelector('endExt');
+  const cMun=t(nac,'cMun')||t(e,'cMun'),cep=t(nac,'CEP')||t(e,'CEP');
+  const fora=ext?[t(ext,'xCidade'),t(ext,'xEstProvReg'),t(ext,'cEndPost'),t(ext,'cPais')?'país '+t(ext,'cPais'):''].filter(Boolean).join(' · '):'';
+  const end=[[t(e,'xLgr'),t(e,'nro'),t(e,'xCpl'),t(e,'xBairro')].filter(Boolean).join(', '),cep?'CEP '+cep:'',fora].filter(Boolean).join(' · ');
+  return{end,cMun,uf:t(e,'UF')||nfseUF(cMun)};
+}
+/* Uma parte da DPS (prest, toma, interm). */
+function nfseParte(el){
+  if(!el)return{doc:'',im:'',nome:'',fone:'',email:'',end:'',cMun:'',uf:''};
+  const e=nfseEnd(el.querySelector('end'));
+  return{doc:t(el,'CNPJ')||t(el,'CPF')||t(el,'NIF'),im:t(el,'IM'),nome:t(el,'xNome'),fone:t(el,'fone'),email:t(el,'email'),end:e.end,cMun:e.cMun,uf:e.uf};
+}
+/* Os campos da DPS (infDPS) que não existiam na exportação. Valem para o leiaute
+   nacional e para o CompNFe que traz a DPS dentro: o chamador completa o que o
+   próprio leiaute não tem. Os códigos ficam crus (como tpRetISSQN já ficava);
+   a tela é que os mostra por extenso. */
+function nfseDPS(infdps){
+  const o={};if(!infdps)return o;
+  const serv=infdps.querySelector('serv'),cserv=serv?serv.querySelector('cServ'):null;
+  const lp=serv?serv.querySelector('locPrest'):null,ce=serv?serv.querySelector('comExt'):null;
+  const ob=serv?serv.querySelector('obra'):null,ev=serv?serv.querySelector('atvEvento'):null;
+  const ic=infdps.querySelector('infoCompl'),sub=infdps.querySelector('subst');
+  /* O primeiro <valores> da infDPS é o da DPS; o do IBSCBS vem depois dele. */
+  const vd=infdps.querySelector('valores'),vsp=vd?vd.querySelector('vServPrest'):null;
+  const vdesc=vd?vd.querySelector('vDescCondIncond'):null,vded=vd?vd.querySelector('vDedRed'):null;
+  const trib=vd?vd.querySelector('trib'):null,tm=trib?trib.querySelector('tribMun'):null;
+  const tf=trib?trib.querySelector('tribFed'):null,pf=tf?tf.querySelector('piscofins'):null;
+  const tt=trib?trib.querySelector('totTrib'):null,vtt=tt?tt.querySelector('vTotTrib'):null,ptt=tt?tt.querySelector('pTotTrib'):null;
+  const ex=tm?tm.querySelector('exigSusp'):null,bm=tm?tm.querySelector('BM'):null;
+  const pr=infdps.querySelector('prest'),rt=pr?pr.querySelector('regTrib'):null;
+  const toma=nfseParte(infdps.querySelector('toma')),it=nfseParte(infdps.querySelector('interm'));
+  const ib=infdps.querySelector('IBSCBS'),gib=ib?ib.querySelector('gIBSCBS'):null;
+  Object.assign(o,{
+    Numero_DPS:t(infdps,'nDPS'),Tipo_Emitente:t(infdps,'tpEmit'),Ambiente:t(infdps,'tpAmb'),Cod_Local_Emissao:t(infdps,'cLocEmi'),
+    Chave_Substituida:t(sub,'chSubstda').replace(/\s+/g,''),Motivo_Substituicao:t(sub,'cMotivo'),Desc_Motivo_Substituicao:t(sub,'xMotivo'),
+    Cod_Local_Prestacao:t(lp,'cLocPrestacao'),Pais_Prestacao:t(lp,'cPaisPrestacao'),
+    Obra:[t(ob,'cObra')?'obra '+t(ob,'cObra'):'',t(ob,'inscImobFisc')?'inscrição imobiliária '+t(ob,'inscImobFisc'):'',t(ob,'cCIB')?'CIB '+t(ob,'cCIB'):''].filter(Boolean).join(' · '),
+    Evento:[t(ev,'xNome')||t(ev,'desc'),[t(ev,'dtIni'),t(ev,'dtFim')].filter(Boolean).map(x=>dataHoraBr(x,true)).join(' a '),t(ev,'idAtvEvt')?'id '+t(ev,'idAtvEvt'):''].filter(Boolean).join(' · '),
+    Comercio_Exterior:[t(ce,'mdPrestacao')?'modo '+t(ce,'mdPrestacao'):'',t(ce,'vincPrest')?'vínculo '+t(ce,'vincPrest'):'',t(ce,'tpMoeda')?'moeda '+t(ce,'tpMoeda'):'',t(ce,'vServMoeda')?'valor '+t(ce,'vServMoeda'):''].filter(Boolean).join(' · '),
+    Descricao_Completa:t(cserv,'xDescServ'),Cod_Servico_Mun:t(cserv,'cTribMun'),
+    Valor_Recebido:t(vsp,'vReceb'),Desc_Incondicionado:t(vdesc,'vDescIncond'),Desc_Condicionado:t(vdesc,'vDescCond'),
+    Deducoes_Reducoes:t(vded,'vDR'),
+    Trib_ISSQN:t(tm,'tribISSQN'),Tipo_Imunidade:t(tm,'tpImunidade'),Exig_Suspensa:t(ex,'tpSusp'),Processo_Suspensao:t(ex,'nProcesso'),
+    Beneficio_Municipal:[t(bm,'nBM')?'nº '+t(bm,'nBM'):'',t(bm,'vRedBCBM')?'redução da base '+t(bm,'vRedBCBM'):'',t(bm,'pRedBCBM')?'redução da base '+t(bm,'pRedBCBM')+'%':''].filter(Boolean).join(' · '),
+    Regime_Especial:t(rt,'regEspTrib'),Apuracao_SN:t(rt,'regApTribSN'),
+    PISCOFINS_CST:t(pf,'CST'),Aliq_PIS:t(pf,'pAliqPis'),Aliq_COFINS:t(pf,'pAliqCofins'),Ret_PISCOFINS:t(pf,'tpRetPisCofins'),
+    IBSCBS_CST:t(gib,'CST'),cIndOp:t(ib,'cIndOp'),IBSCBS_CredPres:t(gib,'cCredPres'),
+    vTotTrib_Fed:t(vtt,'vTotTribFed'),vTotTrib_Est:t(vtt,'vTotTribEst'),vTotTrib_Mun:t(vtt,'vTotTribMun'),
+    pTotTrib_Fed:t(ptt,'pTotTribFed'),pTotTrib_Est:t(ptt,'pTotTribEst'),pTotTrib_Mun:t(ptt,'pTotTribMun'),
+    Endereco_Tomador:toma.end,Cod_Mun_Tomador:toma.cMun,Fone_Tomador:toma.fone,
+    CNPJ_Intermediario:it.doc,IM_Intermediario:it.im,Nome_Intermediario:it.nome,Endereco_Intermediario:it.end,
+    Cod_Mun_Intermediario:it.cMun,Fone_Intermediario:it.fone,Email_Intermediario:it.email,
+    Info_Complementar:t(ic,'xInfComp'),Doc_Tecnico:t(ic,'idDocTec'),Doc_Referencia:t(ic,'docRef')
+  });
+  return o;
+}
+/* Toda coluna da exportação existe no registro (vazia quando o leiaute não tem). */
+function nfseCompleta(d){for(const c of HNFSE)if(d[c]==null)d[c]='';return d;}
 function extrairNFSeNacional(root,nome){
   const inf=root.querySelector('infNFSe');if(!inf)return{ok:false,msg:'infNFSe nao encontrado'};
   const infdps=root.querySelector('infDPS')||(inf.querySelector('DPS')?inf.querySelector('DPS').querySelector('infDPS'):null);
@@ -1861,18 +1971,27 @@ function extrairNFSeNacional(root,nome){
   const pf=tf?tf.querySelector('piscofins'):null;
   const pt=trib?trib.querySelector('totTrib pTotTrib'):null;
   const rt=prest?prest.querySelector('regTrib'):null;
-  const ee=emit?emit.querySelector('enderNac'):null,et=toma?toma.querySelector('end'):null;
-  const vServ=vs?t(vs,'vServ'):'';
+  const ee=emit?emit.querySelector('enderNac'):null;
+  /* `vs` já é o próprio <vServ>: procurar vServ DENTRO dele dava vazio, e o valor do
+     serviço caía na base de cálculo do ISS (que já vem sem descontos e deduções). */
+  const vServ=vs&&vs.textContent?vs.textContent.trim():'';
+  const dps=nfseDPS(infdps),eEmit=nfseEnd(ee),ePrest=nfseEnd(prest?prest.querySelector('end'):null);
+  /* Nome do município pelo código, só com o que a própria nota diz (emissão, prestação e
+     incidência). Map e não objeto: o código vem do arquivo. */
+  const nomes=new Map(),nm=(c,x)=>{if(c&&x&&!nomes.has(c))nomes.set(c,x);};
+  nm(dps.Cod_Local_Emissao,t(inf,'xLocEmi'));nm(dps.Cod_Local_Prestacao,t(inf,'xLocPrestacao'));nm(t(inf,'cLocIncid'),t(inf,'xLocIncid'));
   const d={
     Tipo_Nota:'NFS-e',Formato:'NFSe Nacional',
-    Chave_NFSe:(inf.getAttribute('Id')||'').replace('NFS',''),Numero_NFSe:t(inf,'nNFSe'),
+    Chave_NFSe:(inf.getAttribute('Id')||'').replace('NFS','').replace(/\s+/g,''),Numero_NFSe:t(inf,'nNFSe'),
     Serie_RPS:infdps?t(infdps,'serie'):'',Data_Emissao:infdps?t(infdps,'dhEmi'):t(inf,'dhProc'),
     Data_Competencia:infdps?t(infdps,'dCompet'):'',Municipio_Prestacao:t(inf,'xLocPrestacao'),
     cTribNac:t(cserv,'cTribNac'),xDescServ:(t(cserv,'xDescServ')||'').slice(0,200),
-    cNBS_DPS:t(cserv,'cNBS'),Cod_Servico_Mun:'',Desc_Servico:t(inf,'xTribNac'),
+    cNBS_DPS:t(cserv,'cNBS'),Cod_Servico_Mun:dps.Cod_Servico_Mun||'',Desc_Servico:t(inf,'xTribNac'),
     Cod_Item_Lei116:'',Cod_NBS:t(inf,'xNBS'),
     ISS_Retido:tm?(t(tm,'tpRetISSQN')||'-'):'',
-    BC_ISS:t(tm,'vBC')||t(vn,'vBC')||vServ,
+    /* Sem vBC no XML a base fica vazia: em nota imune, de exportação ou sem incidência
+       não há base, e o valor do serviço no lugar dela seria uma base inventada. */
+    BC_ISS:t(tm,'vBC')||t(vn,'vBC'),
     Aliq_ISS:t(tm,'pAliq')||t(vn,'pAliqAplic')||'',
     Valor_ISS:t(tm,'vISSQN')||t(vn,'vISSQN')||'',
     pAliq_ISS:t(tm,'pAliq')||t(vn,'pAliqAplic')||'',
@@ -1881,8 +2000,9 @@ function extrairNFSeNacional(root,nome){
     Valor_PIS:t(pf,'vPis')||'',
     Valor_COFINS:t(pf,'vCofins')||'',
     Valor_CSLL:t(tf,'vRetCSLL')||'',
+    /* A contribuição previdenciária retida é vRetCP no leiaute; vRetINSS fica de reserva. */
     BC_IRRF:'',Valor_IRRF:t(tf,'vRetIRRF')||'',
-    BC_INSS:'',Valor_INSS:t(tf,'vRetINSS')||'',
+    BC_INSS:'',Valor_INSS:t(tf,'vRetCP')||t(tf,'vRetINSS')||'',
     pTotTribSN:t(pt,'pTotTribMun')||t(trib,'pTotTribSN')||'',
     IBS_vBC:'',IBS_pIBSUF:'',IBS_vIBSUF:'',IBS_pIBSMun:'',IBS_vIBSMun:'',CBS_pCBS:'',CBS_vCBS:'',cClassTrib:'',
     Valor_Bruto:vServ||t(vn,'vBC')||t(vn,'vLiq')||'',
@@ -1892,10 +2012,21 @@ function extrairNFSeNacional(root,nome){
     IM_Prestador:t(emit,'IM'),Nome_Prestador:t(emit,'xNome'),NomeFantasia_Prestador:t(emit,'xFant'),
     UF_Prestador:t(ee,'UF')||'',Mun_Prestador:t(inf,'xLocEmi'),Email_Prestador:t(emit,'email')||t(prest,'email'),
     Simples_Nacional:rt?t(rt,'opSimpNac'):'',
+    /* O município do tomador é o do endereço dele (cMun), não o local da prestação:
+       a nota só traz o código, e o nome entra quando a própria nota o diz em outro grupo. */
     CNPJ_Tomador:t(toma,'CNPJ')||t(toma,'CPF'),IM_Tomador:t(toma,'IM'),Nome_Tomador:t(toma,'xNome'),
-    Mun_Tomador:t(inf,'xLocPrestacao'),UF_Tomador:et?t(et.querySelector('endNac'),'UF'):'',Email_Tomador:t(toma,'email'),
+    Mun_Tomador:nomes.get(dps.Cod_Mun_Tomador)||'',UF_Tomador:nfseUF(dps.Cod_Mun_Tomador),Email_Tomador:t(toma,'email'),
     Arquivo_Origem:nome
   };
+  Object.assign(d,dps,{
+    Numero_DFSe:t(inf,'nDFSe'),Data_Processamento:t(inf,'dhProc'),cStat_NFSe:t(inf,'cStat'),
+    Local_Emissao:t(inf,'xLocEmi'),Versao_Aplicativo:t(inf,'verAplic'),Tipo_Emissao:t(inf,'tpEmis'),
+    Desc_Servico_Mun:t(inf,'xTribMun'),
+    Cod_Mun_Incidencia:t(inf,'cLocIncid'),Mun_Incidencia:t(inf,'xLocIncid'),
+    Valor_Total_Retido:t(vn,'vTotalRet'),Deducoes_Reducoes:t(vn,'vCalcDR')||dps.Deducoes_Reducoes||'',
+    Endereco_Prestador:eEmit.end||ePrest.end,Cod_Mun_Prestador:eEmit.cMun||ePrest.cMun,Fone_Prestador:t(emit,'fone')||t(prest,'fone'),
+    Mun_Intermediario:nomes.get(dps.Cod_Mun_Intermediario)||''
+  });
   let ibscbs=inf.querySelector('IBSCBS');if(!ibscbs)ibscbs=root.querySelector('IBSCBS');
   if(ibscbs){
     const vi=ibscbs.querySelector('valores');
@@ -1904,8 +2035,17 @@ function extrairNFSeNacional(root,nome){
     if(tot){d.IBS_vIBSUF=t(tot.querySelector('gIBSUFTot'),'vIBSUF')||t(tot,'vIBSUF');d.IBS_vIBSMun=t(tot.querySelector('gIBSMunTot'),'vIBSMun')||t(tot,'vIBSMun');d.CBS_vCBS=t(tot.querySelector('gCBS'),'vCBS')||t(tot,'vCBS');}
     let gg=ibscbs.querySelector('gIBSCBS');if(!gg&&infdps){const id=infdps.querySelector('IBSCBS');gg=id?id.querySelector('gIBSCBS'):null;}
     d.cClassTrib=gg?t(gg,'cClassTrib'):'';
+    if(!d.IBSCBS_CST&&gg)d.IBSCBS_CST=t(gg,'CST');
+    d.IBSCBS_Reducao=t(ibscbs,'pRedutor')||t(ibscbs,'pRedAliqUF')||'';
+    if(!d.IBSCBS_CredPres)d.IBSCBS_CredPres=t(ibscbs,'vCredPresIBS')||t(ibscbs,'cCredPres')||'';
   }
-  return{ok:true,notas:[d],msg:`NFS-e Nacional: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
+  /* O líquido que o XML declarou, numa propriedade não enumerável (fica fora da
+     exportação, da busca e do dedup): Valor_Liquido cai no valor do serviço quando a
+     tag vLiq não vem, e a conferência não pode tomar esse preenchimento por
+     declaração. Só com a DPS lida: sem ela as retenções não foram lidas e a conta
+     do líquido não tem com o que fechar. */
+  const vLiq=t(vn,'vLiq');if(vLiq&&infdps)Object.defineProperty(d,'vLiqXML',{value:vLiq});
+  return{ok:true,notas:[nfseCompleta(d)],msg:`NFS-e Nacional: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
 }
 
 function extrairCompNFe(root,nome){
@@ -1941,9 +2081,15 @@ function extrairCompNFe(root,nome){
     Simples_Nacional:t(nfe,'PrestadorOptanteSimplesNacional'),
     CNPJ_Tomador:t(tomad,'CnpjCpf'),IM_Tomador:t(tomad,'InscricaoMunicipal'),Nome_Tomador:t(tomad,'RazaoSocialNome'),
     Mun_Tomador:t(tomad,'Municipio'),UF_Tomador:t(tomad,'UfSigla'),Email_Tomador:'',
-    Arquivo_Origem:nome
+    Arquivo_Origem:nome,
+    /* A discriminação inteira, com as quebras de linha: a coluna acima continua cortada
+       em 200 para não mudar a planilha de quem já a usa. */
+    Descricao_Completa:t(nfe,'Discriminacao')
   };
-  return{ok:true,notas:[d],msg:`NFS-e CompNFe: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
+  /* O CompNFe que traz a DPS dentro ganha os campos dela no que o próprio leiaute não tem. */
+  const extra=nfseDPS(idps);
+  for(const k of Object.keys(extra))if(!d[k]&&extra[k])d[k]=extra[k];
+  return{ok:true,notas:[nfseCompleta(d)],msg:`NFS-e CompNFe: ${(d.Nome_Prestador||d.CNPJ_Prestador||'?').slice(0,40)}`};
 }
 
 function extrairNFSe(nome,texto){
@@ -2308,113 +2454,244 @@ function dnfForaClique(e){const pn=document.querySelector('.dnf-painel');if(!pn)
   const x=dnfCartao(pn);if(!x||!x.u.abertos.size)return;x.u.abertos.clear();dnfRepinta(x);}
 document.addEventListener('click',dnfForaClique);
 
-function toggleDet(el){
-  const b=el.nextElementSibling;
-  if(!b)return;
-  b.classList.toggle('open');
-  el.setAttribute('aria-expanded',b.classList.contains('open')?'true':'false');
+// ═══ RENDER NFS-e (lista + painel) ═══
+/* Uma linha por NFS-e; clicar abre o painel lateral (o mesmo do CT-e) com o corpo no
+   desenho do item da NF-e: os tributos numa tabela padronizada, uma linha por tributo,
+   e as listas da nota. Todo campo aparece: o que não veio no XML sai 0,00 (valor) ou
+   — (texto), e os códigos do leiaute saem por extenso, com o código ao lado.
+   A conferência de valores fica atrás do botão "Conferir valores": quem só quer ler a
+   nota não vê aviso de conta. Todo dado do arquivo entra por esc (ou dnfVal/dnfDoc). */
+const NFSE_UI={aberto:-1,conf:false,alertasH:null};
+/* Abaixo de 900px o painel ocupa a largura toda e cobre a lista (ver nfseInerte). */
+const NFSE_MQ=window.matchMedia?window.matchMedia('(max-width:900px)'):null;
+/* Quem reteve o ISS, pelo tpRetISSQN. Fonte única da frase de retenção: o rótulo do
+   código, a célula "Retido?" da lista e a linha do ISS na tabela de tributos saem daqui. */
+const NFSE_RET_POR={'2':'tomador','3':'intermediário'};
+const NFSE_ROT={
+  tpRetISSQN:{'1':'Não retido','2':'Retido pelo '+NFSE_RET_POR['2'],'3':'Retido pelo '+NFSE_RET_POR['3']},
+  opSimpNac:{'1':'Não optante','2':'Optante MEI','3':'Optante ME/EPP'},
+  regApTribSN:{'1':'Federais e municipal pelo Simples Nacional','2':'Federais pelo Simples Nacional, ISSQN pela NFS-e','3':'Federais e municipal pela NFS-e'},
+  regEspTrib:{'0':'Nenhum','1':'Ato cooperado (cooperativa)','2':'Estimativa','3':'Microempresa municipal','4':'Notário ou registrador','5':'Profissional autônomo','6':'Sociedade de profissionais','9':'Outros'},
+  tribISSQN:{'1':'Operação tributável','2':'Imunidade','3':'Exportação de serviço','4':'Não incidência'},
+  tpImunidade:{'0':'Imunidade (tipo não informado)','1':'Patrimônio, renda ou serviços, uns dos outros','2':'Templos de qualquer culto','3':'Partidos, sindicatos, educação e assistência social','4':'Livros, jornais, periódicos e papel','5':'Fonogramas e videofonogramas musicais'},
+  tpSusp:{'1':'Por decisão judicial','2':'Por processo administrativo'},
+  CST:{'00':'Nenhum','01':'Tributável, alíquota básica','02':'Tributável, alíquota diferenciada','03':'Tributável por unidade de medida','04':'Monofásica, revenda a alíquota zero','05':'Substituição tributária','06':'Alíquota zero','07':'Isenta','08':'Sem incidência','09':'Com suspensão'},
+  tpRetPisCofins:{'1':'Retidos','2':'Não retidos'},
+  cStat:{'100':'NFS-e gerada','101':'NFS-e de substituição gerada','102':'NFS-e de decisão judicial','103':'NFS-e avulsa'},
+  tpAmb:{'1':'Produção','2':'Homologação'},
+  tpEmit:{'1':'Prestador','2':'Tomador','3':'Intermediário'},
+  tpEmis:{'1':'Normal (modelo nacional)','2':'Leiaute do município, transcrito'},
+  cMotivo:{'01':'Desenquadramento do Simples Nacional','02':'Enquadramento no Simples Nacional','03':'Inclusão retroativa de imunidade ou isenção','04':'Exclusão retroativa de imunidade ou isenção','05':'Rejeição pelo tomador ou intermediário','99':'Outros'}
+};
+/* Código decodificado, com o código em cinza ao lado. Devolve {h: html escapado, z: vazio}.
+   O código vem do XML: a tabela não resolve pelo protótipo. */
+function nfseCod(tab,cod){const c=String(cod==null?'':cod).trim();if(!c)return{h:'—',z:true};const m=NFSE_ROT[tab];
+  const r=m&&Object.prototype.hasOwnProperty.call(m,c)?m[c]:'';return{h:r?esc(r)+' <span class="nfse-cod">('+esc(c)+')</span>':esc(c),z:false};}
+function nfseR(v){return esc(moeda(v));}
+/* Alíquota da NFS-e com 2 casas: a lista, o painel e a conferência usam esta mesma. */
+function nfseP(v){return esc(pct(v));}
+function nfseCompet(v){const m=/^(\d{4})-(\d{2})/.exec(String(v||''));return m?m[2]+'/'+m[1]:String(v||'');}
+function nfseMun(nome,uf,cod){const a=[nome,uf].filter(Boolean).join('/');return[a,cod?'('+cod+')':''].filter(Boolean).join(' ');}
+/* ISS retido: pelo tpRetISSQN (2 tomador, 3 intermediário); sem ele (CompNFe), pela marca do leiaute. */
+function nfseIssRet(n){const tp=String(n.tpRetISSQN||'').trim();if(tp)return Object.prototype.hasOwnProperty.call(NFSE_RET_POR,tp);return /^(true|sim|s|1)$/i.test(String(n.ISS_Retido||'').trim());}
+/* null: não retido; '': retido sem dizer por quem (a marca do CompNFe); senão, quem reteve. */
+function nfseRetPor(n){if(!nfseIssRet(n))return null;const tp=String(n.tpRetISSQN||'').trim();return Object.prototype.hasOwnProperty.call(NFSE_RET_POR,tp)?NFSE_RET_POR[tp]:'';}
+/* PIS/COFINS: sem o indicador, o valor da nota é o retido (como a tela sempre os chamou). */
+function nfsePisRet(n){const tp=String(n.Ret_PISCOFINS||'').trim();return tp?tp==='1':true;}
+/* As contas da nota, em centavos inteiros na comparação. `esperado` é serviço −
+   desconto incondicionado − retenções; `esperadoCond` também tira o
+   condicionado, que o leiaute nacional desconta do líquido. */
+function nfseConta(n){
+  const c2=v=>Math.round(v*100)/100;
+  const iss=nfseIssRet(n)?f(n.Valor_ISS):0,pis=nfsePisRet(n)?f(n.Valor_PIS)+f(n.Valor_COFINS):0;
+  const fed=pis+f(n.Valor_CSLL)+f(n.Valor_IRRF)+f(n.Valor_INSS),base=f(n.Valor_Bruto)-f(n.Desc_Incondicionado)-iss-fed;
+  return{issRet:c2(iss),fed:c2(fed),tot:c2(iss+fed),esperado:c2(base),esperadoCond:c2(base-f(n.Desc_Condicionado))};
 }
-
-// ═══ RENDER NFS-e (COMPLETO) ═══
+/* NFS-e substituída por outra que também foi importada: chave → a substituta. */
+function nfseSubstPor(lista){const m=new Map(),porChave=new Map();
+  lista.forEach(n=>{if(n.Chave_NFSe&&!porChave.has(n.Chave_NFSe))porChave.set(n.Chave_NFSe,n);});
+  lista.forEach(n=>{const o=n.Chave_Substituida?porChave.get(n.Chave_Substituida):null;if(o&&o!==n&&!m.has(o))m.set(o,n);});
+  return m;}
+/* O quadro "Para conferir". Texto puro (quem desenha escapa); cada aviso cita no
+   máximo NFSE_ALERTA_MAX notas. Só o que o XML permite conferir. */
+const NFSE_ALERTA_MAX=10;
+function nfseAlertas(lista){
+  const al=[],num=n=>String(n.Numero_NFSe||'?');
+  const cita=(xs,fn)=>xs.slice(0,NFSE_ALERTA_MAX).map(fn).join('; ')+(xs.length>NFSE_ALERTA_MAX?` e mais ${xs.length-NFSE_ALERTA_MAX}`:'')+'.';
+  /* Salto de numeração por prestador e por formato: o CompNFe municipal e a NFS-e
+     Nacional do mesmo CNPJ são séries diferentes. Sem CNPJ, o prestador é o nome (no
+     mesmo formato); sem nenhum dos dois a nota fica fora, porque juntar prestadores
+     diferentes sob um rótulo comum inventaria salto entre as séries deles. */
+  const seq=new Map();
+  lista.forEach(n=>{const doc=String(n.CNPJ_Prestador||'').trim(),nome=String(n.Nome_Prestador||'').trim(),fmt=String(n.Formato||'').trim(),x=parseInt(n.Numero_NFSe,10);
+    if(isNaN(x)||(!doc&&!nome))return;const k=(doc?'c:'+doc:'n:'+nome)+'|'+fmt;
+    const s=seq.get(k)||{nome,doc,fmt,ns:[]};s.ns.push(x);seq.set(k,s);});
+  seq.forEach(s=>{const u=[...new Set(s.ns)].sort((a,b)=>a-b),bur=[];
+    for(let i=1;i<u.length;i++){const dd=u[i]-u[i-1];if(dd===2)bur.push(String(u[i]-1));else if(dd>2)bur.push((u[i-1]+1)+' a '+(u[i]-1));}
+    const quais=bur.slice(0,NFSE_ALERTA_MAX).join(', ')+(bur.length>NFSE_ALERTA_MAX?'…':''),quem=[s.nome,s.doc].filter(Boolean).join(' · ')+(s.fmt?', '+s.fmt:'');
+    if(bur.length)al.push(`Numeração com salto (prestador ${quem}): faltam ${quais} no que foi importado.`);});
+  /* Líquido: só onde o XML declarou o vLiq e a DPS (com as retenções) foi lida, que é
+     quando o leitor grava vLiqXML. Valor_Liquido não serve: sem a tag ele é o valor
+     do serviço, e a conta "acharia" um líquido que a nota não declarou. */
+  const liq=lista.filter(n=>{if(!dnfTem(n.vLiqXML))return false;const k=nfseConta(n),l=f(n.vLiqXML);
+    const difC=v=>Math.abs(Math.round(l*100)-Math.round(v*100));return difC(k.esperado)>1&&difC(k.esperadoCond)>1;});
+  if(liq.length)al.push('O líquido não fecha com serviço − descontos − retenções: '+cita(liq,n=>`NFS-e ${num(n)} (XML ${moeda(n.vLiqXML)}, a conta dá ${moeda(nfseConta(n).esperado)})`));
+  const aliq=lista.filter(n=>{const a=f(n.Aliq_ISS),tr=String(n.Trib_ISSQN||'').trim();return a>0&&(!tr||tr==='1')&&(a<2||a>5);});
+  if(aliq.length)al.push('Alíquota de ISS fora do intervalo de 2% a 5% (LC 116): '+cita(aliq,n=>`NFS-e ${num(n)} (${pct(n.Aliq_ISS)})`));
+  const sn=lista.filter(n=>String(n.Simples_Nacional||'').trim()==='3'&&((nfsePisRet(n)&&f(n.Valor_PIS)+f(n.Valor_COFINS)>0)||f(n.Valor_CSLL)>0));
+  if(sn.length)al.push('Prestador do Simples Nacional (ME/EPP) com retenção de PIS, COFINS ou CSLL: '+cita(sn,n=>`NFS-e ${num(n)}`));
+  const comp=lista.filter(n=>{const a=/^\d{4}-\d{2}/.exec(String(n.Data_Competencia||'')),b=/^\d{4}-\d{2}/.exec(String(n.Data_Emissao||''));return a&&b&&a[0]!==b[0];});
+  if(comp.length)al.push('Competência em mês diferente da emissão: '+cita(comp,n=>`NFS-e ${num(n)} (competência ${nfseCompet(n.Data_Competencia)}, emitida em ${dataHoraBr(n.Data_Emissao,true)})`));
+  const sub=[...nfseSubstPor(lista)];
+  if(sub.length)al.push('NFS-e substituída importada junto com a substituta (não deve entrar na apuração): '+cita(sub,([o,s])=>`NFS-e ${num(o)} substituída pela ${num(s)}`));
+  const inc=lista.filter(n=>String(n.tpRetISSQN||'').trim()==='2'&&n.Cod_Mun_Incidencia&&n.Cod_Mun_Prestador&&String(n.Cod_Mun_Incidencia).trim()!==String(n.Cod_Mun_Prestador).trim());
+  if(inc.length)al.push('ISS retido pelo tomador e devido em município diferente do prestador (confira a guia): '+cita(inc,n=>`NFS-e ${num(n)} (devido em ${nfseMun(n.Mun_Incidencia,nfseUF(n.Cod_Mun_Incidencia),n.Cod_Mun_Incidencia)}, prestador em ${nfseMun(n.Mun_Prestador,n.UF_Prestador,n.Cod_Mun_Prestador)})`));
+  return al;
+}
+/* A conferência só é refeita quando DB.nfse muda (outro array ou outro tamanho):
+   filtrar, abrir e trocar de nota não mexem nela. */
+const NFSE_AL={ref:null,len:-1,al:[]};
+function nfseAlertasDe(lista){
+  if(NFSE_AL.ref!==lista||NFSE_AL.len!==lista.length){NFSE_AL.ref=lista;NFSE_AL.len=lista.length;NFSE_AL.al=lista.length?nfseAlertas(lista):[];}
+  return NFSE_AL.al;
+}
+/* Célula de lista do painel: valor (m), alíquota (p), texto (padrão) ou já desenhada ({h,z}). */
+function nfseCel(v,tp){
+  if(v&&typeof v==='object')return{h:v.h,z:v.z,cls:'txt'};
+  if(tp==='m'){const r=dnfVal(v,'m');return{h:r.h,z:r.z,cls:''};}
+  if(tp==='p'){const r=dnfVal(v,'p');return{h:r.z?r.h:nfseP(v),z:r.z,cls:''};}
+  const r=dnfVal(v,'t');return{h:r.h,z:r.z,cls:'txt'};
+}
+function nfseLst(pares){return '<dl class="dnf-lst">'+pares.map(([r,v,tp,forte])=>{const x=nfseCel(v,tp);
+  const c=[x.cls,x.z?'z':'',forte?'forte':''].filter(Boolean).join(' ');
+  return `<dt${forte?' class="forte"':''}>${esc(r)}</dt><dd${c?' class="'+c+'"':''}>${x.h}</dd>`;}).join('')+'</dl>';}
+function nfseBox(tit,h){return `<section class="nfse-box"><h5 class="dnf-sub">${esc(tit)}</h5>${h}</section>`;}
+function nfseChave(v){const ch=String(v==null?'':v).replace(/\s+/g,'');return ch?{h:'<span class="nfse-ch">'+esc(ch)+'</span>',z:false}:{h:'—',z:true};}
+function nfseDocH(v){return{h:dnfDoc(v),z:!dnfTem(v)};}
+/* Tributo aproximado: valor (R$) quando o XML traz valor, percentual quando traz percentual. */
+function nfseAprox(v,p){if(dnfTem(v))return{h:nfseR(v),z:f(v)===0};if(dnfTem(p))return{h:nfseP(p),z:f(p)===0};return{h:'0,00',z:true};}
+/* A tabela de tributos: uma linha por tributo, as mesmas colunas do item da NF-e. */
+function nfseTrib(n,k){
+  const NADA={h:'—',z:true};
+  /* Base/alíquota que o XML não traz: 0,00 em cinza, igual em todas as linhas (critério do item da NF-e). */
+  const cel=(v,tp)=>{const x=nfseCel(v,tp);return `<td class="n${x.z?' z':''}">${x.h}</td>`;};
+  const cst=(x)=>`<td${x.z?' class="z"':''}>${x.h}</td>`;
+  const det=(pares)=>pares.map(([r,x])=>esc(r)+' '+(x.z?'<span class="z">'+x.h+'</span>':'<b>'+x.h+'</b>')).join(' · ');
+  const sim=b=>({h:b?'sim':'não',z:false});
+  const por=nfseRetPor(n),quem=por===null?'não':por?'sim, pelo '+por:'sim';
+  const inc=nfseMun(n.Mun_Incidencia,nfseUF(n.Cod_Mun_Incidencia),n.Cod_Mun_Incidencia);
+  const pisRet=nfsePisRet(n),cstPC=dnfVal(n.PISCOFINS_CST,'t'),cstIC=dnfVal(n.IBSCBS_CST,'t'),cct=dnfVal(n.cClassTrib,'t');
+  const L=[
+    ['ISS',NADA,n.BC_ISS,'m',n.Aliq_ISS,'p',n.Valor_ISS,det([['Retido',{h:esc(quem),z:false}],['Incidência',dnfVal(inc,'t')]])],
+    ['PIS',cstPC,n.BC_CSRF,'m',n.Aliq_PIS,'p',n.Valor_PIS,det([['Retido',sim(pisRet&&f(n.Valor_PIS)>0)]])],
+    ['COFINS',cstPC,n.BC_CSRF,'m',n.Aliq_COFINS,'p',n.Valor_COFINS,det([['Retido',sim(pisRet&&f(n.Valor_COFINS)>0)]])],
+    ['CSLL',NADA,'','m','','p',n.Valor_CSLL,det([['Retido',sim(f(n.Valor_CSLL)>0)]])],
+    ['IRRF',NADA,n.BC_IRRF,'m','','p',n.Valor_IRRF,det([['Retido',sim(f(n.Valor_IRRF)>0)]])],
+    ['INSS (CP)',NADA,n.BC_INSS,'m','','p',n.Valor_INSS,det([['Retido',sim(f(n.Valor_INSS)>0)]])],
+    ['IBS UF',cstIC,n.IBS_vBC,'m',n.IBS_pIBSUF,'p',n.IBS_vIBSUF,det([['cClassTrib',cct]])],
+    ['IBS município',cstIC,n.IBS_vBC,'m',n.IBS_pIBSMun,'p',n.IBS_vIBSMun,det([['cClassTrib',cct]])],
+    ['CBS',cstIC,n.IBS_vBC,'m',n.CBS_pCBS,'p',n.CBS_vCBS,det([['cClassTrib',cct]])]
+  ];
+  return '<div class="nfse-trib-wrap"><table class="nfse-trib"><thead><tr><th>Tributo</th><th>CST</th><th class="n">Base</th><th class="n">Alíquota</th><th class="n">Valor</th><th>Detalhes</th></tr></thead><tbody>'
+    +L.map(([nome,c,b,tb,a,ta,v,d])=>`<tr><td class="nome">${esc(nome)}</td>${cst(c)}${cel(b,tb)}${cel(a,ta)}${cel(v,'m')}<td class="det">${d}</td></tr>`).join('')
+    +`<tr class="tot"><td class="nome">Total retido</td><td></td><td></td><td></td>${cel(k.tot,'m')}<td class="det">ISS retido, PIS, COFINS, CSLL, IRRF e INSS</td></tr></tbody></table></div>`;
+}
+/* O painel aberto: ant/prx são os índices (em DB.nfse) da linha vizinha na tela, -1 na ponta. */
+function nfsePainel(n,ant,prx,por){
+  const k=nfseConta(n),cs=nfseCod('cStat',n.cStat_NFSe);
+  const situ={h:esc(por?'Substituída pela NFS-e '+(por.Numero_NFSe||'?'):'Autorizada')+(cs.z?'':' · '+cs.h),z:false};
+  const mot=nfseCod('cMotivo',n.Motivo_Substituicao),xm=dnfVal(n.Desc_Motivo_Substituicao,'t');
+  const motivo=mot.z?xm:{h:mot.h+(xm.z?'':' · '+xm.h),z:false};
+  const sus=nfseCod('tpSusp',n.Exig_Suspensa),proc=dnfVal(n.Processo_Suspensao,'t');
+  const susp=sus.z?proc:{h:sus.h+(proc.z?'':' · processo '+proc.h),z:false};
+  const ret=String(n.tpRetISSQN||'').trim()?nfseCod('tpRetISSQN',n.tpRetISSQN):dnfVal(n.ISS_Retido,'t');
+  const dsc=dnfVal(n.Descricao_Completa||n.Discriminacao||n.xDescServ,'t');
+  const cod=(c,x)=>[c,x].filter(Boolean).join(' · ');
+  const ir=(i,lado,txt,rot)=>`<button type="button" class="nfse-ir" data-lado="${lado}" ${i<0?'disabled':'data-ir="'+i+'"'} aria-label="${rot}">${txt}</button>`;
+  return `<aside class="nfse-painel" role="dialog" aria-label="NFS-e ${esc(n.Numero_NFSe||'')}">`
+  +`<div class="cte-painel-cab">${ir(ant,'ant','◂ anterior','NFS-e anterior')}<b>NFS-e ${esc(n.Numero_NFSe||'?')} · ${esc(n.NomeFantasia_Prestador||n.Nome_Prestador||n.CNPJ_Prestador||'?')}</b>`
+  +`${ir(prx,'prx','próxima ▸','Próxima NFS-e')}<span class="cte-sub cte-dica">↑ ↓ passam de NFS-e · Esc fecha</span><button type="button" class="nfse-fechar">Fechar <span aria-hidden="true">✕</span></button></div>`
+  /* O corpo rola pelo teclado: recebe foco, e com o foco nele ↑ ↓ rolam em vez de trocar de nota. */
+  +`<div class="cte-painel-corpo" tabindex="0" role="region" aria-label="Detalhe da NFS-e"><div class="nfse-corpo">`
+  +nfseBox('Tributos',nfseTrib(n,k))
+  +nfseBox('Valores',nfseLst([['Valor do serviço',n.Valor_Bruto,'m'],['Valor recebido (intermediário)',n.Valor_Recebido,'m'],['Desconto incondicionado',n.Desc_Incondicionado,'m'],
+    ['Desconto condicionado',n.Desc_Condicionado,'m'],['Deduções / reduções',n.Deducoes_Reducoes,'m'],['Base de cálculo do ISS',n.BC_ISS,'m'],['ISS retido',k.issRet,'m'],
+    ['Retenções federais',k.fed,'m'],['Total retido',k.tot,'m'],['Valor líquido',n.Valor_Liquido,'m',1]]))
+  +nfseBox('Identificação',nfseLst([[n.Formato==='CompNFe'?'Código de verificação':'Chave de acesso',nfseChave(n.Chave_NFSe)],['Número da NFS-e',n.Numero_NFSe],['Número do DFS-e',n.Numero_DFSe],
+    ['Emissão da DPS',dataHoraBr(n.Data_Emissao)],['Processamento',dataHoraBr(n.Data_Processamento)],['Competência',nfseCompet(n.Data_Competencia)],['Situação',situ],
+    ['Ambiente',nfseCod('tpAmb',n.Ambiente)],['Emitida por',nfseCod('tpEmit',n.Tipo_Emitente)],['Local de emissão',nfseMun(n.Local_Emissao,'',n.Cod_Local_Emissao)],
+    ['Versão do aplicativo',n.Versao_Aplicativo]]))
+  +nfseBox('DPS (declaração do prestador)',nfseLst([['Número da DPS',n.Numero_DPS],['Série',n.Serie_RPS],['Tipo de emissão',nfseCod('tpEmis',n.Tipo_Emissao)],
+    ['Substitui a NFS-e',nfseChave(n.Chave_Substituida)],['Motivo da substituição',motivo]]))
+  +nfseBox('Serviço',nfseLst([['Código de tributação nacional',cod(n.cTribNac,n.Desc_Servico)],['Código municipal',cod(n.Cod_Servico_Mun,n.Desc_Servico_Mun)],
+    ['NBS',cod(n.cNBS_DPS,n.Cod_NBS)],['Item da LC 116',n.Cod_Item_Lei116],['Local da prestação',nfseMun(n.Municipio_Prestacao,nfseUF(n.Cod_Local_Prestacao),n.Cod_Local_Prestacao)],
+    ['País da prestação',n.Pais_Prestacao],['Obra',n.Obra],['Evento',n.Evento],['Comércio exterior',n.Comercio_Exterior]])
+    +`<h6 class="dnf-sub">Descrição do serviço</h6><p class="nfse-txt${dsc.z?' z':''}">${dsc.h}</p>`)
+  +nfseBox('ISS',nfseLst([['Tributação',nfseCod('tribISSQN',n.Trib_ISSQN)],['Município de incidência',nfseMun(n.Mun_Incidencia,nfseUF(n.Cod_Mun_Incidencia),n.Cod_Mun_Incidencia)],
+    ['Retenção',ret],['Imunidade',nfseCod('tpImunidade',n.Tipo_Imunidade)],['Exigibilidade suspensa',susp],['Benefício municipal',n.Beneficio_Municipal],
+    ['Regime especial',nfseCod('regEspTrib',n.Regime_Especial)]]))
+  +nfseBox('PIS / COFINS',nfseLst([['CST',nfseCod('CST',n.PISCOFINS_CST)],['Base de cálculo',n.BC_CSRF,'m'],['Alíquota PIS',n.Aliq_PIS,'p'],['Alíquota COFINS',n.Aliq_COFINS,'p'],
+    ['Retenção',nfseCod('tpRetPisCofins',n.Ret_PISCOFINS)]]))
+  +nfseBox('IBS / CBS',nfseLst([['Classificação tributária (cClassTrib)',n.cClassTrib],['CST',n.IBSCBS_CST],['Indicador da operação',n.cIndOp],['Base de cálculo',n.IBS_vBC,'m'],
+    ['Redução de alíquota',n.IBSCBS_Reducao,'p'],['Crédito presumido',n.IBSCBS_CredPres]]))
+  +nfseBox('Tributos aproximados (Lei 12.741)',nfseLst([['Federais',nfseAprox(n.vTotTrib_Fed,n.pTotTrib_Fed)],['Estaduais',nfseAprox(n.vTotTrib_Est,n.pTotTrib_Est)],
+    ['Municipais',nfseAprox(n.vTotTrib_Mun,n.pTotTrib_Mun)]]))
+  +nfseBox('Prestador',nfseLst([['Razão social',n.Nome_Prestador],['Nome fantasia',n.NomeFantasia_Prestador],['CNPJ/CPF',nfseDocH(n.CNPJ_Prestador)],['Inscrição municipal',n.IM_Prestador],
+    ['Endereço',n.Endereco_Prestador],['Município',nfseMun(n.Mun_Prestador,n.UF_Prestador,n.Cod_Mun_Prestador)],['Telefone',n.Fone_Prestador],['E-mail',n.Email_Prestador],
+    ['Simples Nacional',nfseCod('opSimpNac',n.Simples_Nacional)],['Apuração no Simples',nfseCod('regApTribSN',n.Apuracao_SN)],['Regime especial',nfseCod('regEspTrib',n.Regime_Especial)]]))
+  +nfseBox('Tomador',nfseLst([['Razão social',n.Nome_Tomador],['CNPJ/CPF',nfseDocH(n.CNPJ_Tomador)],['Inscrição municipal',n.IM_Tomador],['Endereço',n.Endereco_Tomador],
+    ['Município',nfseMun(n.Mun_Tomador,n.UF_Tomador,n.Cod_Mun_Tomador)],['Telefone',n.Fone_Tomador],['E-mail',n.Email_Tomador]]))
+  +nfseBox('Intermediário',nfseLst([['Razão social',n.Nome_Intermediario],['CNPJ/CPF',nfseDocH(n.CNPJ_Intermediario)],['Inscrição municipal',n.IM_Intermediario],['Endereço',n.Endereco_Intermediario],
+    ['Município',nfseMun(n.Mun_Intermediario,nfseUF(n.Cod_Mun_Intermediario),n.Cod_Mun_Intermediario)],['Telefone',n.Fone_Intermediario],['E-mail',n.Email_Intermediario]]))
+  +nfseBox('Informações complementares',nfseLst([['Texto',n.Info_Complementar],['Documento técnico',n.Doc_Tecnico],['Documento de referência',n.Doc_Referencia],['Arquivo de origem',n.Arquivo_Origem]]))
+  +`</div></div></aside>`;
+}
+/* O botão "Conferir valores (N)" e o quadro que ele abre. O quadro nasce fechado. O
+   quadro é role=status: só é reescrito quando o texto muda, senão o leitor de tela
+   repetiria a conferência a cada filtro. */
+function nfseConfRender(lista){
+  const bt=document.getElementById('nfse-conf'),box=document.getElementById('nfse-alertas');
+  const al=nfseAlertasDe(lista);
+  bt.hidden=!lista.length;
+  bt.textContent=`Conferir valores (${al.length})`;
+  bt.setAttribute('aria-expanded',NFSE_UI.conf&&lista.length?'true':'false');
+  bt.classList.toggle('on',NFSE_UI.conf&&!!lista.length);
+  box.hidden=!(NFSE_UI.conf&&lista.length);
+  const h=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'<b>Para conferir</b><p>Nada a conferir nas NFS-e importadas.</p>';
+  if(NFSE_UI.alertasH!==h){box.innerHTML=h;NFSE_UI.alertasH=h;}
+}
+function nfseRetCel(n){const por=nfseRetPor(n);
+  if(por===null)return '<span class="cte-sub">não</span>';
+  return '<b>sim</b><div class="cte-sub">'+esc(por||'retido')+'</div>';}
+/* A marca da linha aberta (classe e aria-current), movida sem redesenhar a tabela. */
+function nfseMarca(tr,on){tr.classList.toggle('sel',on);if(on)tr.setAttribute('aria-current','true');else tr.removeAttribute('aria-current');}
 function renderNFSe(){
-  const c=document.getElementById('nfse-list');
+  const lista=DB.nfse,c=document.getElementById('nfse-list');
   const filtro=document.getElementById('filtro-nfse').value.toLowerCase();
   const fc=document.getElementById('filtro-nfse-cnpj').value;
-  let d=DB.nfse;
-  if(filtro)d=d.filter(n=>Object.values(n).some(v=>String(v).toLowerCase().includes(filtro)));
-  if(fc)d=d.filter(n=>n.CNPJ_Prestador===fc);
-  document.getElementById('nfse-count').textContent=`${d.length} registro(s)`;
-  if(!d.length){c.innerHTML='<div class="empty-state"><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';return;}
-  c.innerHTML=d.map(n=>`<div class="nota-card">
-    <div class="header" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">
-      <span class="info"><strong>NFS-e</strong> — ${esc(n.Numero_NFSe||'?')} — ${esc(n.Nome_Prestador||n.CNPJ_Prestador||'?')} <span class="badge">${esc(n.Formato||'?')}</span></span>
-      <span class="meta">${dataBr(n.Data_Emissao)} <span class="toggle"><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg></span></span>
-      </div>
-      <div class="body-detail">
-        <div class="info-grid">
-        <div class="info-box"><h4>Prestador</h4>
-          <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">Fantasia:</span><span>${esc(n.NomeFantasia_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">IM:</span><span>${esc(n.IM_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">Email:</span><span>${esc(n.Email_Prestador||'-')}</span></div>
-          <div class="row"><span class="lbl">Simples Nac:</span><span>${esc(n.Simples_Nacional||'-')}</span></div>
-        </div>
-        <div class="info-box"><h4>Tomador</h4>
-          <div class="row"><span class="lbl">CNPJ:</span><span>${esc(n.CNPJ_Tomador||'-')}</span></div>
-          <div class="row"><span class="lbl">Nome:</span><span>${esc(n.Nome_Tomador||'-')}</span></div>
-          <div class="row"><span class="lbl">IM:</span><span>${esc(n.IM_Tomador||'-')}</span></div>
-          <div class="row"><span class="lbl">Município:</span><span>${esc(n.Mun_Tomador||'-')}</span></div>
-          <div class="row"><span class="lbl">UF:</span><span>${esc(n.UF_Tomador||'-')}</span></div>
-          <div class="row"><span class="lbl">Email:</span><span>${esc(n.Email_Tomador||'-')}</span></div>
-        </div>
-      </div>
-      <div style="margin-bottom:6px;display:flex;gap:12px;font-size:11px;color:var(--text2);flex-wrap:wrap">
-        <span><strong>Chave:</strong> ${esc(n.Chave_NFSe||'-')}</span>
-        <span><strong>Número:</strong> ${esc(n.Numero_NFSe||'-')}</span>
-        <span><strong>Série RPS:</strong> ${esc(n.Serie_RPS||'-')}</span>
-        <span><strong>Emissão:</strong> ${dataBr(n.Data_Emissao)}</span>
-        <span><strong>Competência:</strong> ${dataBr(n.Data_Competencia)}</span>
-        <span><strong>Mun. Prestação:</strong> ${esc(n.Municipio_Prestacao||'-')}</span>
-      </div>
-      <div class="info-grid">
-        <div class="info-box"><h4>Serviço</h4>
-          <div class="row"><span class="lbl">cTribNac:</span><span>${esc(n.cTribNac||'-')}</span></div>
-          <div class="row"><span class="lbl">Desc.Serv.:</span><span>${esc((n.xDescServ||'-').slice(0,80))}</span></div>
-          <div class="row"><span class="lbl">cNBS:</span><span>${esc(n.cNBS_DPS||'-')}</span></div>
-          <div class="row"><span class="lbl">Serv.Mun.:</span><span>${esc(n.Cod_Servico_Mun||'-')}</span></div>
-          <div class="row"><span class="lbl">Desc.Mun.:</span><span>${esc((n.Desc_Servico||'-').slice(0,80))}</span></div>
-          <div class="row"><span class="lbl">Item Lei 116:</span><span>${esc(n.Cod_Item_Lei116||'-')}</span></div>
-          <div class="row"><span class="lbl">Cód.NBS:</span><span>${esc(n.Cod_NBS||'-')}</span></div>
-        </div>
-        <div class="info-box"><h4>ISS</h4>
-          <div class="row"><span class="lbl">Retido:</span><span>${esc(n.ISS_Retido||'-')}</span></div>
-          <div class="row"><span class="lbl">BC ISS:</span><span>${moeda(n.BC_ISS)}</span></div>
-          <div class="row"><span class="lbl">Alíq ISS:</span><span>${pct(n.Aliq_ISS)}</span></div>
-          <div class="row"><span class="lbl">Valor ISS:</span><span><strong>${moeda(n.Valor_ISS)}</strong></span></div>
-          <div class="row"><span class="lbl">pAliq ISS:</span><span>${pct(n.pAliq_ISS)}</span></div>
-          <div class="row"><span class="lbl">tpRetISSQN:</span><span>${esc(n.tpRetISSQN||'—')}</span></div>
-        </div>
-      </div>
-      <div class="det-section">
-        <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">CSRF — Pis/COFINS/CSLL/IRRF/INSS</div>
-        <div class="det-body">
-          <table><thead><tr><th>BC CSRF</th><th>V.PIS Ret.</th><th>V.COFINS Ret.</th><th>V.CSLL Ret.</th><th>BC IRRF</th><th>V.IRRF Ret.</th><th>BC INSS</th><th>V.INSS Ret.</th></tr></thead><tbody><tr>
-            <td>${moeda(n.BC_CSRF)}</td><td>${moeda(n.Valor_PIS)}</td><td>${moeda(n.Valor_COFINS)}</td><td>${moeda(n.Valor_CSLL)}</td>
-            <td>${moeda(n.BC_IRRF)}</td><td>${moeda(n.Valor_IRRF)}</td><td>${moeda(n.BC_INSS)}</td><td>${moeda(n.Valor_INSS)}</td>
-          </tr></tbody></table>
-        </div>
-      </div>
-      <div class="det-section">
-        <div class="det-title" role="button" tabindex="0" aria-expanded="false" style="cursor:pointer">IBS/CBS (Reforma Tributária)</div>
-        <div class="det-body">
-          <table><thead><tr><th>BC IBS/CBS</th><th>Alíq.IBS UF</th><th>V.IBS UF</th><th>Alíq.IBS Mun.</th><th>V.IBS Mun.</th><th>Alíq.CBS</th><th>V.CBS</th><th>Class.Trib.</th></tr></thead><tbody><tr>
-            <td>${moeda(n.IBS_vBC)}</td><td>${pct(n.IBS_pIBSUF)}</td><td>${moeda(n.IBS_vIBSUF)}</td><td>${pct(n.IBS_pIBSMun)}</td><td>${moeda(n.IBS_vIBSMun)}</td>
-            <td>${pct(n.CBS_pCBS)}</td><td>${moeda(n.CBS_vCBS)}</td><td>${esc(n.cClassTrib||'—')}</td>
-          </tr></tbody></table>
-          ${n.pTotTribSN?`<div style="margin-top:4px;font-size:10px;color:var(--text2)">pTotTribSN: ${pct(n.pTotTribSN)}</div>`:''}
-        </div>
-      </div>
-      <div class="info-grid">
-        <div class="info-box"><h4>Valores</h4>
-          <div class="row"><span class="lbl">Valor Bruto:</span><span><strong>${moeda(n.Valor_Bruto)}</strong></span></div>
-          <div class="row"><span class="lbl">Valor Líquido:</span><span><strong>${moeda(n.Valor_Liquido)}</strong></span></div>
-        </div>
-        <div class="info-box"><h4>Resumo Tributos</h4>
-          <div class="row"><span class="lbl">ISS:</span><span>${moeda(n.Valor_ISS)}</span></div>
-          <div class="row"><span class="lbl">PIS:</span><span>${moeda(n.Valor_PIS)}</span></div>
-          <div class="row"><span class="lbl">COFINS:</span><span>${moeda(n.Valor_COFINS)}</span></div>
-          <div class="row"><span class="lbl">CSLL:</span><span>${moeda(n.Valor_CSLL)}</span></div>
-          <div class="row"><span class="lbl">IRRF:</span><span>${moeda(n.Valor_IRRF)}</span></div>
-          <div class="row"><span class="lbl">INSS:</span><span>${moeda(n.Valor_INSS)}</span></div>
-        </div>
-      </div>
-      ${n.Discriminacao?`<div style="margin-top:6px;padding:6px 10px;background:var(--card-2);border-radius:4px;font-size:10px;color:var(--text2)"><strong>Discriminação:</strong> ${esc(n.Discriminacao)}</div>`:''}
-      <div style="margin-top:4px;font-size:10px;color:var(--text2);text-align:right;font-style:italic">Arquivo: ${esc(n.Arquivo_Origem||'-')}</div>
-    </div>
-  </div>`).join('');
+  const idx=lista.map((x,i)=>i).filter(i=>{const n=lista[i];
+    return(!filtro||Object.values(n).some(v=>String(v).toLowerCase().includes(filtro)))&&(!fc||n.CNPJ_Prestador===fc);});
+  document.getElementById('nfse-count').textContent=`${idx.length} registro(s)`;
+  nfseConfRender(lista);
+  if(!idx.length){NFSE_UI.aberto=-1;c.innerHTML='<div class="empty-state"><p>Nenhum serviço NFS-e. Importe XMLs.</p></div>';nfseInerte();return;}
+  if(!idx.includes(NFSE_UI.aberto))NFSE_UI.aberto=-1;
+  const por=nfseSubstPor(lista);
+  const linhas=idx.map(i=>{const n=lista[i],k=nfseConta(n),s=por.get(n);
+    return `<tr data-i="${i}" tabindex="0"${i===NFSE_UI.aberto?' class="sel" aria-current="true"':''}>`
+      +`<td><b>${esc(n.Numero_NFSe||'?')}</b></td><td>${esc(dataHoraBr(n.Data_Emissao,true))}</td><td>${esc(nfseCompet(n.Data_Competencia))}</td>`
+      +`<td>${esc(n.NomeFantasia_Prestador||n.Nome_Prestador||'—')}<div class="cte-sub">${dnfDoc(n.CNPJ_Prestador)}</div></td>`
+      +`<td>${esc(String(n.Nome_Tomador||'—').slice(0,48))}</td>`
+      +`<td>${esc(n.cTribNac||n.Cod_Servico_Mun||'—')}<div class="cte-sub">${esc(String(n.Desc_Servico||n.xDescServ||'').slice(0,60))}</div></td>`
+      +`<td class="n">${nfseR(n.Valor_Bruto)}</td><td class="n">${nfseR(n.Valor_ISS)}<div class="cte-sub">${nfseP(n.Aliq_ISS)}</div></td>`
+      +`<td>${nfseRetCel(n)}</td><td class="n">${nfseR(k.fed)}</td><td class="n"><b>${nfseR(n.Valor_Liquido)}</b></td>`
+      +`<td>${s?'<span class="cte-pill cte-falta">substituída pela '+esc(s.Numero_NFSe||'?')+'</span>':'<span class="cte-pill cte-ok">autorizada</span>'}</td></tr>`;
+  }).join('');
+  let pn='';
+  if(NFSE_UI.aberto>=0){const p0=idx.indexOf(NFSE_UI.aberto);pn=nfsePainel(lista[NFSE_UI.aberto],p0>0?idx[p0-1]:-1,p0<idx.length-1?idx[p0+1]:-1,por.get(lista[NFSE_UI.aberto]));}
+  c.innerHTML=`<div class="cte-tab-wrap" tabindex="0" role="region" aria-label="Tabela de NFS-e"><table class="cte-tab nfse-tab"><thead><tr><th>NFS-e</th><th>Emissão</th><th>Compet.</th><th>Prestador</th><th>Tomador</th><th>Serviço</th>`
+    +`<th class="n">Valor serviço</th><th class="n">ISS</th><th>Retido?</th><th class="n">Ret. federais</th><th class="n">Líquido</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+    +`<div class="nfse-slot">${pn}</div>`;
+  nfseInerte();
 }
 
 // ═══ EVENT DELEGATION (em vez de onclick em innerHTML) ═══
@@ -2422,24 +2699,107 @@ function toggleNota(el){
   const b=el.nextElementSibling;const t=el.querySelector('.toggle');
   if(b){b.classList.toggle('open');if(t)t.classList.toggle('open');el.setAttribute('aria-expanded',b.classList.contains('open')?'true':'false');}
 }
-['nfe-list','nfse-list'].forEach(id=>{
-  const raiz=document.getElementById(id);
+(function(){
+  const raiz=document.getElementById('nfe-list');
   raiz.addEventListener('click',e=>{
     const h=e.target.closest('.nota-card>.header');
-    if(h){toggleNota(h);if(id==='nfe-list')dnfGaranteCorpo(h);return;}
-    const d=e.target.closest('.det-title');
-    if(d){toggleDet(d);return;}
-    if(id==='nfe-list')dnfClique(e);
+    if(h){toggleNota(h);dnfGaranteCorpo(h);return;}
+    dnfClique(e);
   });
-  /* Teclado: os alvos são div/span clicáveis — sem isto, são inalcançáveis por Tab (2.1.1) */
+  /* Teclado: o header é um div clicável — sem isto, é inalcançável por Tab (2.1.1) */
   raiz.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
     const h=e.target.closest?.('.nota-card>.header');
-    const d=e.target.closest?.('.det-title');
-    if(h){e.preventDefault();toggleNota(h);if(id==='nfe-list')dnfGaranteCorpo(h);return;}
-    if(d){e.preventDefault();toggleDet(d);}
+    if(h){e.preventDefault();toggleNota(h);dnfGaranteCorpo(h);}
   });
-});
+})();
+
+/* NFS-e: os mesmos gestos do CT-e. Clique na linha abre (de novo, fecha); Enter ou
+   espaço abrem com o foco no painel; os botões do cabeçalho passam de nota.
+   Abrir, trocar e fechar mexem só no painel (o .nfse-slot) e na marca da linha: a
+   tabela não é redesenhada, então a rolagem e o foco dela ficam onde estavam.
+   `foco` é o seletor do que recebe o foco depois de trocar o painel. */
+function nfseEstreito(){return !!(NFSE_MQ&&NFSE_MQ.matches);}
+/* Abaixo de 900px o painel cobre a lista inteira: enquanto ele está aberto, o que fica
+   por baixo (menu lateral, barra do topo, filtros, botão e quadro da conferência, tabela)
+   sai do alcance do teclado e do leitor de tela, e o painel se declara modal. Fechar ou
+   alargar a janela devolve. */
+function nfseInerte(){
+  const pn=document.querySelector('#nfse-list .nfse-painel'),on=NFSE_UI.aberto>=0&&!!pn&&nfseEstreito();
+  const tab=document.getElementById('tab-nfse');
+  [document.getElementById('sidebar'),document.getElementById('topbar'),tab&&tab.querySelector('.filter-bar'),document.getElementById('nfse-conf'),document.getElementById('nfse-alertas'),document.querySelector('#nfse-list .cte-tab-wrap')]
+    .forEach(el=>{if(el)el.inert=on;});
+  if(pn){if(on)pn.setAttribute('aria-modal','true');else pn.removeAttribute('aria-modal');}
+  return on;
+}
+function nfseLinhas(){return [...document.querySelectorAll('#nfse-list tr[data-i]')];}
+function nfseAbre(i,foco){
+  const c=document.getElementById('nfse-list'),slot=c.querySelector('.nfse-slot');
+  const trs=nfseLinhas(),is=trs.map(tr=>+tr.dataset.i),p=is.indexOf(i);
+  if(!slot||p<0||!DB.nfse[i]){NFSE_UI.aberto=i;renderNFSe();}
+  else{
+    c.querySelectorAll('tr.sel').forEach(tr=>nfseMarca(tr,false));nfseMarca(trs[p],true);
+    NFSE_UI.aberto=i;
+    slot.innerHTML=nfsePainel(DB.nfse[i],p>0?is[p-1]:-1,p<is.length-1?is[p+1]:-1,nfseSubstPor(DB.nfse).get(DB.nfse[i]));
+    if(trs[p].scrollIntoView)trs[p].scrollIntoView({block:'nearest'});
+  }
+  /* Na tela estreita a lista ficou inerte: o foco vai para o painel mesmo no clique. */
+  if(nfseInerte()||foco){const b=foco?document.querySelector(foco):null,fe=document.querySelector('.nfse-painel .nfse-fechar');
+    const alvo=b&&!b.disabled&&!(nfseEstreito()&&!b.closest('.nfse-painel'))?b:fe;if(alvo)alvo.focus();}
+}
+/* `foco` false: fecha sem devolver o foco à linha (ao sair da aba, a linha está escondida). */
+function nfseFecha(foco){
+  const i=NFSE_UI.aberto;if(i<0)return;NFSE_UI.aberto=-1;
+  const c=document.getElementById('nfse-list'),slot=c.querySelector('.nfse-slot');
+  if(slot){slot.innerHTML='';c.querySelectorAll('tr.sel').forEach(tr=>nfseMarca(tr,false));}else renderNFSe();
+  nfseInerte();
+  if(foco===false)return;
+  const tr=c.querySelector(`tr[data-i="${i}"]`);if(tr)tr.focus();
+}
+(function(){
+  const raiz=document.getElementById('nfse-list');
+  raiz.addEventListener('click',e=>{
+    if(e.target.closest('.nfse-fechar')){nfseFecha();return;}
+    const ir=e.target.closest('.nfse-ir[data-ir]');
+    if(ir){nfseAbre(+ir.dataset.ir,'.nfse-painel .nfse-ir[data-lado="'+(ir.dataset.lado==='ant'?'ant':'prx')+'"]');return;}
+    const tr=e.target.closest('tr[data-i]');
+    if(tr){const i=+tr.dataset.i;if(i===NFSE_UI.aberto)nfseFecha();else nfseAbre(i,null);}
+  });
+  raiz.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const tr=e.target.closest&&e.target.closest('tr[data-i]');
+    if(tr){e.preventDefault();nfseAbre(+tr.dataset.i,'.nfse-painel .nfse-fechar');}
+  });
+  /* O quadro "Para conferir" só abre a pedido; o estado sobrevive ao redesenho da lista. */
+  document.getElementById('nfse-conf').addEventListener('click',()=>{NFSE_UI.conf=!NFSE_UI.conf;nfseConfRender(DB.nfse);});
+  /* Teclado e clique fora no document, valendo só com a aba NFS-e à mostra (escondida,
+     ela continua no DOM e roubaria as teclas das outras abas). */
+  const ativa=()=>NFSE_UI.aberto>=0&&document.getElementById('tab-nfse').classList.contains('active')&&!!document.querySelector('.nfse-painel');
+  document.addEventListener('keydown',e=>{
+    if(e.defaultPrevented||!ativa())return;
+    if(e.key==='Escape'){e.preventDefault();nfseFecha();return;}
+    if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+    const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+    /* Com o foco no corpo do painel, ↑ ↓ rolam o texto (área rolável), não trocam de nota. */
+    if(a&&a.closest&&a.closest('.nfse-painel .cte-painel-corpo'))return;
+    const is=nfseLinhas().map(tr=>+tr.dataset.i),p=is.indexOf(NFSE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
+    if(p<0||j<0||j>=is.length)return;e.preventDefault();
+    /* Quem anda pela lista continua na lista (na linha nova); quem está no painel continua no painel. */
+    const naLista=!nfseEstreito()&&a&&a.closest&&a.closest('#nfse-list tr[data-i]');
+    nfseAbre(is[j],naLista?`#nfse-list tr[data-i="${is[j]}"]`:'.nfse-painel .nfse-fechar');
+  });
+  /* A janela mudou de largura com o painel aberto: aplica ou devolve o inert; se o foco
+     estava no que acabou de ficar inerte, ele vai para o painel. */
+  if(NFSE_MQ){const mud=()=>{const on=nfseInerte(),pn=document.querySelector('#nfse-list .nfse-painel'),tab=document.getElementById('tab-nfse'),a=document.activeElement;
+      if(on&&pn&&a&&tab.contains(a)&&!pn.contains(a)){const fe=pn.querySelector('.nfse-fechar');if(fe)fe.focus();}};
+    if(NFSE_MQ.addEventListener)NFSE_MQ.addEventListener('change',mud);else if(NFSE_MQ.addListener)NFSE_MQ.addListener(mud);}
+  document.addEventListener('click',e=>{
+    if(!ativa())return;
+    const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
+    if(!t||!t.isConnected||!t.closest||t.closest('.nfse-painel')||t.closest('#nfse-list tr[data-i]')||t.closest('#nfse-conf'))return;
+    nfseFecha();
+  });
+})();
 
 // ═══ CT-e (modelo 57) ═══
 /* O CT-e é lido INTEIRO: todo grupo do leiaute 4.00 que tem dado para a
@@ -2886,7 +3246,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     if(tab){tab.classList.add('active');
       if(btn.dataset.tab==='dashboard')renderDashboard();
       if(btn.dataset.tab==='nfe')renderNFE();
-      if(btn.dataset.tab==='nfse')renderNFSe();
+      if(btn.dataset.tab==='nfse')renderNFSe();else nfseFecha(false);
       if(btn.dataset.tab==='cte')renderCTe();else CTE_UI.aberto=-1;
     }
   });
