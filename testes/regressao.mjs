@@ -4104,6 +4104,29 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             ok('NFS-e na tela: Esc fecha o painel, tira a marca e devolve o foco à linha',
               aberto() === -1 && !painel() && sel() === '' && doc.activeElement === tr(2) && evX.defaultPrevented, 'aberto=' + aberto() + ' sel=' + sel());
 
+            /* "◂ anterior" e "próxima ▸": o foco fica no botão do mesmo lado, e no Fechar quando o
+               botão fica desabilitado na ponta (o foco pedido a um botão desabilitado se perde). */
+            {
+              const irN = (lado) => lista.querySelector('.nfse-painel .nfse-ir[data-lado="' + lado + '"]');
+              const ladoN = (b) => (b ? (b.disabled ? 'off' : b.getAttribute('data-ir')) : 'sem');
+              const passoN = () => [aberto(), ladoN(irN('ant')), ladoN(irN('prx')),
+                doc.activeElement === lista.querySelector('.nfse-painel .nfse-fechar') ? 'fechar' : doc.activeElement === irN('ant') ? 'ant'
+                  : doc.activeElement === irN('prx') ? 'prx' : doc.activeElement === body ? 'body' : 'outro'].join('/');
+              fire(tr(1), 'click');
+              const passosN = [];
+              for (const l of ['ant', 'prx', 'prx', 'prx', 'ant']) { fire(irN(l), 'click'); passosN.push(passoN()); }
+              const pN = passosN.join(' ');
+              ok('NFS-e: "◂ anterior" e "próxima ▸" passam de nota, desabilitam nas pontas e o foco fica no botão do mesmo lado (no Fechar, quando ele desabilita)',
+                pN === '0/off/1/fechar 1/0/2/prx 2/1/3/prx 3/2/off/fechar 2/1/3/ant', pN);
+              /* Clique com o mouse no campo de busca com o painel aberto: o clique fora fecha, mas
+                 não puxa o foco para a linha (o que se digita em seguida iria para a lista). */
+              const campoN = doc.getElementById('filtro-nfse');
+              campoN.focus(); fire(campoN, 'click');
+              ok('NFS-e na tela larga: clicar no campo de busca com o painel aberto fecha o painel e o foco fica no campo',
+                aberto() === -1 && !painel() && sel() === '' && doc.activeElement === campoN,
+                'aberto=' + aberto() + ' foco=' + (doc.activeElement ? doc.activeElement.tagName + '#' + doc.activeElement.id : 'nenhum'));
+            }
+
             /* Filtro: ↑ ↓ e próxima andam só pelo que está na tela. */
             doc.getElementById('filtro-nfse-cnpj').value = PREST; R('renderNFSe()');
             const tabF = lista.querySelector('table.nfse-tab');
@@ -4244,6 +4267,118 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
                 semMudar.n === 0 && semMudar.ab === -1 && semMudar.tem && semMudar.hid === false && mudou === 1, JSON.stringify({ semMudar, mudou }));
             }
 
+            /* Abrir e trocar de CT-e não redesenham a tabela (a linha clicada continua a mesma,
+               com o foco nela); "◂ anterior" e "próximo ▸" andam pela lista à mostra, o foco
+               fica no botão do mesmo lado e cai no Fechar quando ele fica desabilitado na ponta. */
+            {
+              const selC = () => listaC.querySelectorAll('tr.sel').map((x) => x.dataset.i + (x.getAttribute('aria-current') === 'true' ? '*' : '')).join(',');
+              const irC = (lado) => listaC.querySelector('.cte-painel .cte-ir[data-lado="' + lado + '"]');
+              const estado = () => ({ ab: abertoC(), ant: irC('ant') ? (irC('ant').disabled ? 'off' : irC('ant').getAttribute('data-ir')) : 'sem', prx: irC('prx') ? (irC('prx').disabled ? 'off' : irC('prx').getAttribute('data-ir')) : 'sem',
+                foco: doc.activeElement === fecharC() ? 'fechar' : doc.activeElement === irC('ant') ? 'ant' : doc.activeElement === irC('prx') ? 'prx' : doc.activeElement === body ? 'body' : 'outro' });
+              const tabC = listaC.querySelector('table.cte-tab');
+              trC(1).focus(); fire(trC(1), 'click');
+              const clique = { ab: abertoC(), mesma: listaC.querySelector('table.cte-tab') === tabC, linha: doc.activeElement === trC(1), body: doc.activeElement === body, sel: selC() };
+              ok('CT-e na tela larga: o clique na linha abre o painel sem redesenhar a tabela (a mesma), marca a linha (sel + aria-current) e o foco fica na linha, não cai no body',
+                clique.ab === 1 && clique.mesma && clique.linha && !clique.body && clique.sel === '1*', JSON.stringify(clique));
+              const bts = painelC() ? painelC().querySelectorAll('.cte-painel-cab .cte-ir') : [];
+              const rot = bts.map((b) => [b.textContent, b.getAttribute('aria-label'), b.getAttribute('type')]);
+              ok('CT-e: o cabeçalho do painel tem "◂ anterior" e "próximo ▸", e o nome acessível de cada um contém o texto visível ("CT-e anterior" / "Próximo CT-e")',
+                rot.length === 2 && rot[0][0] === '◂ anterior' && rot[0][1] === 'CT-e anterior' && rot[1][0] === 'próximo ▸' && rot[1][1] === 'Próximo CT-e'
+                && rot.every(([t, a, ty]) => ty === 'button' && a.toLowerCase().includes(t.replace(/[◂▸]/g, '').trim().toLowerCase())), JSON.stringify(rot));
+              ok('CT-e: os botões do painel usam a regra de botão do cabeçalho (área de toque de 44px) e a de desabilitado da NFS-e, sem cor nova',
+                /(^|[,}\n])[^{}]*\.cte-ir[^{}]*\{[^}]*min-height:44px/.test(html) && /\.cte-ir:disabled[^{]*\{color:var\(--text3\)/.test(html));
+              const passos = [];
+              fire(irC('prx'), 'click'); passos.push(estado());
+              fire(irC('ant'), 'click'); passos.push(estado());
+              fire(irC('ant'), 'click'); passos.push(estado());
+              fire(irC('prx'), 'click'); passos.push(estado());
+              const p = passos.map((s) => [s.ab, s.ant, s.prx, s.foco].join('/')).join(' ');
+              ok('CT-e: "próximo ▸" e "◂ anterior" passam de CT-e, desabilitam nas pontas e o foco fica no botão do mesmo lado (no Fechar, quando ele desabilita)',
+                p === '2/1/off/fechar 1/0/2/ant 0/off/1/fechar 1/0/2/prx', p);
+              ok('CT-e: trocar pelos botões não redesenha a tabela e a marca anda com o painel',
+                listaC.querySelector('table.cte-tab') === tabC && selC() === '1*', 'sel=' + selC());
+              fecharC().focus(); const evXL = tecla('Escape');
+              ok('CT-e na tela larga: Esc fecha o painel, tira a marca, mantém a tabela e devolve o foco à linha',
+                abertoC() === -1 && !painelC() && selC() === '' && evXL.defaultPrevented && listaC.querySelector('table.cte-tab') === tabC && doc.activeElement === trC(1),
+                'aberto=' + abertoC() + ' sel=' + selC());
+              /* ↑ ↓ com o foco numa linha da lista (tela larga): troca de CT-e e o foco anda para a
+                 linha nova, sem redesenhar a tabela; com o foco no Fechar, o foco fica no painel. */
+              const ondeC = () => (doc.activeElement === fecharC() ? 'fechar' : doc.activeElement && doc.activeElement.tagName === 'TR' && listaC.contains(doc.activeElement)
+                ? 'tr' + doc.activeElement.dataset.i : doc.activeElement === body ? 'body' : 'outro');
+              trC(1).focus(); fire(trC(1), 'click');
+              const setas = [];
+              tecla('ArrowDown'); setas.push([abertoC(), selC(), ondeC()].join('/'));
+              tecla('ArrowUp'); setas.push([abertoC(), selC(), ondeC()].join('/'));
+              fecharC().focus(); tecla('ArrowUp'); setas.push([abertoC(), selC(), ondeC()].join('/'));
+              const sC = setas.join(' ');
+              ok('CT-e na tela larga: ↑ ↓ com o foco na linha trocam de CT-e e levam o foco à linha nova (sem redesenhar a tabela); com o foco no Fechar, ele fica no Fechar',
+                sC === '2/2*/tr2 1/1*/tr1 0/0*/fechar' && listaC.querySelector('table.cte-tab') === tabC, sC);
+              /* A situação vem do XML ("cStat - xMotivo") e pode ser longa: no cabeçalho do painel o
+                 white-space que vale (cascata das regras do <style> sobre o elemento desenhado) é
+                 normal; na tabela a pill continua numa linha só. */
+              {
+                const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+                const regras = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m, o) => ({ sels: m[1].trim().split(','), decl: m[2], o }));
+                const espec = (sl) => (sl.match(/#[\w-]+/g) || []).length * 100 + (sl.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+/g) || []).length * 10
+                  + (sl.replace(/[.#:][\w-]+|\[[^\]]*\]/g, ' ').match(/(^|[\s>+~])[a-zA-Z][\w-]*/g) || []).length;
+                const espaco = (el) => {
+                  let m0 = null;
+                  for (const r of regras) {
+                    const m = /(?:^|;)\s*white-space\s*:\s*([^;!]+)/.exec(r.decl); if (!m) continue;
+                    for (const sl of r.sels) {
+                      let bate = false; try { bate = el.matches(sl.trim()); } catch (e) { bate = false; }
+                      if (!bate) continue;
+                      const e = espec(sl.trim());
+                      if (!m0 || e > m0.e || (e === m0.e && r.o >= m0.o)) m0 = { e, o: r.o, v: m[1].trim() };
+                    }
+                  }
+                  return m0 ? m0.v : 'normal';
+                };
+                const pillCab = painelC() && painelC().querySelector('.cte-painel-cab .cte-pill');
+                const pillTab = trC(0) && trC(0).querySelector('.cte-pill');
+                const ws = { cab: pillCab ? espaco(pillCab) : 'sem pill', tab: pillTab ? espaco(pillTab) : 'sem pill' };
+                ok('CT-e: a situação no cabeçalho do painel quebra linha (o texto longo do XML não estoura o cabeçalho em 375px nem empurra o Fechar); na tabela continua numa linha',
+                  ws.cab === 'normal' && ws.tab === 'nowrap', JSON.stringify(ws));
+              }
+              /* Clique com o mouse no campo de busca com o painel aberto: fecha sem puxar o foco. */
+              const campoC = doc.getElementById('filtro-cte');
+              campoC.focus(); fire(campoC, 'click');
+              ok('CT-e na tela larga: clicar no campo de busca com o painel aberto fecha o painel e o foco fica no campo',
+                abertoC() === -1 && !painelC() && selC() === '' && doc.activeElement === campoC,
+                'aberto=' + abertoC() + ' foco=' + (doc.activeElement ? doc.activeElement.tagName + '#' + doc.activeElement.id : 'nenhum'));
+              /* As NF-e carregadas saem de um lugar só (lista e painel contam pelo mesmo conjunto). */
+              {
+                R('__DB.nfe=[{Chave_NFe:"N1"},{Chave_NFe:""},{Chave_NFe:"N2"}]');
+                const carr = R('typeof cteCarregadas==="function"?[...cteCarregadas()].join(","):"sem"');
+                R('__DB.nfe=[]');
+                const secC = html.slice(html.indexOf('// ═══ CT-e (modelo 57)'), html.indexOf('// ═══ DASHBOARD'));
+                const montagens = (secC.match(/new Set\(DB\.nfe\b/g) || []).length, usos = (secC.match(/cteCarregadas\(\)/g) || []).length;
+                ok('CT-e: o conjunto de NF-e carregadas é montado só em cteCarregadas(), usado pela lista e pelo painel',
+                  carr === 'N1,N2' && montagens === 1 && usos === 3, JSON.stringify({ carr, montagens, usos }));
+              }
+              /* Com a busca, os botões pulam o CT-e que ficou de fora (o 2º não tem "veículo"). */
+              const ctesB = [0, 1, 2, 3].map((i) => Object.assign({}, ctes[0], { Numero: String(601 + i), Chave_CTe: 'B' + i, proPred: i === 1 ? 'Moto' : 'Veículo' }));
+              R('__DB.cte=' + JSON.stringify(ctesB) + ';CTE_UI.aberto=-1;');
+              doc.getElementById('filtro-cte').value = 'veículo'; R('renderCTe()');
+              fire(trC(0), 'click');
+              const busca = [estado()];
+              fire(irC('prx'), 'click'); busca.push(estado());
+              fire(irC('prx'), 'click'); busca.push(estado());
+              fire(irC('ant'), 'click'); busca.push(estado());
+              const b = busca.map((s) => [s.ab, s.ant, s.prx].join('/')).join(' ');
+              ok('CT-e com busca: os botões andam só pelo que está na tela (0 → 2 → 3 e volta para 2), desabilitados na primeira e na última à mostra',
+                !trC(1) && b === '0/off/2 2/0/3 3/2/off 2/0/3', b);
+              /* Redesenho com o painel aberto (a busca mudou e o CT-e continua à mostra): a
+                 marca e os vizinhos saem do render inteiro iguais aos do troca-painel. */
+              R('renderCTe()');
+              const re = estado();
+              ok('CT-e com busca: redesenhar com o painel aberto mantém a marca (sel + aria-current) e os vizinhos da lista à mostra nos botões',
+                re.ab === 2 && re.ant === '0' && re.prx === '3' && selC() === '2*', JSON.stringify(re) + ' sel=' + selC());
+              fecharC().focus(); tecla('Escape');
+              doc.getElementById('filtro-cte').value = '';
+              R('__DB.cte=' + JSON.stringify(ctes) + ';CTE_UI.aberto=-1;renderCTe()');
+            }
+
             /* Tela larga: o painel abre ao lado da lista e nada fica inerte. */
             fire(trC(1), 'click');
             const largaC = { ab: abertoC(), in: inertesC(), modal: modalC() };
@@ -4270,6 +4405,12 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
               corpoC.getAttribute('tabindex') === '0' && corpoC.getAttribute('aria-label') === 'Detalhe do CT-e' && noCorpo.foco
               && noCorpo.ab === 1 && !noCorpo.prev && abertoC() === 2 && todosC(true) && doc.activeElement === fecharC(),
               JSON.stringify(noCorpo) + ' depois=' + abertoC());
+            /* No estreito a lista está inerte: mesmo com o foco ainda numa linha, a seta leva ao Fechar. */
+            doc.activeElement = trC(2); tecla('ArrowUp');
+            const estSeta = { ab: abertoC(), fechar: doc.activeElement === fecharC() };
+            fecharC().focus(); tecla('ArrowDown');
+            ok('CT-e na tela estreita: ↑ ↓ com o foco numa linha levam o foco ao Fechar do painel (a lista está inerte)',
+              estSeta.ab === 1 && estSeta.fechar && abertoC() === 2, JSON.stringify(estSeta));
 
             /* Esc fecha, tira o inert e devolve o foco à linha. */
             fecharC().focus();
@@ -4305,9 +4446,10 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
 
             /* Trocar de aba (pelo .click() do próprio script, que o inert não barra) devolve tudo. */
             fire(doc.querySelector('.nav-btn[data-tab="importar"]'), 'click', { programatico: true });
-            const foraC = { ab: abertoC(), in: inertesC(), modal: modalC() };
-            ok('CT-e na tela estreita: trocar de aba com o painel aberto fecha e tira o inert de tudo, inclusive do menu e da barra do topo',
-              foraC.ab === -1 && foraC.in.every((x) => x === false) && foraC.modal === null, JSON.stringify(foraC));
+            const foraC = { ab: abertoC(), in: inertesC(), modal: modalC(), pn: !!painelC(), sel: listaC.querySelectorAll('tr.sel').length,
+              focoNaLista: !!(doc.activeElement && listaC.contains(doc.activeElement)) };
+            ok('CT-e na tela estreita: trocar de aba com o painel aberto fecha (o painel sai do DOM, a linha perde a marca, o foco não vai à lista escondida) e tira o inert de tudo, inclusive do menu e da barra do topo',
+              foraC.ab === -1 && foraC.in.every((x) => x === false) && foraC.modal === 'sem painel' && !foraC.pn && foraC.sel === 0 && !foraC.focoNaLista, JSON.stringify(foraC));
             fire(doc.querySelector('.nav-btn[data-tab="cte"]'), 'click');
 
             /* A busca (ou a lista) que fica vazia com o painel aberto tira o inert; limpar a busca não reabre. */
