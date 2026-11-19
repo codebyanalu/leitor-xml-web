@@ -86,7 +86,7 @@ Três camadas no gate anti-vazamento da regressão, porque nenhuma sozinha fecha
 | Gate | Como decide | O que fecha |
 |---|---|---|
 | **2.A — cruzamento com o gabarito, por formato** | cruza CNPJ (mascarado e cru), chave 44 e protocolo 15 dos **arquivos versionados** contra `verdade.json` | dado com formato reconhecível, até em arquivo que o gate antigo não visitava |
-| **2.B — CNPJ de DV válido x sintético declarado** | todo `\d{14}` cujo **DV fecha** tem que estar na lista de sintéticos do `regressao.mjs` | dado que **ninguém catalogou**, sem depender do gabarito |
+| **2.B — CNPJ de DV válido x sintético declarado** | todo `\d{14}` (e todo CNPJ alfanumérico) cujo **DV fecha** tem que estar na lista de sintéticos do `regressao.mjs` | dado que **ninguém catalogou**, sem depender do gabarito |
 | **2.C — campos sem formato, por valor exato** | compara IE, número de nota, NatOp, município e endereço **caráter a carácter** com o gabarito | o que nenhuma regex plausível pega |
 
 O escopo dos três é `git ls-files` — a lista de publicação é o índice do git, não uma lista escrita à mão.
@@ -135,6 +135,10 @@ A leitura de PDF só é dada como completa quando **CNPJ e número** foram local
 O nome do participante só é aceito quando o **CNPJ impresso ao lado dele** é o mesmo que está sendo nomeado, o que separa a razão social do emitente do destinatário em DANFE de conta de terceiro.
 
 Colunas de auditoria na exportação: `Garantia`, `NumeroOk`, `CNPJ_Ok`, `CNPJ_Fonte`, `Numero_Ancora`, `OCR_Reforco`. CNPJs placeholder (`00.000.000/0000-00`) e trechos das próprias 44 posições da chave são descartados para evitar falso positivo.
+
+### CNPJ alfanumérico (NT 2026.004)
+
+O leitor aceita o CNPJ com letras (já em uso na NFS-e nacional desde 10/08/2026): letra A–Z nas 12 primeiras posições e os 2 DVs sempre numéricos, como `12.ABC.345/01DE-35` (o exemplo público da Receita). O módulo 11 é o mesmo de antes, com cada posição valendo `código do caractere − 48` — para CNPJ só de dígitos a conta não muda. Na chave de 44 a letra só pode aparecer nas posições 7–18 (o CNPJ do emitente), e o DV da chave usa o mesmo valor por caractere. Vale para a validação (`vC`/`vH`), a leitura de PDF e OCR, a decodificação da chave, os formatadores, o CT-e, a consulta ao `publica.cnpj.ws` e a Consulta em Lote. No texto do PDF e na planilha, um CNPJ com letra só é aceito se estiver isolado e o DV fechar: palavra em maiúscula colada em número tem a mesma forma.
 
 ### Lacunas conhecidas do leitor de PDF
 

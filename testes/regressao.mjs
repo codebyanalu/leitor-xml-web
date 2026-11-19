@@ -141,6 +141,33 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
   const cnpjCru = achouEm(/(?<![\d.])\d{14}(?![\d])/g);
   const chave44 = achouEm(/(?<![\d.])\d{44}(?![\d])/g);
   const protocolo = achouEm(/(?<![\d.])\d{15}(?![\d])/g);
+  /* CNPJ alfanumérico (NT 2026.004): letra A-Z nas 12 primeiras posições e DV
+     numérico; na chave, letra só nas posições 7-18. Os coletores acima só veem
+     dígito, então um CNPJ ou uma chave alfanumérica real escaparia do gate.
+     Entram nos MESMOS mapas (a mesma allowlist decide), mas só quando têm letra
+     — o numérico já foi contado — e, no cru, só quando o DV fecha: sem isso todo
+     identificador de código em maiúscula com 2 dígitos no fim viraria "CNPJ". */
+  const dvAlfaFecha = (c14) => {
+    const dv = (s) => {
+      let r = 0;
+      for (let i = 0; i < s.length; i++) r += (s.charCodeAt(s.length - 1 - i) - 48) * (2 + (i % 8));
+      const x = r % 11;
+      return x < 2 ? 0 : 11 - x;
+    };
+    const b12 = c14.slice(0, 12);
+    const d1 = String(dv(b12));
+    return c14 === b12 + d1 + String(dv(b12 + d1));
+  };
+  const temLetra = (s) => /[A-Z]/.test(s);
+  for (const [k, f] of achouEm(/(?<![0-9A-Za-z])[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}(?![0-9A-Za-z])/g)) {
+    if (temLetra(k)) cnpjMasc.set(k, f);
+  }
+  for (const [k, f] of achouEm(/(?<![0-9A-Za-z.])[0-9A-Z]{12}\d{2}(?![0-9A-Za-z])/g)) {
+    if (temLetra(k) && dvAlfaFecha(k)) cnpjCru.set(k, f);
+  }
+  for (const [k, f] of achouEm(/(?<![0-9A-Za-z.])\d{6}[0-9A-Z]{12}\d{26}(?![0-9A-Za-z])/g)) {
+    if (temLetra(k)) chave44.set(k, f);
+  }
   /* IE e número de nota não têm formato próprio — IE é 8-12 dígitos, número de
      nota é 1-9. Não dá para casar por regex sem reprovar fixture de teste
      ("Nº 5", "123456789012345"). Então estes dois são casados pelo VALOR
@@ -207,8 +234,17 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     '35260911222333000181500010000001231123456783',
     '52609112223330001815500100000012311234567835',
     '43526091122233300018155001000000123112345678',
+    // CNPJ alfanumérico (NT 2026.004): 12.ABC.345/01DE-35 é o exemplo público
+    // da Receita Federal para o novo formato (o DV fecha no vC do app); o -36 é
+    // o mesmo com DV trocado. A chave de 44 foi montada sobre ele a partir da
+    // chave sintética 352609...783 acima (mesma UF, AAMM, série e número) e o
+    // -783 dela é a variante com DV trocado.
+    '12.ABC.345/01DE-35', '12ABC34501DE35',
+    '12.ABC.345/01DE-36', '12ABC34501DE36',
+    '35260912ABC34501DE35550010000001231123456784',
+    '35260912ABC34501DE35550010000001231123456783',
   ]);
-  const ehSintetico = (v) => SINT.has(v) || SINT.has(String(v).replace(/\D/g, ''));
+  const ehSintetico = (v) => SINT.has(v) || SINT.has(String(v).replace(/[^0-9A-Z]/g, ''));
 
   if (!fs.existsSync(VERDADE)) {
     console.log('  ! sem verdade.json: cruzamento impossível; valida só os sintéticos conhecidos');
@@ -225,7 +261,7 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
        entrada órfã (uma chave de 43 dígitos na lista de 44), que ninguém
        notaria leyendo. É a mesma classe de erro da lista duplicada. */
     const achados = [...cnpjMasc.keys(), ...cnpjCru.keys(), ...protocolo.keys(), ...chave44.keys()];
-    const orfaos = [...SINT].filter((s) => !achados.some((a) => a === s || a.replace(/\D/g, '') === s.replace(/\D/g, '')));
+    const orfaos = [...SINT].filter((s) => !achados.some((a) => a === s || a.replace(/[^0-9A-Z]/g, '') === s.replace(/[^0-9A-Z]/g, '')));
     ok('sem gabarito: nenhum sintético declarado está órfão (a lista não infla sozinha)',
       orfaos.length === 0,
       orfaos.join(', ') || (SINT.size + ' declarados, todos no fonte'));
@@ -346,9 +382,9 @@ ok('ReDoS: PADROES_SEP sem \s* adjacentes', !/const PADROES_SEP[\s\S]*?\];/.exec
     /* A MESMA lista do ramo sem gabarito (acima), não uma segunda: foi ter duas
        que o clone novo reprovou com 14 valores que aqui já eram aceitos. */
     const cnpjValidosNaoSinteticos = [...cnpjCru.keys()]
-      .filter((x) => /^\d{14}$/.test(x))
+      .filter((x) => /^[0-9A-Z]{12}\d{2}$/.test(x))
       .filter((x) => !ehSintetico(x))
-      .filter((x) => dvCnpjFecha(x))
+      .filter((x) => (/^\d{14}$/.test(x) ? dvCnpjFecha(x) : dvAlfaFecha(x)))
       .map((x) => 'CNPJ ' + x + ' em ' + cnpjCru.get(x));
     ok('todo CNPJ de DV válido nos versionados é um sintético declarado',
       cnpjValidosNaoSinteticos.length === 0,
@@ -691,6 +727,11 @@ ok('vH aceita chave válida sintética (controle positivo)',
   vH('35260911222333000181550010000001231123456783') === true);
 ok('CNPJ placeholder rejeitado por vC', vC('00.000.000/0000-00') === false);
 ok('CNPJ válido aceito por vC', vC('11.222.333/0001-81') === true);
+/* CNPJ alfanumérico (NT 2026.004): o exemplo público da Receita. vC e vH
+   precisam funcionar sozinhos (sem d(), que descarta letra). */
+ok('CNPJ alfanumérico aceito por vC (exemplo da Receita)', vC('12.ABC.345/01DE-35') === true);
+ok('chave com CNPJ alfanumérico aceita por vH',
+  vH('35260912ABC34501DE35550010000001231123456784') === true);
 
 // ══════════════════════════════════════════════════════════════
 grupo('10 · REGRAS DO PROJETO');
@@ -1096,6 +1137,56 @@ await (async () => {
       /* E o contrato precisa realmente publicar vC (foi o que faltou). */
       ok('o return de ModPDFIsolado publica vC e vH',
         /return\{extrair,parseFull,mergeExtracao,finalizar,tC,vC,vH\};/.test(html));
+    }
+  }
+
+  // ── CNPJ alfanumérico (NT 2026.004) na consulta e no lote ──
+  /* Sintéticos declarados no gate do grupo 2: o exemplo público da Receita e o
+     mesmo com o DV trocado. */
+  {
+    const ALFA = '12ABC34501DE35';
+    const storage = storageReal();
+    const pedidos = [];
+    const { sandbox, t, els, erros } = rodarCnpj({
+      storage,
+      fetchImpl: (url) => { pedidos.push(url); return Promise.resolve({ ok: true, json: async () => ({ razao_social: 'EXEMPLO ALFA LTDA', estabelecimento: { cnpj: ALFA } }) }); },
+      modPdf: { vC: modPdf },
+    });
+    ok('módulo sobe para o teste do CNPJ alfanumérico', erros.length === 0, erros.map((e) => e.message).join('|'));
+    if (!erros.length) {
+      const doTexto = (s) => [...sandbox.__lote.cnpjsDoTexto(s)];
+      ok('cnpjsDoTexto lê o CNPJ alfanumérico mascarado e cru',
+        doTexto('Cliente 12.ABC.345/01DE-35 emite').join() === ALFA && doTexto(ALFA).join() === ALFA,
+        JSON.stringify(doTexto('Cliente 12.ABC.345/01DE-35 emite')));
+      ok('cnpjsDoTexto descarta o alfanumérico de DV inválido',
+        doTexto('12.ABC.345/01DE-36').length === 0);
+      ok('cnpjsDoTexto não pega palavra em maiúscula colada em número',
+        doTexto('CODIGOINTERNO12 PRODUTOXYZABC99').length === 0);
+      ok('cnpjsDoTexto continua lendo o numérico ao lado do alfanumérico',
+        doTexto('12.ABC.345/01DE-35;11.222.333/0001-81').sort().join() === ['11222333000181', ALFA].sort().join());
+      ok('o vC do módulo de PDF valida o alfanumérico (o lote usa o mesmo)', modPdf(ALFA) === true && modPdf('12ABC34501DE36') === false);
+
+      els['cnpj-input'].value = '12.abc.345/01de-35';
+      await t.consultar();
+      ok('consultar() aceita o alfanumérico e pede publica.cnpj.ws com 14 caracteres em maiúscula',
+        pedidos.length === 1 && pedidos[0] === 'https://publica.cnpj.ws/cnpj/' + ALFA, JSON.stringify(pedidos));
+      ok('o resultado mostra o CNPJ alfanumérico formatado',
+        /12\.ABC\.345\/01DE-35/.test(els['cnpj-result'].innerHTML), els['cnpj-result'].innerHTML.slice(0, 200));
+      const antes = pedidos.length;
+      els['cnpj-input'].value = '12.ABC.345/01D';
+      await t.consultar();
+      ok('consultar() com alfanumérico incompleto não busca e mostra a mensagem',
+        pedidos.length === antes && /14 dígitos/.test(els['cnpj-result'].innerHTML));
+      els['cnpj-input'].value = '12ABC34501DEA5';
+      await t.consultar();
+      ok('consultar() recusa letra na posição do DV', pedidos.length === antes);
+      /* A máscara do campo enquanto digita: letra fica, em maiúscula. */
+      const ouv = els['cnpj-input']._ouv && els['cnpj-input']._ouv.input;
+      if (ouv) {
+        const ev = { target: { value: '12abc34501de35' } };
+        ouv(ev);
+        ok('a máscara do campo formata o alfanumérico', ev.target.value === '12.ABC.345/01DE-35', ev.target.value);
+      } else ok('o campo de CNPJ tem ouvinte de digitação', false);
     }
   }
 
@@ -2715,6 +2806,82 @@ grupo('13.1 · LEITOR DE PDF: chave com estrutura, rótulo como valor, nome por 
       /const celVazia=\(txt,tip\)=>/.test(html) && /não lido nesta extra/.test(html));
     ok('o glifo de chave não validada tem nome acessível (não é glifo solto)',
       /aria-label="Chave de 44 dígitos lida, mas não validada/.test(html));
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  grupo('13.4 · CNPJ ALFANUMÉRICO (NT 2026.004) no leitor de PDF');
+  // ══════════════════════════════════════════════════════════════
+  /* O CNPJ passa a aceitar letra A-Z nas 12 primeiras posições, com os 2 DVs
+     numéricos; no DV cada caractere vale (código - 48). Na chave de 44 a letra
+     só cabe nas posições 7-18. Todos os valores daqui são sintéticos e estão
+     declarados na lista do gate de privacidade (grupo 2): o CNPJ é o exemplo
+     público da Receita, e a chave foi montada em cima dele. */
+  if (M) {
+    const ALFA = '12ABC34501DE35';
+    const ALFA_MASC = '12.ABC.345/01DE-35';
+    const ALFA_DV_ERRADO = '12.ABC.345/01DE-36';
+    const CH_ALFA = '35260912ABC34501DE35550010000001231123456784';
+    const CH_ALFA_DV_ERRADO = '35260912ABC34501DE35550010000001231123456783';
+    const CHAVE_NUM = '35260911222333000181550010000001231123456783';
+    const em4 = (s) => s.match(/.{1,4}/g).join(' ');
+
+    ok('vC aceita o CNPJ alfanumérico (cru, mascarado e em minúscula)',
+      M.vC(ALFA) === true && M.vC(ALFA_MASC) === true && M.vC(ALFA.toLowerCase()) === true);
+    ok('vC recusa o alfanumérico com DV trocado', M.vC(ALFA_DV_ERRADO) === false);
+    ok('vC recusa letra na posição do DV (os 2 últimos são sempre número)',
+      M.vC(ALFA.slice(0, 13) + 'A') === false && M.vC(ALFA.slice(0, 12) + 'A5') === false);
+    ok('vC numérico continua igual (válido aceito, DV trocado recusado)',
+      M.vC('11222333000181') === true && M.vC('11.222.333/0001-81') === true
+      && M.vC('11222333000103') === false && M.vC('11111111111111') === false);
+    ok('vC recusa tamanho errado mesmo com letra', M.vC(ALFA.slice(1)) === false && M.vC(ALFA + '1') === false);
+
+    ok('vH aceita a chave com CNPJ alfanumérico e ela passa na estrutura',
+      M.vH(CH_ALFA) === true && M.chaveEstrutural(CH_ALFA) === true && M.chaveOk(CH_ALFA) === true);
+    ok('vH recusa a chave alfanumérica com DV trocado', M.vH(CH_ALFA_DV_ERRADO) === false);
+    ok('vH recusa letra fora das posições 7-18 (UF, AAMM, DV do CNPJ, resto da chave)',
+      M.vH('A' + CH_ALFA.slice(1)) === false
+      && M.vH(CH_ALFA.slice(0, 18) + 'A' + CH_ALFA.slice(19)) === false
+      && M.vH(CH_ALFA.slice(0, 30) + 'A' + CH_ALFA.slice(31)) === false);
+    ok('vH numérico continua igual', M.vH(CHAVE_NUM) === true
+      && M.vH(CHAVE_NUM.slice(0, 43) + '4') === false);
+    ok('vH não aceita o prefixo do atributo Id ("NFe" + chave)', M.vH('NFe' + CH_ALFA) === false);
+
+    const dec = M.decodChave(CH_ALFA);
+    ok('decodChave tira o CNPJ alfanumérico das posições 7-20',
+      !!dec && dec.cnpj === ALFA && dec.nNFInt === '123' && dec.mod === '55',
+      JSON.stringify(dec));
+
+    const eCcorrida = M.eC('CHAVE DE ACESSO ' + CH_ALFA + ' CONSULTE');
+    ok('eC acha a chave alfanumérica corrida', eCcorrida.valor === CH_ALFA && eCcorrida.valida === true,
+      JSON.stringify(eCcorrida));
+    const eCblocos = M.eC('CHAVE DE ACESSO ' + em4(CH_ALFA) + ' CONSULTE');
+    ok('eC acha a chave alfanumérica impressa em blocos de 4', eCblocos.valor === CH_ALFA && eCblocos.valida === true,
+      JSON.stringify(eCblocos));
+    const eCruim = M.eC('CHAVE DE ACESSO ' + CH_ALFA_DV_ERRADO + ' CONSULTE');
+    ok('eC não valida chave alfanumérica com DV trocado', !(eCruim.valida === true && eCruim.valor === CH_ALFA_DV_ERRADO),
+      JSON.stringify(eCruim));
+    ok('eC numérica não mudou', M.eC('CHAVE ' + em4(CHAVE_NUM)).valor === CHAVE_NUM);
+
+    ok('eJ lê o CNPJ alfanumérico mascarado como emitente', M.eJ('EMITENTE CNPJ ' + ALFA_MASC + ' FIM').prest === ALFA,
+      JSON.stringify(M.eJ('EMITENTE CNPJ ' + ALFA_MASC + ' FIM').lista));
+    ok('eJ lê o CNPJ alfanumérico sem máscara', M.eJ('CNPJ ' + ALFA + ' FIM').prest === ALFA);
+    ok('alfanumérico de DV inválido não entra na lista (seria palavra, não CNPJ)',
+      M.cnpjsNoTexto('CNPJ ' + ALFA_DV_ERRADO + ' FIM').length === 0);
+    ok('alfanumérico encostado em letra não é CNPJ', M.cnpjsNoTexto('X' + ALFA + ' FIM').length === 0);
+    ok('o CNPJ alfanumérico de dentro da chave não vira CNPJ impresso',
+      M.cnpjsNoTexto('CODIGO ' + CH_ALFA + ' NOTA 1').length === 0);
+    ok('alfanumérico e numérico juntos saem na ordem do texto',
+      M.cnpjsNoTexto('EMIT ' + ALFA_MASC + ' DEST 11.222.333/0001-81').map((c) => c.dig).join(',') === ALFA + ',11222333000181');
+    ok('idxCnpj acha o CNPJ alfanumérico mascarado', M.idxCnpj('EMITENTE ' + ALFA_MASC + ' FIM', ALFA) > 0);
+    ok('o nome do emitente sai colado ao CNPJ alfanumérico',
+      M.nomePertoCnpj('DADOS DO EMITENTE EXEMPLO ALFA LTDA ' + ALFA_MASC, ALFA) === 'EXEMPLO ALFA LTDA',
+      JSON.stringify(M.nomePertoCnpj('DADOS DO EMITENTE EXEMPLO ALFA LTDA ' + ALFA_MASC, ALFA)));
+
+    const pf = M.parseFull('DANFE CHAVE DE ACESSO ' + em4(CH_ALFA) + ' DESTINATARIO CNPJ 11.222.333/0001-81', [], 'texto');
+    ok('parseFull: emitente alfanumérico vem da chave validada',
+      pf.chaveValida === true && pf.cnpjPrestador === ALFA && pf.cnpjFonte === 'chave 44' && pf.cnpjValido === true,
+      'prest=' + pf.cnpjPrestador + ' fonte=' + pf.cnpjFonte);
+    ok('parseFull: o destinatário numérico continua lido', pf.cnpjTomador === '11222333000181', pf.cnpjTomador);
   }
 }
 

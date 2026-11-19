@@ -80,8 +80,19 @@ window.ModPDFIsolado=(()=>{
   
    const A=[/n[úu]mero\s*da\s*nota/i,/n[º°]\s*da\s*nf/i,/nfs-?e\s*n[º°]?/i,/n[º°]\s*rps/i,/n[úu]mero\s*rps/i,/n[º°]\s*nf-?e/i,/nota\s*n[º°]?/i,/c[oó]digo\s*de\s*verifica[cç][aã]o/i,/n[úu]mero\s*\/\s*s[eé]rie/i,/documento\s*n[º°]?/i,/N[º°][,\.]?\s*\d/i,/S[ÉE]RIE\s*:?\s*\d*\s*N[º°]/i,/\bN[º°]\b/i,/N[uúu]m(?:ero)?\.?\s*[:.]?\s*\d/i,/N[oº°]\.?\s*\d/i,/Nota\s*(?:de\s*(?:Servico|Servico))?\s*(?:n[oº°]|:)\s*\d/i,/NF[\s\-]*[eE]?\s*[Nº°]\.?\s*\d/i,/RPS\s*[Nº°]\.?\s*\d/i,/Num\.?\s*[:.]?\s*\d/i];
 function d(s){return(s||'').replace(/\D/g,'');}
-function vC(c){c=d(c);if(c.length!==14||/^(\d)\1+$/.test(c))return false;let t=c.length-2,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=+d1[i]*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
-function vH(ch){ch=d(ch);if(ch.length!==44)return false;/* degenerados: '000...0' e '111...1' passam no modulo 11 (soma 0 => DV 0) mas nao sao chave */if(/^(\d)\1+$/.test(ch))return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
+/* CNPJ alfanumerico (NT 2026.004; ja em uso na NFS-e nacional desde 10/08/2026):
+   as 12 primeiras posicoes do CNPJ podem ter letra A-Z e os 2 DVs continuam
+   numericos. O modulo 11 e o mesmo, so que cada posicao vale (codigo do
+   caractere - 48): digito vale o proprio digito, 'A' vale 17, 'Z' vale 42. Para
+   CNPJ so de digitos a conta e identica a de antes. Na chave de acesso a letra
+   so pode aparecer nas posicoes 7-18 (raiz e ordem do CNPJ do emitente), e o DV
+   da chave usa o mesmo valor por caractere.
+   vC e vH normalizam por conta propria, sem d(): d() descarta letra, e um CNPJ
+   alfanumerico virava meia duzia de digitos soltos. */
+function vC(c){c=String(c||'').toUpperCase().replace(/[^0-9A-Z]/g,'');if(!/^[0-9A-Z]{12}\d{2}$/.test(c)||/^(.)\1+$/.test(c))return false;const vl=(s,i)=>s.charCodeAt(i)-48;let t=12,dd=c.substring(t),d1=c.substring(0,t),n=0;for(let p=5,i=0;i<t;i++){n+=vl(d1,i)*p;p=p===2?9:p-1;}let r=n%11,dig1=r<2?0:11-r;if(+dd[0]!==dig1)return false;t++;d1=c.substring(0,t);n=0;for(let p=6,i=0;i<t;i++){n+=vl(d1,i)*p;p=p===2?9:p-1;}r=n%11;let dig2=r<2?0:11-r;return+dd[1]===dig2;}
+function vH(ch){ch=String(ch||'').toUpperCase().replace(/[^0-9A-Z]/g,'');if(!/^\d{6}[0-9A-Z]{12}\d{26}$/.test(ch))return false;/* degenerados: '000...0' e '111...1' passam no modulo 11 (soma 0 => DV 0) mas nao sao chave */if(/^(\d)\1+$/.test(ch))return false;const b=ch.slice(0,43);let s=0,p=2;for(let i=b.length-1;i>=0;i--){s+=(b.charCodeAt(i)-48)*p;p=p===9?2:p+1;}const dv=11-s%11,calc=dv>=10?0:dv;return calc===+ch[43];}
+/* Normaliza chave/CNPJ que pode ser alfanumerico: maiuscula, sem mascara. */
+function dA(s){return String(s||'').toUpperCase().replace(/[^0-9A-Z]/g,'');}
 /* Estrutura da chave de acesso: cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3)
    nNF(9) tpEmis(1) cNF(8) cDV(1). O modulo 11 sozinho NAO identifica a chave.
    Medido no PDF "NF 900000101": o codigo de barras colado no endereco
@@ -91,12 +102,18 @@ function vH(ch){ch=d(ch);if(ch.length!==44)return false;/* degenerados: '000...0
    emitente virava o do tomador e a garantia ainda dizia "CNPJ+número OK".
    cUF e as 27 unidades da federacao mais o exterior (11-53); a NF-e so existe
    desde 2006, entao ano abaixo de 6 nao e chave; mod e 55 (NF-e) ou 65 (NFC-e). */
-function chaveEstrutural(ch){ch=d(ch);if(ch.length!==44)return false;const uf=+ch.slice(0,2),ano=+ch.slice(2,4),mes=+ch.slice(4,6),mod=ch.slice(20,22);if(uf<11||uf>53)return false;if(mes<1||mes>12)return false;if(ano<6)return false;if(mod!=="55"&&mod!=="65")return false;return true;}
+function chaveEstrutural(ch){ch=dA(ch);if(!/^\d{6}[0-9A-Z]{12}\d{26}$/.test(ch))return false;const uf=+ch.slice(0,2),ano=+ch.slice(2,4),mes=+ch.slice(4,6),mod=ch.slice(20,22);if(uf<11||uf>53)return false;if(mes<1||mes>12)return false;if(ano<6)return false;if(mod!=="55"&&mod!=="65")return false;return true;}
 function chaveOk(ch){return vH(ch)&&chaveEstrutural(ch);}
 async function tC(file){const buf=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:buf}).promise;let full="";const items=[];for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p);const ct=await page.getTextContent();const pageItems=[];for(const it of ct.items){if(!it.str.trim())continue;pageItems.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});items.push({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width,page:p});}pageItems.sort((a,b)=>{const dy=b.y-a.y;if(Math.abs(dy)>4)return dy;return a.x-b.x;});for(const it of pageItems)full+=it.str+" ";full+="\n";}await doc.destroy();return{full,items};}
 function eC(full){let compact=full.replace(/[\s\.\-]/g,'');let m44=[...compact.matchAll(/\d{44,}/g)].map(m=>m[0]);
 /* 1) janela exata que passa no DV E na estrutura: e a chave de verdade */
 for(const run of m44){for(let i=0;i<=run.length-44;i++){const v=run.slice(i,i+44);if(chaveOk(v))return{valor:v,conf:99,valida:true};}}
+/* 1b) chave com CNPJ alfanumerico: a letra so cabe nas posicoes 7-18, e a janela
+      so vale com DV E estrutura. Nao ha fallback de "so DV" para ela: com letra
+      no meio, um trecho de texto em maiuscula colado em digitos casaria a forma
+      e o DV sozinho e fraco demais para mostrar isso como chave. O lookahead
+      deixa as janelas se sobreporem (o run pode ter digito a mais nas pontas). */
+for(const m of compact.matchAll(/(?=(\d{6}[0-9A-Z]{12}\d{26}))/g)){const v=m[1];if(/[A-Z]/.test(v)&&chaveOk(v))return{valor:v,conf:99,valida:true};}
 const runsRep=[...full.matchAll(/\d(?:[\s\.\-]*\d){28,}/g)].map(x=>d(x[0])).filter(x=>x.length>=40&&x.length<=46);for(const dig of runsRep){const c=reparaChave(dig);if(c)return{valor:c,conf:88,valida:true};}
 /* 2) janela que so passa no DV. Vira leitura de confianca baixa com ChaveValida
       falso: mostrar os 44 digitos e auditar e melhor que esconder. O que ela NAO
@@ -191,8 +208,21 @@ function cnpjsNoTexto(txt){
     if(dig.length!==14) continue;
     out.push({raw:m[0],dig,valida:vC(dig),idx:ini});
   }
+  /* CNPJ alfanumerico ("12.ABC.345/01DE-35"). Fica num laco proprio, e com regra
+     mais dura que a do numerico: precisa ter letra, estar isolado (sem letra ou
+     digito encostado) e fechar o DV. Texto em maiuscula colado em digitos tem a
+     mesma forma, e um candidato de DV invalido aqui seria palavra, nao CNPJ — por
+     isso ele nem entra na lista. Dentro da chave de 44 o CNPJ vem colado nos
+     outros digitos, entao a borda ja o descarta sem precisar do span. */
+  for(const m of txt.matchAll(RE_CNPJ_ALFA)){
+    const dig=dA(m[0]);
+    if(!/[A-Z]/.test(dig)||!vC(dig)) continue;
+    out.push({raw:m[0],dig,valida:true,idx:m.index});
+  }
+  if(out.some(c=>/[A-Z]/.test(c.dig))) out.sort((a,b)=>a.idx-b.idx);
   return out;
 }
+const RE_CNPJ_ALFA=/(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])/g;
 function eJ(full){
   const cand=cnpjsNoTexto(full);
   const u=[],seen=new Set();for(const c of cand){if(seen.has(c.dig))continue;seen.add(c.dig);u.push(c);}u.sort((a,b)=>(b.valida-a.valida)||(a.idx-b.idx));let p="",t="",conf=0;if(u.length>=1){p=u[0].dig;conf=u[0].valida?95:60;}if(u.length>=2)t=u[1].dig;return{prest:p,toma:t,lista:u,conf};
@@ -299,7 +329,7 @@ function ehRotulo(t,lista){return(lista||ROTULO_TABELA).test(String(t||'').trim(
    so lanca em entrada invalida, e metacaractere compila e devolve regex errado em
    silencio, entao a guarda e o /^\d{14}$/ sobre a entrada. */
 function idxCnpj(full,dig){
-  if(!/^\d{14}$/.test(String(dig||''))) return -1;
+  if(!/^[0-9A-Z]{12}\d{2}$/.test(String(dig||''))) return -1;
   try{const m=new RegExp(dig.split('').join('[\\s.\\-\\/]*')).exec(full);return m?m.index:-1;}catch(e){return full.indexOf(dig);}}
 function eNatOp(full){
   const m=/NATUREZA\s*DA\s*OPERA[CÇ][AÃ]O/i.exec(full);if(!m) return "";
@@ -477,7 +507,7 @@ function eNome(full,items,cnpjDig){if(!cnpjDig) return "";const idx=idxCnpj(full
    vem ANTES do CNPJ dele ("NOME / RAZAO SOCIAL ... EXEMPLO SERVICOS LTDA 000004844
    11.222.334/0001-26"), e uma janela que so olhava para frente nunca achava. */
 const v=nomePertoCnpj(full.slice(Math.max(0,idx-800),idx+60),cnpjDig);return v?v.slice(0,60):"";}
-function decodChave(ch){ch=d(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
+function decodChave(ch){ch=dA(ch);if(ch.length!==44) return null;return{uf:ch.slice(0,2),aamm:ch.slice(2,6),cnpj:ch.slice(6,20),mod:ch.slice(20,22),serie:ch.slice(22,25),serieInt:String(parseInt(ch.slice(22,25),10)),nNF:ch.slice(25,34),nNFInt:String(parseInt(ch.slice(25,34),10)),dv:ch.slice(43,44)};}
 /* Origens do Tesseract declaradas explicitamente.
    Sem corePath, o tesseract.js@4 baixa 2 destinos invisiveis no HTML: o core WASM
    (~4,7 MB) e o tessdata (por.traineddata.gz, ~6,6 MB) — 11 MB no primeiro OCR, sem
@@ -2083,7 +2113,7 @@ function dnfVal(v,tp){
   if(tp&&tp.indexOf('v:')===0)return {h:dnfTem(v)?esc(veicRot(tp.slice(2),v)):'—',z:!dnfTem(v)};
   return {h:dnfTem(v)?esc(v):'—',z:!dnfTem(v)};
 }
-function dnfDoc(c){const d=String(c||'').replace(/\D/g,'');if(d.length===14)return esc(d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'));if(d.length===11)return esc(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'));return dnfTem(c)?esc(c):'—';}
+function dnfDoc(c){const d=String(c||'').replace(/\D/g,'');if(d.length===14)return esc(d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'));/* CNPJ alfanumérico (NT 2026.004): letra nas 12 primeiras posições, DV numérico. */const a=String(c||'').toUpperCase().replace(/[^0-9A-Z]/g,'');if(/[A-Z]/.test(a)&&/^[0-9A-Z]{12}\d{2}$/.test(a))return esc(a.replace(/^(.{2})(.{3})(.{3})(.{4})(\d{2})$/,'$1.$2.$3/$4-$5'));if(d.length===11)return esc(d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'));return dnfTem(c)?esc(c):'—';}
 function dnfData(d){const s=dataHoraBr(d);return s?esc(s):'—';}
 function dnfCx(rot,html,num,zero){return `<div class="dnf-cx"><span class="r">${esc(rot)}</span><span class="v${num?' n':''}${zero?' z':''}">${html}</span></div>`;}
 function dnfCampo(rot,v,tp){const r=dnfVal(v,tp||'t');return dnfCx(rot,r.h,tp==='m'||tp==='p',r.z);}
@@ -2440,7 +2470,7 @@ function extrairCTe(nome,texto){
   const cobr=norm?norm.querySelector(':scope>cobr'):null;
   const emit=fi(':scope>emit');
   const c={
-    Chave_CTe:/^\d{44}$/.test(id)?id:(t(prot,'chCTe')||id),
+    Chave_CTe:/^\d{6}[0-9A-Z]{12}\d{26}$/.test(id)?id:(t(prot,'chCTe')||id),
     Modelo:t(ide,'mod'),Serie:t(ide,'serie'),Numero:t(ide,'nCT'),Data_Emissao:t(ide,'dhEmi'),CFOP:t(ide,'CFOP'),NatOp:t(ide,'natOp'),
     cUF:t(ide,'cUF'),cCT:t(ide,'cCT'),cDV:t(ide,'cDV'),tpImp:t(ide,'tpImp'),tpEmis:t(ide,'tpEmis'),tpAmb:t(ide,'tpAmb'),tpCTe:t(ide,'tpCTe'),
     procEmi:t(ide,'procEmi'),verProc:t(ide,'verProc'),modal:t(ide,'modal'),tpServ:t(ide,'tpServ'),retira:t(ide,'retira'),xDetRetira:t(ide,'xDetRetira'),
@@ -2523,11 +2553,14 @@ function cteParteKV(pt,extra){
   return cteKV([['Razão social',cteV(pt.nome)+(extra||'')],['Fantasia',cteV(pt.fant)],['CNPJ/CPF',`<span class="cte-mono">${cteV(pt.doc)}</span>`],
     ['IE',cteV(pt.IE)],['Endereço',cteV(pt.end)],['Telefone',cteV(pt.fone)],['E-mail',cteV(pt.email)]]);
 }
-/* Só chave de 44 dígitos ganha o botão: o texto vem do XML e não deve ir cru para a área de transferência. */
-function cteCopiar(v){return /^\d{44}$/.test(v||'')?` <button type="button" class="cte-copiar" data-copiar="${esc(v)}" aria-label="Copiar chave">copiar</button>`:'';}
+/* Forma da chave de 44: com CNPJ alfanumérico (NT 2026.004) o emitente pode ter
+   letra nas posições 7 a 18; todo o resto, inclusive os DVs, é dígito. */
+const CTE_CHAVE=/^\d{6}[0-9A-Z]{12}\d{26}$/;
+/* Só chave de 44 posições ganha o botão: o texto vem do XML e não deve ir cru para a área de transferência. */
+function cteCopiar(v){return CTE_CHAVE.test(v||'')?` <button type="button" class="cte-copiar" data-copiar="${esc(v)}" aria-label="Copiar chave">copiar</button>`:'';}
 /* nº da NF-e dentro da chave (posições 26 a 34) e o CNPJ do emitente (7 a 20). */
-const cteNumNF=ch=>/^\d{44}$/.test(ch)?String(+ch.slice(25,34)):'';
-const cteCnpjNF=ch=>/^\d{44}$/.test(ch)?ch.slice(6,20):'';
+const cteNumNF=ch=>CTE_CHAVE.test(ch)?String(+ch.slice(25,34)):'';
+const cteCnpjNF=ch=>CTE_CHAVE.test(ch)?ch.slice(6,20):'';
 /* 100 e 150 (autorizado fora de prazo) são uso autorizado. */
 const cteAutorizado=c=>c.cStat==='100'||c.cStat==='150';
 function cteSit(c){
@@ -3359,7 +3392,7 @@ document.getElementById('baixar').addEventListener('click', async () => {
      PDF e de XML — arquivo de terceiro. Reformatar nao protege: um CNPJ forjado
      com `"><img src=x onerror=...>` sobrevive ao replace e ia parar no
      `onclick="abrirConsultaCNPJ('...')"` e no texto da celula. */
-  function fmtCNPJ(c){return c?esc(c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')):'';}
+  function fmtCNPJ(c){return c?esc(c.replace(/^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/,'$1.$2.$3/$4-$5')):'';}
   /* A chave sai JUNTA (44 dígitos corridos): quem usa copia e cola em outros
      sistemas, e os blocos de 4 com espaço atrapalhavam. A célula quebra a linha. */
   function fmtChave(ch){return ch?esc(ch):'';}
@@ -3521,8 +3554,12 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
 (() => {
   const API="https://publica.cnpj.ws/cnpj/";
   const inp=document.getElementById('cnpj-input'), btn=document.getElementById('cnpj-btn'), clr=document.getElementById('cnpj-limpar'), res=document.getElementById('cnpj-result'), raw=document.getElementById('cnpj-raw'), st=document.getElementById('cnpj-status');
-  function d(s){return (s||'').replace(/\D/g,'');}
-  function fmtCnpj(c){c=d(c);return c.length===14?c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):c;}
+  /* CNPJ alfanumérico (NT 2026.004): as 12 primeiras posições aceitam letra e os
+     2 DVs são números. Aqui d() guarda letra e número (em maiúscula) e tira só a
+     máscara — todo uso dela neste módulo é sobre CNPJ. */
+  function d(s){return String(s||'').toUpperCase().replace(/[^0-9A-Z]/g,'');}
+  const CNPJ_FORMA=/^[0-9A-Z]{12}\d{2}$/;
+  function fmtCnpj(c){c=d(c);return CNPJ_FORMA.test(c)?c.replace(/^(.{2})(.{3})(.{3})(.{4})(\d{2})$/,'$1.$2.$3/$4-$5'):c;}
   function fmtIE(arr){if(!arr||!arr.length) return '—';return arr.map(e=>`${e.estado?.sigla||''}: ${e.inscricao_estadual||''}${e.ativo?' ✓':''}`).join(', ');}
   function isContribuinte(arr){if(!arr||!arr.length) return 'Não';return arr.some(e=>e.ativo)?'Sim':'Não';}
   function fmtSocios(arr){if(!arr||!arr.length) return '';return arr.map(s=>`  ${s.nome||'—'} (${s.tipo||''})\n    CPF/CNPJ: ${s.cpf_cnpj_socio||'—'}\n    Entrada: ${s.data_entrada||'—'}  Faixa: ${s.faixa_etaria||'—'}\n    Qualificacao: ${s.qualificacao_socio?.descricao||''}`).join('\n');}
@@ -3533,7 +3570,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     return `CNPJ: ${fC}\nRazao Social: ${dados.razao_social||'—'}\nNome Fantasia: ${est.nome_fantasia||'—'}\nCapital Social: ${moeda(dados.capital_social)}\nPorte: ${porte.descricao||'—'}\nNatureza Juridica: ${nat.descricao||'—'}\n\nTipo: ${est.tipo||'—'}\nSituacao Cadastral: ${sit.descricao||sit||'—'}\nData Situacao: ${est.data_situacao_cadastral||'—'}\nData Inicio Atividade: ${est.data_inicio_atividade||'—'}\n\nAtividade Principal:\n  ${atv.descricao||'—'} (${atv.subclasse||''})\n\nAtividades Secundarias:\n${(est.atividades_secundarias||[]).length?(est.atividades_secundarias||[]).map(a=>`  ${a.descricao||'—'} (${a.subclasse||''})`).join('\n'):'  —'}\n\nEndereco:\n  ${est.tipo_logradouro||''} ${est.logradouro||'—'}, ${est.numero||'—'}\n  Complemento: ${est.complemento||'—'}\n  Bairro: ${est.bairro||'—'}\n  CEP: ${est.cep||'—'}\n  Cidade: ${cidade.nome||'—'} / ${estado.sigla||'—'} (IBGE: ${cidade.ibge_id||'—'})\n\nContato:\n  Telefone: ${(est.ddd1||'')+' '+(est.telefone1||'')}${est.telefone2?' / '+(est.ddd2||'')+' '+(est.telefone2||''):''}\n  Email: ${est.email||'—'}\n\nInscricoes Estaduais: ${fmtIE(est.inscricoes_estaduais||[])}\n\nSimples Nacional:\n  Optante: ${simpl.simples||'Nao'}\n  Data Opcao: ${simpl.data_opcao_simples||'—'}\n  Data Exclusao: ${simpl.data_exclusao_simples||'—'}\nMEI:\n  Optante: ${simpl.mei||'Nao'}\n  Data Opcao: ${simpl.data_opcao_mei||'—'}\n  Data Exclusao: ${simpl.data_exclusao_mei||'—'}\n\nSocios:\n${fmtSocios(dados.socios||[])||'—'}`;
   }
   function fmtAtvSec(arr){if(!arr||!arr.length) return '—';return arr.map(a=>`${a.descricao||''} (${a.subclasse||''})`).join('<br>');}
-  inp?.addEventListener('input',e=>{let v=d(e.target.value);if(v.length>14) v=v.slice(0,14);let f=v;if(v.length>12) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');else if(v.length>8) f=v.replace(/(\d{2})(\d{3})(\d{3})(\d+)/,'$1.$2.$3/$4');else if(v.length>5) f=v.replace(/(\d{2})(\d{3})(\d+)/,'$1.$2.$3');else if(v.length>2) f=v.replace(/(\d{2})(\d+)/,'$1.$2');e.target.value=f;});
+  inp?.addEventListener('input',e=>{let v=d(e.target.value);if(v.length>14) v=v.slice(0,14);let f=v;if(v.length>12) f=v.replace(/(.{2})(.{3})(.{3})(.{4})(.+)/,'$1.$2.$3/$4-$5');else if(v.length>8) f=v.replace(/(.{2})(.{3})(.{3})(.+)/,'$1.$2.$3/$4');else if(v.length>5) f=v.replace(/(.{2})(.{3})(.+)/,'$1.$2.$3');else if(v.length>2) f=v.replace(/(.{2})(.+)/,'$1.$2');e.target.value=f;});
   /* Cache de CNPJ: TTL de 30 dias + try/catch dedicado (quota cheia não pode virar erro visível falso)
      + evicção por idade. Ver o aviso de privacidade em #cnpj-privacidade. */
   const CACHE_TTL=30*24*60*60*1000;
@@ -3640,7 +3677,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     const c=d(inp.value);
     /* Não há `e` neste escopo: o ${esc(e.message)} que estava aqui ReferenceError
        e tornava inalcançável a única mensagem que o usuário precisava. */
-    if(c.length!==14){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ Atenção: CNPJ deve ter 14 dígitos</div>`;return;}
+    if(!CNPJ_FORMA.test(c)){res.style.display='block';res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ Atenção: CNPJ deve ter 14 dígitos (no CNPJ alfanumérico, as 12 primeiras posições podem ter letras e as 2 últimas são sempre números)</div>`;return;}
     const cacheKey=CHAVE_CACHE+c;
     const cached=lerCache(cacheKey);
     if(cached){try{render(cached,true);return;}catch(e){}}
@@ -3788,6 +3825,7 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
        no dígito verificador: assim número de cliente/produto que não é CNPJ
        não entra no lote e não gasta uma das 3 requisições por minuto. */
     const RE_CNPJ_CELULA=/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g;
+    const RE_CNPJ_CELULA_ALFA=/(?<![0-9A-Za-z])[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}\/?[0-9A-Z]{4}-?\d{2}(?![0-9A-Za-z])/g;
     function cnpjsDoTexto(txt){
       const achados=new Set();
       for(const m of String(txt).matchAll(RE_CNPJ_CELULA)){
@@ -3797,6 +3835,14 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
            arquivo caía no catch, o log dizia "erro ao ler planilha" e o botão
            Iniciar nunca saía de disabled. */
         if(soDigitos.length===14&&window.ModPDFIsolado.vC(soDigitos))achados.add(soDigitos);
+      }
+      /* CNPJ alfanumérico: precisa ter letra, estar isolado (nada de letra ou
+         dígito encostado) e fechar o DV — palavra em maiúscula colada num
+         número tem a mesma forma, e só o DV separa uma da outra. Só letra
+         maiúscula, que é a forma oficial: minúscula aqui seria texto corrido. */
+      for(const m of String(txt).matchAll(RE_CNPJ_CELULA_ALFA)){
+        const alfa=d(m[0]);
+        if(/[A-Z]/.test(alfa)&&CNPJ_FORMA.test(alfa)&&window.ModPDFIsolado.vC(alfa))achados.add(alfa);
       }
       return achados;
     }
