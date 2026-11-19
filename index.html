@@ -1085,7 +1085,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .nfse-conf[hidden]{display:none}
 .nfse-ir:disabled{color:var(--text3);cursor:default}
 .nfse-painel .cte-painel-corpo{padding:10px 12px}
-.nfse-painel .cte-painel-corpo:focus-visible{outline-offset:-2px}
+.nfse-painel .cte-painel-corpo:focus-visible,.cte-painel .cte-painel-corpo:focus-visible{outline-offset:-2px}
 .nfse-corpo{display:flex;flex-direction:column;gap:10px}
 .nfse-box{background:var(--card);border:1px solid var(--border)}
 .nfse-box .dnf-sub{margin:0}
@@ -2454,6 +2454,19 @@ function dnfForaClique(e){const pn=document.querySelector('.dnf-painel');if(!pn)
   const x=dnfCartao(pn);if(!x||!x.u.abertos.size)return;x.u.abertos.clear();dnfRepinta(x);}
 document.addEventListener('click',dnfForaClique);
 
+/* Painéis laterais (NFS-e e CT-e). Abaixo de 900px o painel ocupa a largura toda e cobre
+   a lista (ver nfseInerte e cteInerte); os dois ouvem a mesma PAINEL_MQ. */
+const PAINEL_MQ=window.matchMedia?window.matchMedia('(max-width:900px)'):null;
+function painelEstreito(){return !!(PAINEL_MQ&&PAINEL_MQ.matches);}
+/* Menu lateral e barra do topo ficam por baixo dos dois painéis: ficam inertes enquanto
+   QUALQUER um deles está modal. Cada painel decidir sozinho fazia o outro devolver o inert
+   na mudança de largura. */
+function painelCobreTela(){
+  const on=!!document.querySelector('#nfse-list .nfse-painel[aria-modal="true"],#cte-list .cte-painel[aria-modal="true"]');
+  [document.getElementById('sidebar'),document.getElementById('topbar')].forEach(el=>{if(el)el.inert=on;});
+  return on;
+}
+
 // ═══ RENDER NFS-e (lista + painel) ═══
 /* Uma linha por NFS-e; clicar abre o painel lateral (o mesmo do CT-e) com o corpo no
    desenho do item da NF-e: os tributos numa tabela padronizada, uma linha por tributo,
@@ -2462,8 +2475,6 @@ document.addEventListener('click',dnfForaClique);
    A conferência de valores fica atrás do botão "Conferir valores": quem só quer ler a
    nota não vê aviso de conta. Todo dado do arquivo entra por esc (ou dnfVal/dnfDoc). */
 const NFSE_UI={aberto:-1,conf:false,alertasH:null};
-/* Abaixo de 900px o painel ocupa a largura toda e cobre a lista (ver nfseInerte). */
-const NFSE_MQ=window.matchMedia?window.matchMedia('(max-width:900px)'):null;
 /* Quem reteve o ISS, pelo tpRetISSQN. Fonte única da frase de retenção: o rótulo do
    código, a célula "Retido?" da lista e a linha do ISS na tabela de tributos saem daqui. */
 const NFSE_RET_POR={'2':'tomador','3':'intermediário'};
@@ -2719,17 +2730,17 @@ function toggleNota(el){
    Abrir, trocar e fechar mexem só no painel (o .nfse-slot) e na marca da linha: a
    tabela não é redesenhada, então a rolagem e o foco dela ficam onde estavam.
    `foco` é o seletor do que recebe o foco depois de trocar o painel. */
-function nfseEstreito(){return !!(NFSE_MQ&&NFSE_MQ.matches);}
 /* Abaixo de 900px o painel cobre a lista inteira: enquanto ele está aberto, o que fica
    por baixo (menu lateral, barra do topo, filtros, botão e quadro da conferência, tabela)
    sai do alcance do teclado e do leitor de tela, e o painel se declara modal. Fechar ou
    alargar a janela devolve. */
 function nfseInerte(){
-  const pn=document.querySelector('#nfse-list .nfse-painel'),on=NFSE_UI.aberto>=0&&!!pn&&nfseEstreito();
+  const pn=document.querySelector('#nfse-list .nfse-painel'),on=NFSE_UI.aberto>=0&&!!pn&&painelEstreito();
   const tab=document.getElementById('tab-nfse');
-  [document.getElementById('sidebar'),document.getElementById('topbar'),tab&&tab.querySelector('.filter-bar'),document.getElementById('nfse-conf'),document.getElementById('nfse-alertas'),document.querySelector('#nfse-list .cte-tab-wrap')]
+  [tab&&tab.querySelector('.filter-bar'),document.getElementById('nfse-conf'),document.getElementById('nfse-alertas'),document.querySelector('#nfse-list .cte-tab-wrap')]
     .forEach(el=>{if(el)el.inert=on;});
   if(pn){if(on)pn.setAttribute('aria-modal','true');else pn.removeAttribute('aria-modal');}
+  painelCobreTela();
   return on;
 }
 function nfseLinhas(){return [...document.querySelectorAll('#nfse-list tr[data-i]')];}
@@ -2745,7 +2756,7 @@ function nfseAbre(i,foco){
   }
   /* Na tela estreita a lista ficou inerte: o foco vai para o painel mesmo no clique. */
   if(nfseInerte()||foco){const b=foco?document.querySelector(foco):null,fe=document.querySelector('.nfse-painel .nfse-fechar');
-    const alvo=b&&!b.disabled&&!(nfseEstreito()&&!b.closest('.nfse-painel'))?b:fe;if(alvo)alvo.focus();}
+    const alvo=b&&!b.disabled&&!(painelEstreito()&&!b.closest('.nfse-painel'))?b:fe;if(alvo)alvo.focus();}
 }
 /* `foco` false: fecha sem devolver o foco à linha (ao sair da aba, a linha está escondida). */
 function nfseFecha(foco){
@@ -2785,14 +2796,15 @@ function nfseFecha(foco){
     const is=nfseLinhas().map(tr=>+tr.dataset.i),p=is.indexOf(NFSE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
     if(p<0||j<0||j>=is.length)return;e.preventDefault();
     /* Quem anda pela lista continua na lista (na linha nova); quem está no painel continua no painel. */
-    const naLista=!nfseEstreito()&&a&&a.closest&&a.closest('#nfse-list tr[data-i]');
+    const naLista=!painelEstreito()&&a&&a.closest&&a.closest('#nfse-list tr[data-i]');
     nfseAbre(is[j],naLista?`#nfse-list tr[data-i="${is[j]}"]`:'.nfse-painel .nfse-fechar');
   });
-  /* A janela mudou de largura com o painel aberto: aplica ou devolve o inert; se o foco
-     estava no que acabou de ficar inerte, ele vai para o painel. */
-  if(NFSE_MQ){const mud=()=>{const on=nfseInerte(),pn=document.querySelector('#nfse-list .nfse-painel'),tab=document.getElementById('tab-nfse'),a=document.activeElement;
-      if(on&&pn&&a&&tab.contains(a)&&!pn.contains(a)){const fe=pn.querySelector('.nfse-fechar');if(fe)fe.focus();}};
-    if(NFSE_MQ.addEventListener)NFSE_MQ.addEventListener('change',mud);else if(NFSE_MQ.addListener)NFSE_MQ.addListener(mud);}
+  /* A janela mudou de largura com o painel aberto: aplica ou devolve o inert. Ficou modal
+     e o foco não está no painel (estava na lista, no menu lateral, na barra do topo ou
+     caiu no body): ele vai para o Fechar. */
+  if(PAINEL_MQ){const mud=()=>{const on=nfseInerte(),pn=document.querySelector('#nfse-list .nfse-painel'),a=document.activeElement;
+      if(on&&pn&&!(a&&pn.contains(a))){const fe=pn.querySelector('.nfse-fechar');if(fe)fe.focus();}};
+    if(PAINEL_MQ.addEventListener)PAINEL_MQ.addEventListener('change',mud);else if(PAINEL_MQ.addListener)PAINEL_MQ.addListener(mud);}
   document.addEventListener('click',e=>{
     if(!ativa())return;
     const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
@@ -2925,7 +2937,7 @@ function cteLinha(c){
 }
 
 /* ── Tela: lista + painel largo (o mesmo desenho do item da NF-e) ── */
-const CTE_UI={aberto:-1};
+const CTE_UI={aberto:-1,alertasH:null};
 const CTE_NC='<span class="cte-nc">não consta no XML</span>';
 const cteVazio=v=>v===''||v===null||v===undefined;
 function cteV(v){return cteVazio(v)?CTE_NC:esc(v);}
@@ -2973,7 +2985,7 @@ function ctePainel(c,carregadas){
   return`<aside class="cte-painel" role="dialog" aria-label="CT-e ${esc(c.Numero)}">`
   +`<div class="cte-painel-cab"><b>CT-e ${esc(c.Numero)} <span class="cte-sub">série ${esc(c.Serie)}</span></b><span class="cte-pill ${cls}">${esc(sit)}</span>`
   +`<span class="cte-sub cte-dica">↑ ↓ passam de CT-e · Esc fecha</span><button type="button" class="cte-fechar">Fechar <span aria-hidden="true">✕</span></button></div>`
-  +`<div class="cte-painel-corpo"><div class="cte-painel-cols">`
+  +`<div class="cte-painel-corpo" tabindex="0" role="region" aria-label="Detalhe do CT-e"><div class="cte-painel-cols">`
   +cteBloco('Chave de acesso',`<div class="cte-mono">${cteV(c.Chave_CTe)}${cteCopiar(c.Chave_CTe)}</div>`)
   +cteBloco('Identificação',cteKV([['Número / série',cteV(c.Numero)+' / '+cteV(c.Serie)],['Modelo',cteV(c.Modelo)],['Emissão',cteV(dataHoraBr(c.Data_Emissao))],
     ['CFOP',cteV(c.CFOP)],['Natureza',cteV(c.NatOp)],['Tipo do CT-e',cteC('tpCTe',c.tpCTe)],['Tipo de serviço',cteC('tpServ',c.tpServ)],['Modal',cteC('modal',c.modal)],
@@ -3064,10 +3076,12 @@ function renderCTe(){
   });
   document.getElementById('cte-count').textContent=lista.length?`${idx.length} de ${lista.length} CT-e · ${lista.reduce((s,c)=>s+c.docs.length,0)} documentos vinculados`:'';
   const al=lista.length?cteAlertas(lista,carregadas):[];
-  av.hidden=!al.length;
-  av.innerHTML=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'';
-  if(!lista.length){el.innerHTML='<div class="empty-state"><p>Nenhum CT-e. Importe os XMLs de CT-e (modelo 57).</p></div>';return;}
-  if(!idx.length){el.innerHTML='<div class="empty-state"><p>Nenhum CT-e para a busca.</p></div>';return;}
+  /* O quadro é role=status: só é reescrito quando o texto muda, senão o leitor de tela
+     repetiria a conferência a cada abertura, seta ou busca. */
+  const alH=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'';
+  if(CTE_UI.alertasH!==alH){av.innerHTML=alH;av.hidden=!alH;CTE_UI.alertasH=alH;}
+  if(!lista.length){CTE_UI.aberto=-1;el.innerHTML='<div class="empty-state"><p>Nenhum CT-e. Importe os XMLs de CT-e (modelo 57).</p></div>';cteInerte();return;}
+  if(!idx.length){CTE_UI.aberto=-1;el.innerHTML='<div class="empty-state"><p>Nenhum CT-e para a busca.</p></div>';cteInerte();return;}
   if(!idx.includes(CTE_UI.aberto))CTE_UI.aberto=-1;
   const linhas=idx.map(i=>{
     const c=lista[i],nf=c.docs.filter(d=>d.tipo==='NF-e'&&d.chave),k=nf.filter(d=>carregadas.has(d.chave)).length;
@@ -3084,10 +3098,24 @@ function renderCTe(){
   el.innerHTML=`<div class="cte-tab-wrap" tabindex="0" role="region" aria-label="Tabela de CT-e"><table class="cte-tab"><thead><tr><th>CT-e</th><th>Emissão</th><th>Rota</th><th>Carga / chassi</th><th class="n">Frete</th>`
     +`<th>CST</th><th class="n">Alíq.</th><th class="n">ICMS</th><th class="n">Valor da carga</th><th>NF-e vinculadas</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`
     +(CTE_UI.aberto>=0?ctePainel(lista[CTE_UI.aberto],carregadas):'');
+  cteInerte();
+}
+/* Mesma regra da NFS-e: abaixo de 900px o painel cobre a tela; enquanto ele está aberto,
+   menu lateral, barra do topo, busca, quadro "Para conferir" e tabela saem do alcance do
+   teclado e do leitor de tela, e o painel se declara modal. */
+function cteInerte(){
+  const pn=document.querySelector('#cte-list .cte-painel'),on=CTE_UI.aberto>=0&&!!pn&&painelEstreito();
+  const tab=document.getElementById('tab-cte');
+  [tab&&tab.querySelector('.filter-bar'),document.getElementById('cte-alertas'),document.querySelector('#cte-list .cte-tab-wrap')]
+    .forEach(el=>{if(el)el.inert=on;});
+  if(pn){if(on)pn.setAttribute('aria-modal','true');else pn.removeAttribute('aria-modal');}
+  painelCobreTela();
+  return on;
 }
 function cteAbre(i,foco){
   CTE_UI.aberto=i;renderCTe();
-  if(foco){const b=document.querySelector('.cte-painel .cte-fechar');if(b)b.focus();}
+  /* Na tela estreita a lista ficou inerte: o foco vai para o painel mesmo no clique. */
+  if(foco||cteInerte()){const b=document.querySelector('.cte-painel .cte-fechar');if(b)b.focus();}
 }
 function cteFecha(){
   const i=CTE_UI.aberto;if(i<0)return;CTE_UI.aberto=-1;renderCTe();
@@ -3119,6 +3147,8 @@ function cteFecha(){
     if(e.key==='Escape'){e.preventDefault();cteFecha();return;}
     if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
     const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+    /* Com o foco no corpo do painel, as setas rolam o texto. */
+    if(a&&a.closest&&a.closest('.cte-painel .cte-painel-corpo'))return;
     const is=[...document.querySelectorAll('#cte-list tr[data-i]')].map(tr=>+tr.dataset.i),p=is.indexOf(CTE_UI.aberto),j=p+(e.key==='ArrowDown'?1:-1);
     if(p<0||j<0||j>=is.length)return;e.preventDefault();cteAbre(is[j],true);
   });
@@ -3129,6 +3159,12 @@ function cteFecha(){
     if(!t||!t.isConnected||!t.closest||t.closest('.cte-painel')||t.closest('#cte-list tr[data-i]'))return;
     cteFecha();
   });
+  /* A janela mudou de largura com o painel aberto: aplica ou devolve o inert. Ficou modal
+     e o foco não está no painel (estava na lista, no menu lateral, na barra do topo ou
+     caiu no body): ele vai para o Fechar. */
+  if(PAINEL_MQ){const mud=()=>{const on=cteInerte(),pn=document.querySelector('#cte-list .cte-painel'),a=document.activeElement;
+      if(on&&pn&&!(a&&pn.contains(a))){const fe=pn.querySelector('.cte-fechar');if(fe)fe.focus();}};
+    if(PAINEL_MQ.addEventListener)PAINEL_MQ.addEventListener('change',mud);else if(PAINEL_MQ.addListener)PAINEL_MQ.addListener(mud);}
 })();
 
 // ═══ DASHBOARD ═══
@@ -3247,7 +3283,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
       if(btn.dataset.tab==='dashboard')renderDashboard();
       if(btn.dataset.tab==='nfe')renderNFE();
       if(btn.dataset.tab==='nfse')renderNFSe();else nfseFecha(false);
-      if(btn.dataset.tab==='cte')renderCTe();else CTE_UI.aberto=-1;
+      if(btn.dataset.tab==='cte')renderCTe();else{CTE_UI.aberto=-1;cteInerte();}
     }
   });
 });

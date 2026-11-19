@@ -4030,7 +4030,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           /* Evento que sobe do alvo até o document; o clique num elemento inerte não acontece. */
           const fire = (alvo, tipo, extra) => {
             if (!alvo) return null;
-            if (tipo === 'click') for (let a = alvo; a; a = a.parentNode) if (a.inert) return null;
+            if (tipo === 'click' && !(extra && extra.programatico)) for (let a = alvo; a; a = a.parentNode) if (a.inert) return null;
             const ev = Object.assign({ type: tipo, target: alvo, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.parou = true; } }, extra || {});
             for (let a = alvo; a && !ev.parou; a = a.parentNode) for (const f of (a._ls[tipo] || [])) f.call(a, ev);
             if (!ev.parou) for (const f of (doc._ls[tipo] || [])) f(ev);
@@ -4038,9 +4038,13 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           };
           const tecla = (key) => fire(doc.activeElement || body, 'keydown', { key });
           const iT = html.indexOf('<div class="tab-content" id="tab-nfse">'), fT = html.indexOf('<div id="nfse-list"></div>', iT);
-          body.innerHTML = '<nav><button class="nav-btn" data-tab="importar"><span>Importar XMLs</span></button><button class="nav-btn active" data-tab="nfse"><span>NFS-e</span></button></nav>'
+          const iC = html.indexOf('<div class="tab-content" id="tab-cte">'), fC = html.indexOf('<div id="cte-list"></div>', iC);
+          body.innerHTML = '<nav id="sidebar"><button class="nav-btn" data-tab="importar"><span>Importar XMLs</span></button><button class="nav-btn active" data-tab="nfse"><span>NFS-e</span></button>'
+            + '<button class="nav-btn" data-tab="cte"><span>CT-e</span></button></nav>'
+            + '<div id="topbar"><span class="c-cur" id="crumb-cur"></span></div>'
             + '<div class="tab-content" id="tab-importar"></div>'
-            + html.slice(iT, fT).replace('class="tab-content"', 'class="tab-content active"') + '<div id="nfse-list"></div></div>';
+            + html.slice(iT, fT).replace('class="tab-content"', 'class="tab-content active"') + '<div id="nfse-list"></div></div>'
+            + html.slice(iC, fC) + '<div id="cte-list"></div></div>';
           const mql = { matches: false, ls: [], addEventListener(t, f) { if (t === 'change') this.ls.push(f); }, addListener(f) { this.ls.push(f); } };
           const largura = (estreita) => { mql.matches = estreita; mql.ls.forEach((f) => f({ matches: estreita })); };
           const janela = {
@@ -4055,7 +4059,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           };
           let erroT = '';
           try { vm.createContext(sbT); vm.runInContext(scriptRender, sbT, { filename: 'index.html#tela-nfse' }); vm.runInContext(';this.__DB=DB;', sbT); } catch (e) { erroT = e.message; }
-          ok('NFS-e na tela: o script sobe sobre o DOM mínimo com a marcação real da aba', erroT === '' && !!doc.querySelector('#tab-nfse .filter-bar #filtro-nfse'), erroT);
+          ok('NFS-e na tela: o script sobe sobre o DOM mínimo com a marcação real da aba', erroT === '' && !!doc.querySelector('#tab-nfse .filter-bar #filtro-nfse') && !!doc.querySelector('#tab-cte #cte-list'), erroT);
           if (!erroT) try {
             const R = (c) => vm.runInContext(c, sbT);
             const lista = doc.getElementById('nfse-list');
@@ -4134,9 +4138,10 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
 
             /* Abaixo de 900px: o que fica por baixo do painel é inerte enquanto ele está aberto. */
             const inertes = () => [doc.querySelector('#tab-nfse .filter-bar'), doc.getElementById('nfse-conf'), doc.getElementById('nfse-alertas'), lista.querySelector('.cte-tab-wrap')].map((e) => !!(e && e.inert));
+            const menu = () => [doc.querySelector('nav#sidebar'), doc.querySelector('#topbar')].map((e) => !!(e && e.inert));
             largura(true);
             fire(tr(2), 'click');
-            const est = { in: inertes(), modal: painel() && painel().getAttribute('aria-modal'), foco: !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar') };
+            const est = { in: inertes(), menu: menu(), modal: painel() && painel().getAttribute('aria-modal'), foco: !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar') };
             ok('NFS-e na tela estreita: com o painel aberto, filtros, "Conferir valores", quadro e tabela ficam inertes; o painel é modal e recebe o foco',
               est.in.every(Boolean) && est.modal === 'true' && est.foco, JSON.stringify(est));
             const cliqueInerte = fire(tr(0), 'click');
@@ -4148,21 +4153,180 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             const larga = { in: inertes(), modal: painel() && painel().getAttribute('aria-modal') };
             ok('NFS-e na tela: ao alargar a janela com o painel aberto, o inert e o aria-modal saem',
               larga.in.every((x) => !x) && larga.modal === null && !!painel(), JSON.stringify(larga));
+            const menuLargo = menu();
             largura(true);
             tr(3).focus();
-            const reaplica = inertes().every(Boolean);
+            const reaplica = inertes().every(Boolean), menuReaplica = menu();
+            ok('NFS-e na tela estreita: alargar e estreitar de novo com a NFS-e aberta devolve e reaplica o inert no menu e na barra do topo (o painel do CT-e, fechado, não o desfaz)',
+              menuLargo.every((x) => !x) && menuReaplica.every(Boolean), JSON.stringify({ menuLargo, menuReaplica }));
             lista.querySelector('.nfse-fechar').focus(); tecla('Escape');
+            const menuFechado = menu();
             ok('NFS-e na tela estreita: estreitar de novo reaplica o inert, e fechar o painel o remove (foco volta à linha)',
               reaplica && inertes().every((x) => !x) && aberto() === -1 && doc.activeElement === tr(3), 'reaplica=' + reaplica + ' depois=' + JSON.stringify(inertes()));
             {
-              const fn = /function nfseInerte\(\)\{[\s\S]*?\n\}/.exec(html);
-              ok('NFS-e na tela estreita: o menu lateral e a barra do topo, que o painel também cobre, entram no inert',
-                !!fn && /getElementById\('sidebar'\)/.test(fn[0]) && /getElementById\('topbar'\)/.test(fn[0]), fn ? '' : 'nfseInerte não encontrada');
+              ok('NFS-e na tela estreita: o menu lateral e a barra do topo, que o painel também cobre, entram no inert e saem ao fechar',
+                est.menu.every(Boolean) && menuFechado.every((x) => !x), JSON.stringify({ aberto: est.menu, fechado: menuFechado }));
               ok('NFS-e: no CompNFe o painel chama o identificador de "Código de verificação", não de chave de acesso',
                 /n\.Formato==='CompNFe'\?'Código de verificação':'Chave de acesso'/.test(html));
             }
             largura(false);
+
+            /* Painéis laterais: a consulta de largura e o "estreito" têm nome neutro (servem à
+               NFS-e e ao CT-e) e moram num bloco só, antes das duas seções. */
+            {
+              const iMq = html.indexOf('const PAINEL_MQ='), iEst = html.indexOf('function painelEstreito('), iCob = html.indexOf('function painelCobreTela(');
+              const iNfse = html.indexOf('// ═══ RENDER NFS-e'), iCte = html.indexOf('// ═══ CT-e (modelo 57)');
+              const bloco = iMq >= 0 && iNfse > iMq ? html.slice(html.lastIndexOf('/*', iMq), iNfse) : '';
+              const exec = R('typeof PAINEL_MQ!=="undefined"&&typeof painelEstreito==="function"&&typeof painelCobreTela==="function"?[PAINEL_MQ,painelEstreito()]:null');
+              const exec2 = (largura(true), R('typeof painelEstreito==="function"?painelEstreito():null'));
+              largura(false);
+              ok('Painéis laterais: PAINEL_MQ, painelEstreito e painelCobreTela juntos num bloco antes da NFS-e e do CT-e, sem o nome antigo, e painelEstreito segue a largura',
+                !!exec && exec[0] === mql && exec[1] === false && exec2 === true
+                && iMq < iEst && iEst < iCob && iCob < iNfse && iNfse < iCte && /^\/\* Painéis laterais/.test(bloco)
+                && (bloco.match(/\bfunction /g) || []).length === 2 && !/NFSE_MQ|nfseEstreito/.test(html),
+                JSON.stringify({ iMq, iEst, iCob, iNfse, exec2 }));
+            }
+
+            /* Estreitar a janela com o foco fora da aba (menu lateral ou body): o foco não pode
+               ficar no que acabou de ficar inerte, vai ao Fechar do painel. */
+            {
+              fire(tr(1), 'click');
+              const abriuF = aberto();
+              doc.querySelector('.nav-btn[data-tab="cte"]').focus();
+              const noMenu = doc.activeElement === doc.querySelector('.nav-btn[data-tab="cte"]');
+              largura(true);
+              const doMenu = !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar');
+              largura(false);
+              doc.activeElement = body;
+              largura(true);
+              const doBody = !!painel() && doc.activeElement === painel().querySelector('.nfse-fechar');
+              ok('NFS-e: estreitar a janela com o foco no menu lateral ou no body leva o foco ao Fechar do painel (não fica no que ficou inerte)',
+                abriuF === 1 && noMenu && doMenu && doBody, JSON.stringify({ abriuF, noMenu, doMenu, doBody }));
+              lista.querySelector('.nfse-fechar').focus(); tecla('Escape');
+              largura(false);
+            }
             R('__DB.nfse=[];NFSE_UI.aberto=-1;renderNFSe();');
+
+            /* ── CT-e na tela: a mesma regra do painel da NFS-e na tela estreita, sobre a
+               marcação real de #tab-cte. Três CT-e; o clique na linha abre, Esc fecha. */
+            const listaC = doc.getElementById('cte-list');
+            const trC = (i) => listaC.querySelector('tr[data-i="' + i + '"]');
+            const abertoC = () => R('CTE_UI.aberto');
+            const painelC = () => listaC.querySelector('.cte-painel');
+            const fecharC = () => listaC.querySelector('.cte-painel .cte-fechar');
+            const modalC = () => (painelC() ? painelC().getAttribute('aria-modal') : 'sem painel');
+            /* Menu lateral, barra do topo, busca, quadro "Para conferir" e tabela (a tabela some quando a lista esvazia). */
+            const inertesC = () => [doc.getElementById('sidebar'), doc.getElementById('topbar'), doc.querySelector('#tab-cte .filter-bar'), doc.getElementById('cte-alertas'), listaC.querySelector('.cte-tab-wrap')]
+              .map((e) => (e ? !!e.inert : null));
+            const todosC = (v) => inertesC().every((x) => x === v || (x === null && !v));
+            const ctes = [0, 1, 2].map((i) => ({
+              Numero: String(501 + i), Serie: '1', Modelo: '57', Chave_CTe: 'C' + i, Data_Emissao: '2026-11-0' + (i + 1) + 'T10:00:00-03:00',
+              Mun_Ini: 'Origem', UF_Ini: 'SP', Mun_Fim: 'Destino', UF_Fim: 'RJ', proPred: 'Veículo', vTPrest: '100', vCarga: '1000', ICMS_CST: '00',
+              docs: [], veic: [], comp: [], infQ: [], dup: [], fat: [], docAnt: [], occ: [], obsCont: [], obsFisco: [],
+            }));
+            R('__DB.cte=' + JSON.stringify(ctes) + ';__DB.nfe=[];CTE_UI.aberto=-1;');
+            doc.getElementById('filtro-cte').value = '';
+            fire(doc.querySelector('.nav-btn[data-tab="cte"]'), 'click');
+            ok('CT-e na tela: a aba sobe com a marcação real e desenha as três linhas',
+              !!trC(0) && !!trC(2) && doc.getElementById('tab-cte').classList.contains('active') && !!doc.querySelector('#tab-cte .filter-bar #filtro-cte'),
+              'linhas=' + listaC.querySelectorAll('tr[data-i]').length);
+
+            /* O quadro "Para conferir" do CT-e é role=status: abrir, trocar de CT-e, fechar e
+               redesenhar sem mudança não o reescrevem (o leitor de tela repetiria tudo). */
+            {
+              const avC = doc.getElementById('cte-alertas'), escC = avC.escritas;
+              fire(trC(0), 'click'); fecharC().focus(); tecla('ArrowDown'); tecla('Escape'); R('renderCTe()');
+              const semMudar = { n: avC.escritas - escC, ab: abertoC(), tem: /Para conferir/.test(avC.innerHTML), hid: avC.hidden };
+              R('__DB.cte=__DB.cte.slice(0,2);renderCTe()');
+              const mudou = avC.escritas - escC;
+              R('__DB.cte=' + JSON.stringify(ctes) + ';CTE_UI.aberto=-1;renderCTe()');
+              ok('CT-e: abrir, trocar, fechar e redesenhar sem mudança não reescrevem o quadro "Para conferir" (role=status); mudar a lista reescreve',
+                semMudar.n === 0 && semMudar.ab === -1 && semMudar.tem && semMudar.hid === false && mudou === 1, JSON.stringify({ semMudar, mudou }));
+            }
+
+            /* Tela larga: o painel abre ao lado da lista e nada fica inerte. */
+            fire(trC(1), 'click');
+            const largaC = { ab: abertoC(), in: inertesC(), modal: modalC() };
+            ok('CT-e na tela larga: o painel aberto não deixa nada inerte nem se declara modal',
+              largaC.ab === 1 && todosC(false) && largaC.modal === null, JSON.stringify(largaC));
+            fecharC().focus(); tecla('Escape');
+
+            /* Tela estreita: o clique abre, tudo por baixo fica inerte e o foco vai ao Fechar. */
+            largura(true);
+            fire(trC(1), 'click');
+            const estC = { ab: abertoC(), in: inertesC(), modal: modalC() };
+            ok('CT-e na tela estreita: com o painel aberto, menu lateral, barra do topo, busca, quadro e tabela ficam inertes e o painel é modal',
+              estC.ab === 1 && todosC(true) && estC.modal === 'true', JSON.stringify(estC));
+            ok('CT-e na tela estreita: o clique na linha leva o foco ao Fechar do painel',
+              !!fecharC() && doc.activeElement === fecharC(), 'foco=' + (doc.activeElement ? doc.activeElement.tagName + '.' + doc.activeElement.className : 'nenhum'));
+
+            /* ↑ ↓ com o foco no corpo do painel rolam o texto; no Fechar, passam de CT-e. */
+            const corpoC = listaC.querySelector('.cte-painel .cte-painel-corpo');
+            corpoC.focus();
+            const evCC = tecla('ArrowDown');
+            const noCorpo = { ab: abertoC(), prev: evCC.defaultPrevented, foco: doc.activeElement === corpoC };
+            fecharC().focus(); tecla('ArrowDown');
+            ok('CT-e na tela: ↑ ↓ com o foco no corpo do painel (focável e rotulado) não trocam de CT-e; no Fechar, trocam',
+              corpoC.getAttribute('tabindex') === '0' && corpoC.getAttribute('aria-label') === 'Detalhe do CT-e' && noCorpo.foco
+              && noCorpo.ab === 1 && !noCorpo.prev && abertoC() === 2 && todosC(true) && doc.activeElement === fecharC(),
+              JSON.stringify(noCorpo) + ' depois=' + abertoC());
+
+            /* Esc fecha, tira o inert e devolve o foco à linha. */
+            fecharC().focus();
+            const evXC = tecla('Escape');
+            ok('CT-e na tela estreita: Esc fecha o painel, tira o inert e devolve o foco à linha',
+              abertoC() === -1 && !painelC() && evXC.defaultPrevented && todosC(false) && doc.activeElement === trC(2),
+              'aberto=' + abertoC() + ' in=' + JSON.stringify(inertesC()));
+
+            /* Alargar com o painel aberto devolve; estreitar reaplica e leva ao painel o foco que estava na lista. */
+            fire(trC(0), 'click');
+            largura(false);
+            const largouC = { ab: abertoC(), in: inertesC(), modal: modalC() };
+            trC(0).focus();
+            largura(true);
+            const estreitouC = { in: inertesC(), modal: modalC(), foco: doc.activeElement === fecharC() };
+            ok('CT-e na tela: alargar a janela com o painel aberto tira o inert e o aria-modal',
+              largouC.ab === 0 && largouC.in.every((x) => x === false) && largouC.modal === null, JSON.stringify(largouC));
+            ok('CT-e na tela: estreitar de novo reaplica o inert e o aria-modal, e o foco que estava na lista vai ao Fechar',
+              estreitouC.in.every((x) => x === true) && estreitouC.modal === 'true' && estreitouC.foco, JSON.stringify(estreitouC));
+            {
+              largura(false);
+              doc.querySelector('.nav-btn[data-tab="nfse"]').focus();
+              const noMenuC = doc.activeElement === doc.querySelector('.nav-btn[data-tab="nfse"]');
+              largura(true);
+              const doMenuC = doc.activeElement === fecharC();
+              largura(false);
+              doc.activeElement = body;
+              largura(true);
+              const doBodyC = doc.activeElement === fecharC();
+              ok('CT-e: estreitar a janela com o foco no menu lateral ou no body leva o foco ao Fechar do painel',
+                abertoC() === 0 && noMenuC && doMenuC && doBodyC, JSON.stringify({ ab: abertoC(), noMenuC, doMenuC, doBodyC }));
+            }
+
+            /* Trocar de aba (pelo .click() do próprio script, que o inert não barra) devolve tudo. */
+            fire(doc.querySelector('.nav-btn[data-tab="importar"]'), 'click', { programatico: true });
+            const foraC = { ab: abertoC(), in: inertesC(), modal: modalC() };
+            ok('CT-e na tela estreita: trocar de aba com o painel aberto fecha e tira o inert de tudo, inclusive do menu e da barra do topo',
+              foraC.ab === -1 && foraC.in.every((x) => x === false) && foraC.modal === null, JSON.stringify(foraC));
+            fire(doc.querySelector('.nav-btn[data-tab="cte"]'), 'click');
+
+            /* A busca (ou a lista) que fica vazia com o painel aberto tira o inert; limpar a busca não reabre. */
+            fire(trC(1), 'click');
+            const antesBusca = todosC(true);
+            doc.getElementById('filtro-cte').value = 'nenhum-cte-tem-isto'; R('renderCTe()');
+            const buscaVazia = { ab: abertoC(), in: inertesC() };
+            doc.getElementById('filtro-cte').value = ''; R('renderCTe()');
+            const limpou = { ab: abertoC(), pn: !!painelC() };
+            fire(trC(1), 'click');
+            const antesVazio = todosC(true);
+            R('__DB.cte=[];renderCTe()');
+            const listaVazia = { ab: abertoC(), in: inertesC() };
+            ok('CT-e na tela estreita: busca sem resultado (ou lista vazia) com o painel aberto fecha o painel e tira o inert; limpar a busca não reabre',
+              antesBusca && buscaVazia.ab === -1 && buscaVazia.in.every((x) => x !== true) && limpou.ab === -1 && !limpou.pn
+              && antesVazio && listaVazia.ab === -1 && listaVazia.in.every((x) => x !== true),
+              JSON.stringify({ antesBusca, buscaVazia, limpou, antesVazio, listaVazia }));
+            largura(false);
+            R('__DB.cte=[];CTE_UI.aberto=-1;renderCTe();');
           } catch (e) {
             ok('NFS-e na tela: os gestos rodam sem exceção', false, e.message);
           }
