@@ -4306,6 +4306,20 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
 
             /* O quadro "Para conferir" do CT-e é role=status: abrir, trocar de CT-e, fechar e
                redesenhar sem mudança não o reescrevem (o leitor de tela repetiria tudo). */
+            /* A conferência é opcional: o quadro nasce fechado e o botão discreto o abre e fecha. */
+            {
+              const avC = doc.getElementById('cte-alertas'), btC = doc.getElementById('cte-conf');
+              const antes = { hid: avC.hidden, bt: !!btC && !btC.hidden, exp: btC && btC.getAttribute('aria-expanded'), txt: btC && btC.textContent };
+              fire(btC, 'click');
+              const aberto = { hid: avC.hidden, exp: btC.getAttribute('aria-expanded'), on: btC.classList.contains('on'), tem: /Para conferir/.test(avC.innerHTML) };
+              fire(btC, 'click');
+              const fechado = { hid: avC.hidden, exp: btC.getAttribute('aria-expanded') };
+              ok('CT-e: "Conferir valores" nasce fechado; o botão abre e fecha o quadro "Para conferir"',
+                antes.hid === true && antes.bt && antes.exp === 'false' && /^Conferir valores \(\d+\)$/.test(antes.txt)
+                && aberto.hid === false && aberto.exp === 'true' && aberto.on && aberto.tem && fechado.hid === true && fechado.exp === 'false',
+                JSON.stringify({ antes, aberto, fechado }));
+              fire(btC, 'click');
+            }
             {
               const avC = doc.getElementById('cte-alertas'), escC = avC.escritas;
               fire(trC(0), 'click'); fecharC().focus(); tecla('ArrowDown'); tecla('Escape'); R('renderCTe()');
@@ -4404,7 +4418,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
                 const secC = html.slice(html.indexOf('// ═══ CT-e (modelos 57 e 67)'), html.indexOf('// ═══ DASHBOARD'));
                 const montagens = (secC.match(/new Set\(DB\.nfe\b/g) || []).length, usos = (secC.match(/cteCarregadas\(\)/g) || []).length;
                 ok('CT-e: o conjunto de NF-e carregadas é montado só em cteCarregadas(), usado pela lista e pelo painel',
-                  carr === 'N1,N2' && montagens === 1 && usos === 3, JSON.stringify({ carr, montagens, usos }));
+                  carr === 'N1,N2' && montagens === 1 && usos === 4, JSON.stringify({ carr, montagens, usos }));
               }
               /* Com a busca, os botões pulam o CT-e que ficou de fora (o 2º não tem "veículo"). */
               const ctesB = [0, 1, 2, 3].map((i) => Object.assign({}, ctes[0], { Numero: String(601 + i), Chave_CTe: 'B' + i, proPred: i === 1 ? 'Moto' : 'Veículo' }));
@@ -4971,7 +4985,24 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         ok('diferença na CBS: "XML maior em" e "XML menor em", e o aviso lista',
           !erro && linCBS(c120) === 'dif|XML maior em 0,12' && linCBS(c100) === 'dif|XML menor em 0,08' && /Valor da CBS \(XML 1,20 · itens 1,08\)/.test(c120), erro || linCBS(c120));
         const semIbs = vm.runInContext("nfeDanfe('KSI',{info:{Chave_NFe:'KSI',Item:'1',xProd:'X',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KSI',Item:'1',xProd:'X'}]})", sb);
-        ok('nota sem IBS/CBS: a seção diz que o XML não traz (sem tabela vazia)', /Conferência IBS\/CBS<\/div>\s*<p class="dnf-nada">Nota sem IBS\/CBS no XML\.<\/p>/.test(semIbs) && !/dnf-conf/.test(semIbs));
+        ok('nota sem IBS/CBS: a seção diz que o XML não traz (sem tabela vazia)', /Conferência IBS\/CBS<\/div>\s*<p class="dnf-nada">Nota sem IBS\/CBS no XML\.<\/p>/.test(semIbs) && !/dnf-conf-wrap/.test(semIbs));
+        /* A conferência da DANFE é opcional: aviso e conferência IBS/CBS ficam num quadro
+           fechado, atrás do botão discreto "Conferir valores (N)". */
+        {
+          let fech = '', abre = '', e2 = '';
+          try { fech = danfe({ vCBS: '1.20' }).h; vm.runInContext("dnfUI('KCF').conf=true", sb);
+            abre = vm.runInContext("nfeDanfe('KCF',{info:{Chave_NFe:'KCF',Item:'1',xProd:'X',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KCF',Item:'1',xProd:'X'}]})", sb); } catch (e) { e2 = e.message; }
+          ok('DANFE: o aviso e a conferência IBS/CBS ficam atrás do botão "Conferir valores (N)", fechados por padrão',
+            !e2 && /<button type="button" class="nfse-conf dnf-conf-bt" aria-expanded="false" aria-controls="dnfconf-[^"]+">Conferir valores \(1\)<\/button>\s*<div class="dnf-conf-box" id="dnfconf-[^"]+" hidden>\s*<p class="dnf-aviso"/.test(fech)
+            && /Conferência IBS\/CBS<\/div>/.test(fech.slice(fech.indexOf('dnf-conf-box')))
+            && /class="nfse-conf dnf-conf-bt on" aria-expanded="true"/.test(abre) && /<div class="dnf-conf-box" id="dnfconf-KCF">/.test(abre),
+            e2 || fech.slice(fech.indexOf('dnf-conf-bt') - 40, fech.indexOf('dnf-conf-bt') + 260));
+          ok('DANFE: o clique em "Conferir valores" abre e fecha o quadro sem redesenhar a nota',
+            /const cb=e\.target\.closest\('\.dnf-conf-bt'\);if\(cb\)\{x\.u\.conf=!x\.u\.conf;/.test(html) && /box\.hidden=!x\.u\.conf;cb\.setAttribute\('aria-expanded'/.test(html));
+          ok('"Conferir valores" é um botão discreto, o mesmo nas três telas',
+            /\.nfse-conf\{border:1px solid var\(--border\);background:transparent;color:var\(--text2\)/.test(html)
+            && /<button type="button" id="cte-conf" class="nfse-conf" aria-expanded="false" aria-controls="cte-alertas" hidden>/.test(html));
+        }
         const soTot = vm.runInContext("nfeDanfe('KST',{info:{Chave_NFe:'KST',Item:'1',xProd:'X',Status_NFe:'Autorizada',Tot_vBCIBSCBS:'0.00',Tot_vIBS:'0.00',Tot_vCBS:'0.00'},itens:[{Chave_NFe:'KST',Item:'1',xProd:'X'}]})", sb);
         ok('total de IBS/CBS no XML sem item com IBS/CBS: a tabela por CST diz que não há item, sem tabela vazia',
           /<p class="dnf-nada">Nenhum item com IBS\/CBS\.<\/p>/.test(soTot) && (soTot.match(/class="dnf-conf"/g) || []).length === 1);
