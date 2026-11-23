@@ -1397,8 +1397,8 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
   .dash-grid{gap:16px}
 }
 @media (max-width:768px){
-  /* alvo de toque de 44px no celular */
-  .btn{min-height:44px}
+  /* alvo de toque de 44px no celular (o "Conferir valores" é discreto só na tela larga) */
+  .btn,.nfse-conf{min-height:44px}
   /* ≤768px: rail por DECISÃO DE LAYOUT, não do usuário. Estas regras são o
      FALLBACK PRÉ-JS — o script do fim do body seta data-rail="on" antes do
      primeiro paint, mas uma folha com display:none em #content deixaria 240px
@@ -2492,7 +2492,7 @@ function nfeDanfe(ch,g){
   <div class="dnf-l g7">${tot('Base IBS/CBS','vBCIBS')}${tot('IBS UF','vIBSUF')}${tot('IBS município','vIBSMun')}${tot('Valor do IBS','vIBS')}${tot('Valor da CBS','vCBS')}${dnfCx('IBS + CBS',esc(num2(T.ibscbs)),true,!T.ibscbs)}${dnfCampo(DNF_ROT_VNFTOT,n.Tot_vNFTot,'m')}</div>
   <div class="dnf-l g3">${soma('ICMS do substituto (soma dos itens)',p=>p.ICMS_vICMSSubstituto)}${soma('ICMS monofásico (soma dos itens)',p=>p.ICMS_vICMSMonoRet)}${soma('ICMS efetivo (soma dos itens)',p=>p.ICMS_vICMSEfet)}</div>
   ${dnfConfBotao(ch,T,u)}
-  <div class="dnf-conf-box" id="dnfconf-${esc(ch)}"${u.conf?'':' hidden'}>
+  <div class="dnf-conf-box" id="${dnfConfId(ch)}"${u.conf?'':' hidden'}>
   ${dnfAvisoTotais(T)}
   <div class="dnf-sec">Conferência IBS/CBS</div>
   ${dnfConfIBSCBS(g,T)}
@@ -2576,12 +2576,15 @@ function dnfDifere(a,b){return Math.abs(dnfCentavos(a,b))>DNF_TOL_CENTAVOS;}
    antes, CST 60, que não é o ST da operação) e os totais sem campo no item. */
 const DNF_CONFERE=[['vProd','Valor total dos produtos'],['vBC','Base de cálc. do ICMS'],['vICMS','Valor do ICMS'],['vIPI','Valor do IPI'],['vPIS','Valor do PIS'],['vCOFINS','Valor da COFINS'],['vFrete','Valor do frete'],['vSeg','Valor do seguro'],['vDesc','Desconto'],['vOutro','Outras despesas']];
 const DNF_CONFERE_IBSCBS=[['vBCIBS','Base IBS/CBS'],['vIBSUF','IBS UF'],['vIBSMun','IBS município'],['vIBS','Valor do IBS'],['vCBS','Valor da CBS']];
+/* Id do quadro da conferência: só letras, dígitos e hífen, para o aria-controls ser
+   uma referência só mesmo com chave fora do padrão (espaço, aspas). */
+function dnfConfId(ch){return 'dnfconf-'+String(ch==null?'':ch).replace(/[^A-Za-z0-9-]/g,'_');}
 /* Totais do XML que não batem com a soma dos itens. */
 function dnfDiferencas(T){return (T.temTot?DNF_CONFERE:[]).concat(T.temIBSCBS?DNF_CONFERE_IBSCBS:[]).filter(([k])=>dnfDifere(T[k].v,T[k].s));}
 /* A conferência é opcional: o aviso e a conferência IBS/CBS ficam atrás do botão
    discreto "Conferir valores (N)", fechados até a pessoa pedir. */
 function dnfConfBotao(ch,T,u){const n=dnfDiferencas(T).length;
-  return `<button type="button" class="nfse-conf dnf-conf-bt${u.conf?' on':''}" aria-expanded="${u.conf}" aria-controls="dnfconf-${esc(ch)}">Conferir valores (${n})</button>`;}
+  return `<button type="button" class="nfse-conf dnf-conf-bt${u.conf?' on':''}" aria-expanded="${u.conf}" aria-controls="${dnfConfId(ch)}" aria-label="Conferir valores, ${n} ${n===1?'total difere':'totais diferem'} da soma dos itens">Conferir valores (${n})</button>`;}
 /* Linha curta sob as caixas quando um total do XML não bate com a soma dos itens. */
 function dnfAvisoTotais(T){
   const lista=dnfDiferencas(T);
@@ -2746,8 +2749,8 @@ function dnfEntrada(e){const el=e.target,x=dnfCartao(el);if(!x||!el.classList)re
 function dnfForaClique(e){const pn=document.querySelector('.dnf-painel');if(!pn)return;const t=e.target;
   if(window.getSelection&&String(window.getSelection()))return;
   if(!t||!t.isConnected||!t.closest||t.closest('.dnf-painel')||t.closest('.dnf-prod tbody tr.dnf-it'))return;
-  /* busca e paginação dos itens não fecham o item aberto */
-  if(t.closest('.dnf-busca')||t.closest('.dnf-pag'))return;
+  /* busca, paginação e "Conferir valores" não fecham o item aberto */
+  if(t.closest('.dnf-busca')||t.closest('.dnf-pag')||t.closest('.dnf-conf-bt'))return;
   const x=dnfCartao(pn);if(!x||!x.u.abertos.size)return;x.u.abertos.clear();dnfRepinta(x);}
 document.addEventListener('click',dnfForaClique);
 
@@ -2958,15 +2961,21 @@ function nfsePainel(n,ant,prx,por){
    quadro é role=status: só é reescrito quando o texto muda, senão o leitor de tela
    repetiria a conferência a cada filtro. */
 function nfseConfRender(lista){
-  const bt=document.getElementById('nfse-conf'),box=document.getElementById('nfse-alertas');
-  const al=nfseAlertasDe(lista);
-  bt.hidden=!lista.length;
-  bt.textContent=`Conferir valores (${al.length})`;
-  bt.setAttribute('aria-expanded',NFSE_UI.conf&&lista.length?'true':'false');
-  bt.classList.toggle('on',NFSE_UI.conf&&!!lista.length);
-  box.hidden=!(NFSE_UI.conf&&lista.length);
-  const h=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'<b>Para conferir</b><p>Nada a conferir nas NFS-e importadas.</p>';
-  if(NFSE_UI.alertasH!==h){box.innerHTML=h;NFSE_UI.alertasH=h;}
+  confRender(document.getElementById('nfse-conf'),document.getElementById('nfse-alertas'),nfseAlertasDe(lista),!!lista.length,NFSE_UI,'Nada a conferir nas NFS-e importadas.');
+}
+/* Botão "Conferir valores (N)" + quadro "Para conferir", o mesmo na NFS-e e no CT-e:
+   o botão some sem documentos; o quadro abre só com est.conf; o nome acessível diz o
+   que N conta; o quadro (role=status) só é reescrito quando o texto muda. */
+function confRender(bt,box,al,tem,est,vazio){
+  const on=!!(est.conf&&tem),n=al.length;
+  bt.hidden=!tem;
+  bt.textContent=`Conferir valores (${n})`;
+  bt.setAttribute('aria-label',`Conferir valores, ${n} ${n===1?'ponto':'pontos'} para conferir`);
+  bt.setAttribute('aria-expanded',on?'true':'false');
+  bt.classList.toggle('on',on);
+  box.hidden=!on;
+  const h=n?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':`<b>Para conferir</b><p>${vazio}</p>`;
+  if(est.alertasH!==h){box.innerHTML=h;est.alertasH=h;}
 }
 function nfseRetCel(n){const por=nfseRetPor(n);
   if(por===null)return '<span class="cte-sub">não</span>';
@@ -3477,7 +3486,7 @@ function cteBuscaOS(c){return c.ehOS?[c.xDescServ,c.placa,c.propNome,c.propDoc].
 function renderCTe(){
   const lista=DB.cte;
   const q=(document.getElementById('filtro-cte').value||'').trim().toLowerCase();
-  const el=document.getElementById('cte-list'),av=document.getElementById('cte-alertas');
+  const el=document.getElementById('cte-list');
   const carregadas=cteCarregadas();
   const idx=lista.map((c,i)=>i).filter(i=>{
     if(!q)return true;const c=lista[i];
@@ -3510,23 +3519,14 @@ function renderCTe(){
     +`<div class="cte-slot">${pn}</div>`;
   cteInerte();
 }
+/* O "Conferir valores (N)" do CT-e, como na NFS-e: o quadro nasce fechado. */
+function cteConfRender(lista,carregadas){
+  confRender(document.getElementById('cte-conf'),document.getElementById('cte-alertas'),
+    lista.length?cteAlertas(lista,carregadas||cteCarregadas()):[],!!lista.length,CTE_UI,'Nada a conferir nos CT-e importados.');
+}
 /* Mesma regra da NFS-e: abaixo de 900px o painel cobre a tela; enquanto ele está aberto,
    menu lateral, barra do topo, busca, quadro "Para conferir" e tabela saem do alcance do
    teclado e do leitor de tela, e o painel se declara modal. */
-/* O botão "Conferir valores (N)" do CT-e e o quadro que ele abre, como na NFS-e: o
-   quadro nasce fechado. role=status: só é reescrito quando o texto muda, senão o leitor
-   de tela repetiria a conferência a cada abertura, seta ou busca. */
-function cteConfRender(lista,carregadas){
-  const bt=document.getElementById('cte-conf'),av=document.getElementById('cte-alertas');
-  const al=lista.length?cteAlertas(lista,carregadas||cteCarregadas()):[],on=CTE_UI.conf&&!!lista.length;
-  bt.hidden=!lista.length;
-  bt.textContent=`Conferir valores (${al.length})`;
-  bt.setAttribute('aria-expanded',on?'true':'false');
-  bt.classList.toggle('on',on);
-  av.hidden=!on;
-  const alH=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'<b>Para conferir</b><p>Nada a conferir nos CT-e importados.</p>';
-  if(CTE_UI.alertasH!==alH){av.innerHTML=alH;CTE_UI.alertasH=alH;}
-}
 function cteInerte(){
   const pn=document.querySelector('#cte-list .cte-painel'),on=CTE_UI.aberto>=0&&!!pn&&painelEstreito();
   const tab=document.getElementById('tab-cte');
@@ -3608,7 +3608,7 @@ function cteFecha(foco){
   document.addEventListener('click',e=>{
     if(!ativa())return;
     const t=e.target;if(window.getSelection&&String(window.getSelection()))return;
-    if(!t||!t.isConnected||!t.closest||t.closest('.cte-painel')||t.closest('#cte-list tr[data-i]'))return;
+    if(!t||!t.isConnected||!t.closest||t.closest('.cte-painel')||t.closest('#cte-list tr[data-i]')||t.closest('#cte-conf'))return;
     /* Sem mover o foco: ele fica no controle clicado (a busca não perde o que se digita). */
     cteFecha(false);
   });
