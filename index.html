@@ -1104,7 +1104,7 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 /* A situação vem do XML ("cStat - xMotivo") e pode ser longa: no cabeçalho ela quebra
    linha em vez de estourar a largura e empurrar o Fechar para fora da tela. */
 .cte-painel-cab .cte-pill{white-space:normal;overflow-wrap:anywhere;min-width:0}
-.cte-fechar,.nfse-fechar,.nfse-ir,.cte-ir,.nfse-conf{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+.cte-fechar,.nfse-fechar,.nfse-ir,.cte-ir{border:1px solid var(--border-input);background:var(--card);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
 /* As colunas ficam num filho de altura livre: com column-count no próprio contêiner de
    rolagem (altura fixa), o conteúdo vira colunas para o lado em vez de descer. */
 .cte-painel-corpo{flex:1;overflow:auto}
@@ -1124,9 +1124,13 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 @media (max-width:900px){.cte-painel,.nfse-painel{width:100vw}}
 @media (max-width:767.98px){.cte-painel,.nfse-painel{top:0}.cte-dica{display:none}}
 /* ── NFS-e: a lista e o painel do CT-e; o corpo no desenho do item da NF-e ── */
-.nfse-conf{color:var(--text2);margin-bottom:12px}
+/* "Conferir valores": botão discreto (NFS-e, CT-e e DANFE). A conferência é opcional:
+   o quadro nasce fechado e só abre quando a pessoa pede. */
+.nfse-conf{border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:var(--radius-sm);padding:4px 10px;min-height:32px;cursor:pointer;font:inherit;font-size:12.5px;margin-bottom:12px}
+.nfse-conf:hover{color:var(--text);border-color:var(--border-input)}
 .nfse-conf.on{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
-.nfse-conf[hidden]{display:none}
+.nfse-conf[hidden],.dnf-conf-box[hidden]{display:none}
+.dnf .nfse-conf{margin:8px 0 0}
 .nfse-ir:disabled,.cte-ir:disabled{color:var(--text3);cursor:default}
 .nfse-painel .cte-painel-corpo{padding:10px 12px}
 .nfse-painel .cte-painel-corpo:focus-visible,.cte-painel .cte-painel-corpo:focus-visible{outline-offset:-2px}
@@ -1569,6 +1573,7 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
         <input type="text" id="filtro-cte" placeholder="Buscar CT-e, chassi, chave, nome..." aria-label="Buscar no CT-e" oninput="renderCTe()">
         <span class="count" id="cte-count"></span>
       </div>
+      <button type="button" id="cte-conf" class="nfse-conf" aria-expanded="false" aria-controls="cte-alertas" hidden>Conferir valores</button>
       <div id="cte-alertas" class="cte-alertas" role="status" hidden></div>
       <p id="cte-aviso" class="visually-hidden" aria-live="polite"></p>
       <div id="cte-list"></div>
@@ -2372,7 +2377,7 @@ const DNF_UI=new Map();
 const DNF_TAMS=[25,50,100,0],DNF_TAM_PADRAO=50;
 /* Estado por nota: item aberto (índice da linha), nota aberta, busca nos itens, página,
    tamanho da página e a espera da digitação na busca. */
-function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={abertos:new Set(),nota:false,q:'',pag:1,tam:DNF_TAM_PADRAO,espera:0};DNF_UI.set(ch,u);}return u;}
+function dnfUI(ch){let u=DNF_UI.get(ch);if(!u){u={abertos:new Set(),nota:false,conf:false,q:'',pag:1,tam:DNF_TAM_PADRAO,espera:0};DNF_UI.set(ch,u);}return u;}
 /* Agrupamento das linhas de DB.nfe por nota (uma nota = info + itens). Object.create(null):
    a chave vem do XML e não pode resolver pelo protótipo.
    A chave do GRUPO é a Chave_NFe; sem ela, notas diferentes não podem se fundir num
@@ -2486,9 +2491,12 @@ function nfeDanfe(ch,g){
   <div class="dnf-l g6">${tot('Valor total dos produtos','vProd')}${tot('Valor do frete','vFrete')}${tot('Valor do seguro','vSeg')}${tot('Desconto','vDesc')}${tot('Outras despesas','vOutro')}${dnfCampo('Valor total da nota',n.vNF,'m')}</div>
   <div class="dnf-l g7">${tot('Base IBS/CBS','vBCIBS')}${tot('IBS UF','vIBSUF')}${tot('IBS município','vIBSMun')}${tot('Valor do IBS','vIBS')}${tot('Valor da CBS','vCBS')}${dnfCx('IBS + CBS',esc(num2(T.ibscbs)),true,!T.ibscbs)}${dnfCampo(DNF_ROT_VNFTOT,n.Tot_vNFTot,'m')}</div>
   <div class="dnf-l g3">${soma('ICMS do substituto (soma dos itens)',p=>p.ICMS_vICMSSubstituto)}${soma('ICMS monofásico (soma dos itens)',p=>p.ICMS_vICMSMonoRet)}${soma('ICMS efetivo (soma dos itens)',p=>p.ICMS_vICMSEfet)}</div>
+  ${dnfConfBotao(ch,T,u)}
+  <div class="dnf-conf-box" id="dnfconf-${esc(ch)}"${u.conf?'':' hidden'}>
   ${dnfAvisoTotais(T)}
   <div class="dnf-sec">Conferência IBS/CBS</div>
   ${dnfConfIBSCBS(g,T)}
+  </div>
   <div class="dnf-sec">Transportador / volumes transportados</div>
   <div class="dnf-l g6">${dnfCampo('Nome / razão social',n.Transp_Nome)}${dnfCampo('Frete por conta',n.Transp_Mod,'c:modFrete')}${dnfCampo('Código ANTT',n.Transp_RNTC)}${dnfCampo('Placa do veículo',n.Transp_Placa)}${dnfCampo('UF da placa',n.Transp_UFPlaca)}${dnfCx('CNPJ / CPF',dnfDoc(n.Transp_CNPJ),false,!dnfTem(n.Transp_CNPJ))}</div>
   <div class="dnf-l g4">${dnfCampo('Endereço',n.Transp_End)}${dnfCampo('Município',n.Transp_Mun)}${dnfCampo('UF',n.Transp_UF)}${dnfCampo('Inscrição estadual',n.Transp_IE)}</div>
@@ -2568,9 +2576,15 @@ function dnfDifere(a,b){return Math.abs(dnfCentavos(a,b))>DNF_TOL_CENTAVOS;}
    antes, CST 60, que não é o ST da operação) e os totais sem campo no item. */
 const DNF_CONFERE=[['vProd','Valor total dos produtos'],['vBC','Base de cálc. do ICMS'],['vICMS','Valor do ICMS'],['vIPI','Valor do IPI'],['vPIS','Valor do PIS'],['vCOFINS','Valor da COFINS'],['vFrete','Valor do frete'],['vSeg','Valor do seguro'],['vDesc','Desconto'],['vOutro','Outras despesas']];
 const DNF_CONFERE_IBSCBS=[['vBCIBS','Base IBS/CBS'],['vIBSUF','IBS UF'],['vIBSMun','IBS município'],['vIBS','Valor do IBS'],['vCBS','Valor da CBS']];
+/* Totais do XML que não batem com a soma dos itens. */
+function dnfDiferencas(T){return (T.temTot?DNF_CONFERE:[]).concat(T.temIBSCBS?DNF_CONFERE_IBSCBS:[]).filter(([k])=>dnfDifere(T[k].v,T[k].s));}
+/* A conferência é opcional: o aviso e a conferência IBS/CBS ficam atrás do botão
+   discreto "Conferir valores (N)", fechados até a pessoa pedir. */
+function dnfConfBotao(ch,T,u){const n=dnfDiferencas(T).length;
+  return `<button type="button" class="nfse-conf dnf-conf-bt${u.conf?' on':''}" aria-expanded="${u.conf}" aria-controls="dnfconf-${esc(ch)}">Conferir valores (${n})</button>`;}
 /* Linha curta sob as caixas quando um total do XML não bate com a soma dos itens. */
 function dnfAvisoTotais(T){
-  const lista=(T.temTot?DNF_CONFERE:[]).concat(T.temIBSCBS?DNF_CONFERE_IBSCBS:[]).filter(([k])=>dnfDifere(T[k].v,T[k].s));
+  const lista=dnfDiferencas(T);
   if(!lista.length)return '';
   return `<p class="dnf-aviso" role="note"><b>Soma dos itens difere do total do XML:</b> ${lista.map(([k,r])=>`${esc(r)} (XML ${esc(num2(T[k].v))} · itens ${esc(num2(T[k].s))})`).join('; ')}.</p>`;
 }
@@ -2678,6 +2692,9 @@ function dnfClique(e){
   const pg=e.target.closest('.dnf-pg');if(pg){if(!pg.disabled&&pg.dataset.pag){x.u.pag=parseInt(pg.dataset.pag,10)||1;const d=pg.dataset.dir;dnfRepinta(x,d?`.dnf-pg[data-dir="${d}"]:not(:disabled)`:'','.dnf-pg.atual');}return;}
   const ir=e.target.closest('.dnf-ir-item');if(ir){if(ir.dataset.ir!=null)dnfAbreSo(x,ir.dataset.ir);return;}
   if(e.target.closest('.dnf-fecha-todos')){dnfAbreSo(x,null);return;}
+  /* "Conferir valores": abre/fecha o quadro sem redesenhar a nota; o foco fica no botão */
+  const cb=e.target.closest('.dnf-conf-bt');if(cb){x.u.conf=!x.u.conf;const box=x.card.querySelector('.dnf-conf-box');
+    if(box)box.hidden=!x.u.conf;cb.setAttribute('aria-expanded',String(x.u.conf));cb.classList.toggle('on',x.u.conf);return;}
   const tr=e.target.closest('.dnf-prod tbody tr.dnf-it');if(!tr)return;
   if(window.getSelection&&String(window.getSelection())&&!e.target.closest('.dnf-abre'))return;
   const k=tr.dataset.it;dnfAbreSo(x,x.u.abertos.has(k)?null:k);
@@ -3069,6 +3086,7 @@ function nfseFecha(foco){
   });
   /* O quadro "Para conferir" só abre a pedido; o estado sobrevive ao redesenho da lista. */
   document.getElementById('nfse-conf').addEventListener('click',()=>{NFSE_UI.conf=!NFSE_UI.conf;nfseConfRender(DB.nfse);});
+  document.getElementById('cte-conf').addEventListener('click',()=>{CTE_UI.conf=!CTE_UI.conf;cteConfRender(DB.cte);});
   /* Teclado e clique fora no document, valendo só com a aba NFS-e à mostra (escondida,
      ela continua no DOM e roubaria as teclas das outras abas). */
   const ativa=()=>NFSE_UI.aberto>=0&&document.getElementById('tab-nfse').classList.contains('active')&&!!document.querySelector('.nfse-painel');
@@ -3271,7 +3289,7 @@ function cteLinha(c){
 }
 
 /* ── Tela: lista + painel largo (o mesmo desenho do item da NF-e) ── */
-const CTE_UI={aberto:-1,alertasH:null};
+const CTE_UI={aberto:-1,conf:false,alertasH:null};
 const CTE_NC='<span class="cte-nc">não consta no XML</span>';
 const cteVazio=v=>v===''||v===null||v===undefined;
 function cteV(v){return cteVazio(v)?CTE_NC:esc(v);}
@@ -3467,11 +3485,7 @@ function renderCTe(){
       .concat(c.docs.map(d=>d.chave||d.numero),c.veic.map(v=>v.chassi),cteBuscaOS(c)).some(v=>String(v||'').toLowerCase().includes(q));
   });
   document.getElementById('cte-count').textContent=lista.length?`${idx.length} de ${lista.length} CT-e · ${lista.reduce((s,c)=>s+c.docs.length,0)} documentos vinculados${cteNRef(lista)?' · '+cteNRef(lista)+' referenciados':''}`:'';
-  const al=lista.length?cteAlertas(lista,carregadas):[];
-  /* O quadro é role=status: só é reescrito quando o texto muda, senão o leitor de tela
-     repetiria a conferência a cada abertura, seta ou busca. */
-  const alH=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'';
-  if(CTE_UI.alertasH!==alH){av.innerHTML=alH;av.hidden=!alH;CTE_UI.alertasH=alH;}
+  cteConfRender(lista,carregadas);
   if(!lista.length){CTE_UI.aberto=-1;el.innerHTML='<div class="empty-state"><p>Nenhum CT-e. Importe os XMLs de CT-e (modelo 57 ou CT-e OS, modelo 67).</p></div>';cteInerte();return;}
   if(!idx.length){CTE_UI.aberto=-1;el.innerHTML='<div class="empty-state"><p>Nenhum CT-e para a busca.</p></div>';cteInerte();return;}
   if(!idx.includes(CTE_UI.aberto))CTE_UI.aberto=-1;
@@ -3499,10 +3513,24 @@ function renderCTe(){
 /* Mesma regra da NFS-e: abaixo de 900px o painel cobre a tela; enquanto ele está aberto,
    menu lateral, barra do topo, busca, quadro "Para conferir" e tabela saem do alcance do
    teclado e do leitor de tela, e o painel se declara modal. */
+/* O botão "Conferir valores (N)" do CT-e e o quadro que ele abre, como na NFS-e: o
+   quadro nasce fechado. role=status: só é reescrito quando o texto muda, senão o leitor
+   de tela repetiria a conferência a cada abertura, seta ou busca. */
+function cteConfRender(lista,carregadas){
+  const bt=document.getElementById('cte-conf'),av=document.getElementById('cte-alertas');
+  const al=lista.length?cteAlertas(lista,carregadas||cteCarregadas()):[],on=CTE_UI.conf&&!!lista.length;
+  bt.hidden=!lista.length;
+  bt.textContent=`Conferir valores (${al.length})`;
+  bt.setAttribute('aria-expanded',on?'true':'false');
+  bt.classList.toggle('on',on);
+  av.hidden=!on;
+  const alH=al.length?'<b>Para conferir</b><ul>'+al.map(a=>`<li>${esc(a)}</li>`).join('')+'</ul>':'<b>Para conferir</b><p>Nada a conferir nos CT-e importados.</p>';
+  if(CTE_UI.alertasH!==alH){av.innerHTML=alH;CTE_UI.alertasH=alH;}
+}
 function cteInerte(){
   const pn=document.querySelector('#cte-list .cte-painel'),on=CTE_UI.aberto>=0&&!!pn&&painelEstreito();
   const tab=document.getElementById('tab-cte');
-  [tab&&tab.querySelector('.filter-bar'),document.getElementById('cte-alertas'),document.querySelector('#cte-list .cte-tab-wrap')]
+  [tab&&tab.querySelector('.filter-bar'),document.getElementById('cte-conf'),document.getElementById('cte-alertas'),document.querySelector('#cte-list .cte-tab-wrap')]
     .forEach(el=>{if(el)el.inert=on;});
   if(pn){if(on)pn.setAttribute('aria-modal','true');else pn.removeAttribute('aria-modal');}
   painelCobreTela();

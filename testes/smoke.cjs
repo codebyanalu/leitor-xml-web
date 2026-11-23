@@ -734,6 +734,7 @@ const MEDIR_MENU = `(() => {
       await handleFiles([new File([xml(40, [nf(100), nf(200)])], 'cte-40.xml'), new File([xml(42, [nf(102)])], 'cte-42.xml'), new File([xml(42, [nf(102)])], 'cte-42 (1).xml'), new File([completo], 'cte-50.xml')]);
       document.querySelector('[data-tab=cte]').click();
       const linhas = document.querySelectorAll('#cte-list tr[data-i]').length;
+      document.getElementById('cte-conf').click(); /* a conferência é opcional: abre o quadro */
       const alertas = document.getElementById('cte-alertas').innerText;
       document.querySelector('#cte-list tr[data-i="2"]').click();
       const t50 = (document.querySelector('.cte-painel') || { innerText: '' }).innerText;
