@@ -1119,7 +1119,8 @@ function ambienteCnpj({ storage, fetchImpl, modPdf }) {
   vm.runInContext(
     /function ESC\(s\)\{[\s\S]*?\n/.exec(html)[0] + '\nthis.esc=ESC;'
     + '\nfunction f(v){if(v===null||v===undefined)return 0;let s=String(v).replace(/[^0-9,\\-.]/g,\'\');if(s.includes(\',\')){s=s.replace(/\\./g,\'\').replace(\',\',\'.\');}const n=parseFloat(s);return isNaN(n)?0:n}'
-    + '\nfunction moeda(v){return `R$ ${f(v).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})}`}',
+    + '\nfunction moeda(v){return `R$ ${f(v).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})}`}'
+    + '\n' + /function dataHoraBr\(v,soData\)\{[^\n]*\n/.exec(html)[0],
     sandbox);
   return { sandbox, els };
 }
@@ -1473,6 +1474,55 @@ await (async () => {
       els['cnpj-cache-aviso'].style.display === 'block',
       els['cnpj-cache-aviso'].style.display + ' / ' + els['cnpj-cache-aviso'].innerHTML.slice(0, 80));
   }
+
+  // ── Ficha do CNPJ: resumo, contribuinte pelo cadastro público e a fonte à vista ──
+  {
+    const ficha = async (api) => {
+      const storage = storageReal();
+      const { t, els, erros } = rodarCnpj({ storage, fetchImpl: () => Promise.resolve({ ok: true, status: 200, json: async () => api }), modPdf: { vC: modPdf } });
+      if (erros.length) return { erro: erros.map((e) => e.message).join('|') };
+      els['cnpj-input'].value = cnpjValido; await t.consultar();
+      return { h: els['cnpj-result'].innerHTML, t };
+    };
+    const base = {
+      razao_social: 'EMPRESA EXEMPLO LTDA', capital_social: '1500000.00', atualizado_em: '2026-11-14T03:00:00.000Z',
+      porte: { descricao: 'Demais' }, natureza_juridica: { id: '2062', descricao: 'Sociedade Empresária Limitada' },
+      simples: { simples: 'Não', mei: 'Não', data_opcao_simples: '2007-07-01', data_exclusao_simples: '2018-12-31' },
+      socios: [{ nome: 'SOCIA EXEMPLO', cpf_cnpj_socio: '***123456**', data_entrada: '2004-08-01', faixa_etaria: '41 a 50 anos', qualificacao_socio: { descricao: 'Sócio-Administrador' } }],
+      estabelecimento: { cnpj: '11222333000181', tipo: 'Matriz', nome_fantasia: 'EXEMPLO', situacao_cadastral: 'Ativa', data_situacao_cadastral: '2005-11-03',
+        data_inicio_atividade: '2004-08-01', logradouro: 'EXEMPLO', tipo_logradouro: 'RUA', numero: '100', bairro: 'CENTRO', cep: '13010000', ddd1: '19', telefone1: '33334444',
+        estado: { sigla: 'SP' }, cidade: { nome: 'Campinas', ibge_id: 3509502 }, atualizado_em: '2026-11-14T03:00:00.000Z',
+        atividade_principal: { subclasse: '4530-7/03', descricao: 'Comércio a varejo de peças' }, atividades_secundarias: [],
+        inscricoes_estaduais: [{ inscricao_estadual: '110042490114', ativo: true, atualizado_em: '2026-10-10T13:40:01.080Z', estado: { sigla: 'SP' } },
+          { inscricao_estadual: '101234567', ativo: false, atualizado_em: '2025-03-15T00:00:00.000Z', estado: { sigla: 'GO' } }] },
+    };
+    const a = await ficha(base);
+    const h = a.h || '';
+    ok('ficha do CNPJ: empresa "Ativa" sai em verde (a API manda texto, não objeto)',
+      !a.erro && /<div class="cnpj-kpi ok"><div class="l">Situação<\/div><div class="v">Ativa<\/div><div class="s">desde 03\/11\/2005<\/div>/.test(h), a.erro || h.slice(h.indexOf('cnpj-kpis'), h.indexOf('cnpj-kpis') + 300));
+    ok('ficha do CNPJ: contribuinte de ICMS pelo cadastro público, com a UF da IE ativa e "não SEFAZ"',
+      /<div class="l">Contribuinte de ICMS<\/div><div class="v">Sim\*<\/div><div class="s">IE ativa em SP · cadastro público, não SEFAZ<\/div>/.test(h));
+    ok('ficha do CNPJ: tabela das inscrições estaduais com situação e data em que foi vista',
+      /<td>SP<\/td><td class="mono">110042490114<\/td><td><span class="cnpj-st ok">Ativa<\/span><\/td><td>10\/10\/2026<\/td>/.test(h)
+      && /<td>GO<\/td><td class="mono">101234567<\/td><td><span class="cnpj-st">Inativa<\/span><\/td><td>15\/03\/2025<\/td>/.test(h));
+    ok('ficha do CNPJ: o quadro de fonte diz a data da base da Receita e que não é validação na SEFAZ',
+      /<div class="cnpj-fonte" role="note">/.test(h) && /base pública de 14\/11\/2026/.test(h) && /<b>Não é validação na SEFAZ<\/b>: este sistema não usa certificado digital/.test(h)
+      && /href="https:\/\/www\.sintegra\.gov\.br\/" target="_blank" rel="noopener noreferrer"/.test(h));
+    ok('ficha do CNPJ: capital em reais, CEP e telefone com máscara, datas dd/mm/aaaa',
+      /capital R\$ 1\.500\.000,00/.test(h) && /CEP 13010-000/.test(h) && /\(19\) 3333-4444/.test(h) && /<dt>Início da atividade<\/dt><dd>01\/08\/2004<\/dd>/.test(h) && !/\d{4}-\d{2}-\d{2}/.test(h), h.slice(0, 120));
+    ok('ficha do CNPJ: sócios em tabela, sem onclick no HTML (botões por delegação)',
+      /<td>SOCIA EXEMPLO<\/td><td>Sócio-Administrador<\/td><td class="mono">\*\*\*123456\*\*<\/td><td>01\/08\/2004<\/td>/.test(h) && !/onclick=/.test(h) && /data-cnpj-acao="ficha"/.test(h));
+    const semIE = await ficha({ ...base, estabelecimento: { ...base.estabelecimento, situacao_cadastral: 'Baixada', inscricoes_estaduais: [] } });
+    ok('ficha do CNPJ: sem IE no cadastro público sai "Sem dado", não "Não"; situação baixada em vermelho',
+      /<div class="v">Sem dado\*<\/div><div class="s">o cadastro público não traz IE · cadastro público, não SEFAZ<\/div>/.test(semIE.h || '')
+      && /<div class="cnpj-kpi err"><div class="l">Situação<\/div><div class="v">Baixada<\/div>/.test(semIE.h || ''), semIE.erro || '');
+    const evil = await ficha({ ...base, estabelecimento: { ...base.estabelecimento, inscricoes_estaduais: [{ inscricao_estadual: '<img src=x onerror=1>', ativo: true, estado: { sigla: '<i>' } }] } });
+    ok('ficha do CNPJ: inscrição estadual e UF hostis saem escapadas (na caixa e na tabela)',
+      !/<img|<i>/.test(evil.h || '') && /&lt;img src=x onerror=1&gt;/.test(evil.h || '') && /IE ativa em &lt;i&gt;/.test(evil.h || ''), evil.erro || '');
+  }
+  ok('lote do CNPJ: exportação com as colunas novas só no fim e a aba "Fonte dos dados"',
+    /const header=\['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs','Contribuinte_ICMS_cadastro_publico','IE_ativas','Base_Receita','Fonte'\];/.test(html)
+    && /XLSX\.utils\.book_append_sheet\(wb,wf,'Fonte dos dados'\)/.test(html) && /NÃO é validação na SEFAZ: este sistema não usa certificado digital/.test(html));
 
   // ── B7: injeção de fórmula no CSV (um helper só, compartilhado) ──
   {
@@ -1833,8 +1883,9 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   const rgbaInline = [...html.matchAll(/style="[^"]*rgba\(/g)].map((m) => m[0]);
   ok('nenhuma cor rgba escrita à mão em style="" (tokenize, B16)',
     rgbaInline.length === 0, rgbaInline.slice(0, 3).join(' | '));
-  ok('o badge "cache" usa o token --badge-on-cta',
-    /<span class="badge" style="background:var\(--badge-on-cta\)">cache<\/span>/.test(html));
+  ok('a ficha do CNPJ diz quando o resultado veio do cache do navegador',
+    /\$\{cached\?'<span class="orig">do cache deste navegador \(até 30 dias\)<\/span>':''\}/.test(html)
+    && /\.cnpj-cab \.orig\{font-size:12px;color:var\(--text2\);border:1px solid var\(--border\)/.test(html));
   /* Nomenclatura e copy. */
   ok('"Separar notas" com n minúsculo', /id="btn-processar" class="btn">Separar notas</.test(html));
   ok('"Nomenclatura dos arquivos" (não "Nomeação")',
