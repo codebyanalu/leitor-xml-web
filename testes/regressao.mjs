@@ -1775,8 +1775,8 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   ok('.btn tem min-height de 40px (media 32,5px sem ele)',
     !!regraBtn && /min-height:\s*40px/.test(regraBtn[1]), regraBtn && regraBtn[1].slice(0, 80));
   const mq768 = /@media \(max-width:768px\)\{([\s\S]*?)\n\}/.exec(html);
-  ok('no celular .btn vai a 44px (piso de alvo de toque)',
-    !!mq768 && /\.btn\{[^}]*min-height:\s*44px/.test(mq768[1]), mq768 && mq768[1].slice(0, 60));
+  ok('no celular .btn e o "Conferir valores" vão a 44px (piso de alvo de toque)',
+    !!mq768 && /\.btn,\.nfse-conf\{[^}]*min-height:\s*44px/.test(mq768[1]), mq768 && mq768[1].slice(0, 60));
   /* .radio-group label sem padding/altura: alvo de ~20px na aba Separar. */
   const regraRadio = /#tab-separar \.radio-group label\{([^}]*)\}/.exec(html);
   ok('o label do radio tem min-height de 44px (era ~20px)',
@@ -4993,12 +4993,21 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           try { fech = danfe({ vCBS: '1.20' }).h; vm.runInContext("dnfUI('KCF').conf=true", sb);
             abre = vm.runInContext("nfeDanfe('KCF',{info:{Chave_NFe:'KCF',Item:'1',xProd:'X',Status_NFe:'Autorizada'},itens:[{Chave_NFe:'KCF',Item:'1',xProd:'X'}]})", sb); } catch (e) { e2 = e.message; }
           ok('DANFE: o aviso e a conferência IBS/CBS ficam atrás do botão "Conferir valores (N)", fechados por padrão',
-            !e2 && /<button type="button" class="nfse-conf dnf-conf-bt" aria-expanded="false" aria-controls="dnfconf-[^"]+">Conferir valores \(1\)<\/button>\s*<div class="dnf-conf-box" id="dnfconf-[^"]+" hidden>\s*<p class="dnf-aviso"/.test(fech)
+            !e2 && /<button type="button" class="nfse-conf dnf-conf-bt" aria-expanded="false" aria-controls="dnfconf-[^"]+" aria-label="Conferir valores, 1 total difere da soma dos itens">Conferir valores \(1\)<\/button>\s*<div class="dnf-conf-box" id="dnfconf-[^"]+" hidden>\s*<p class="dnf-aviso"/.test(fech)
             && /Conferência IBS\/CBS<\/div>/.test(fech.slice(fech.indexOf('dnf-conf-box')))
             && /class="nfse-conf dnf-conf-bt on" aria-expanded="true"/.test(abre) && /<div class="dnf-conf-box" id="dnfconf-KCF">/.test(abre),
             e2 || fech.slice(fech.indexOf('dnf-conf-bt') - 40, fech.indexOf('dnf-conf-bt') + 260));
           ok('DANFE: o clique em "Conferir valores" abre e fecha o quadro sem redesenhar a nota',
             /const cb=e\.target\.closest\('\.dnf-conf-bt'\);if\(cb\)\{x\.u\.conf=!x\.u\.conf;/.test(html) && /box\.hidden=!x\.u\.conf;cb\.setAttribute\('aria-expanded'/.test(html));
+          const ids = vm.runInContext("[dnfConfId('A B\"<x'),dnfConfId('3526')].join('|')", sb);
+          ok('DANFE: o id do quadro da conferência é uma referência só, mesmo com chave fora do padrão',
+            ids === 'dnfconf-A_B__x|dnfconf-3526', ids);
+          ok('clicar em "Conferir valores" não fecha o painel do CT-e nem o item aberto da DANFE',
+            /t\.closest\('#cte-list tr\[data-i\]'\)\|\|t\.closest\('#cte-conf'\)\)return;/.test(html)
+            && /if\(t\.closest\('\.dnf-busca'\)\|\|t\.closest\('\.dnf-pag'\)\|\|t\.closest\('\.dnf-conf-bt'\)\)return;/.test(html));
+          ok('NFS-e e CT-e desenham o botão e o quadro pela mesma função, com nome acessível que diz o que N conta',
+            /function nfseConfRender\(lista\)\{\s*confRender\(/.test(html) && /function cteConfRender\(lista,carregadas\)\{\s*confRender\(/.test(html)
+            && /bt\.setAttribute\('aria-label',`Conferir valores, \$\{n\} \$\{n===1\?'ponto':'pontos'\} para conferir`\)/.test(html));
           ok('"Conferir valores" é um botão discreto, o mesmo nas três telas',
             /\.nfse-conf\{border:1px solid var\(--border\);background:transparent;color:var\(--text2\)/.test(html)
             && /<button type="button" id="cte-conf" class="nfse-conf" aria-expanded="false" aria-controls="cte-alertas" hidden>/.test(html));
