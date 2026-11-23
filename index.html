@@ -981,14 +981,6 @@ input,select,textarea{border-color:var(--border-input);color:var(--text);backgro
 .info-box .row .val{color:var(--text);font-weight:500}
 .table-wrap{overflow-x:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius-sm)}
 .table-wrap table{margin-bottom:0}
-.det-section{margin:10px 0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:box-shadow .2s}
-.det-section:hover{box-shadow:var(--shadow)}
-.det-section .det-title{padding:8px 12px;background:var(--card-2);font-size:10px;font-weight:600;color:var(--primary-ink);cursor:pointer;user-select:none;transition:background .2s;display:flex;align-items:center;gap:6px}
-.det-section .det-title:hover{background:var(--row-hover)}
-.det-section .det-body{padding:10px;display:none;overflow-x:auto}
-.det-section .det-body table{font-size:10px;margin-bottom:0}
-.det-section .det-body table th{font-size:9px;background:var(--primary-dark);color:#fff;padding:4px 7px}
-.det-section .det-body table td{padding:4px 7px}
 /* ── NF-e no formato DANFE completo (teste) ── só tokens; escopo .dnf */
 .dnf{font-size:14.5px}
 .dnf .dim{color:var(--text2)}
@@ -1394,7 +1386,7 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
 .cnpj-cab .doc{font-family:var(--font-mono);font-size:14px;color:var(--text2);white-space:nowrap}
 .cnpj-cab .sub{width:100%;font-size:13px;color:var(--text2)}
 .cnpj-cab .orig{font-size:12px;color:var(--text2);border:1px solid var(--border);border-radius:var(--radius-pill);padding:1px 8px}
-.cnpj-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:16px 20px;border-bottom:1px solid var(--border)}
+.cnpj-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)}
 .cnpj-kpi{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;min-width:0}
 .cnpj-kpi .l{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:700}
 .cnpj-kpi .v{font-size:17px;font-weight:700;color:var(--text);margin-top:2px}
@@ -1421,12 +1413,14 @@ table.nfse-trib{border-collapse:collapse;margin:0;width:100%;font-size:14px}
 .cnpj-fonte b{color:var(--warn-ink)}
 .cnpj-fonte ul{margin:4px 0 0;padding-left:18px}.cnpj-fonte li{margin:2px 0}
 .cnpj-fonte a{color:var(--primary-ink)}
-.cnpj-mais summary{cursor:pointer;font-weight:600;color:var(--primary-ink);min-height:32px;display:flex;align-items:center}
+.cnpj-mais summary{cursor:pointer;font-weight:600;color:var(--primary-ink);min-height:44px;display:flex;align-items:center;gap:8px;list-style:none}
+.cnpj-mais summary::-webkit-details-marker{display:none}
+.cnpj-mais summary .i{width:14px;height:14px;flex:0 0 auto;transition:transform .15s}
+.cnpj-mais[open] summary .i{transform:rotate(90deg)}
 .cnpj-mais[open] summary{margin-bottom:10px}
 .cnpj-acoes{display:flex;gap:8px;flex-wrap:wrap}
 .cnpj-nada{color:var(--text2);font-size:13px;margin:0}
-@media (max-width:900px){.cnpj-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:560px){.cnpj-dl{grid-template-columns:1fr}.cnpj-dl dd{margin-bottom:6px}.cnpj-kpis{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:560px){.cnpj-dl{grid-template-columns:1fr}.cnpj-dl dd{margin-bottom:8px}}
 #cnpj-input:focus{border-color:var(--primary-light) !important;box-shadow:0 0 0 3px var(--primary-ring)}
 #cnpj-result .nota-card .body-detail{border-top:none}
 
@@ -4476,13 +4470,41 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
   function d(s){return String(s||'').toUpperCase().replace(/[^0-9A-Z]/g,'');}
   const CNPJ_FORMA=/^[0-9A-Z]{12}\d{2}$/;
   function fmtCnpj(c){c=d(c);return CNPJ_FORMA.test(c)?c.replace(/^(.{2})(.{3})(.{3})(.{4})(\d{2})$/,'$1.$2.$3/$4-$5'):c;}
-  function fmtIE(arr){if(!arr||!arr.length) return '—';return arr.map(e=>`${e.estado?.sigla||''}: ${e.inscricao_estadual||''}${e.ativo?' (ativa)':' (inativa)'}`).join(', ');}
-  function fmtSocios(arr){if(!arr||!arr.length) return '';return arr.map(s=>`  ${s.nome||'—'} (${s.tipo||''})\n    CPF/CNPJ: ${s.cpf_cnpj_socio||'—'}\n    Entrada: ${s.data_entrada||'—'}  Faixa: ${s.faixa_etaria||'—'}\n    Qualificacao: ${s.qualificacao_socio?.descricao||''}`).join('\n');}
+  /* Aviso do limite da fonte: o mesmo texto na ficha, no lote, na planilha e no texto copiado. */
+  const NAO_SEFAZ='Não é validação na SEFAZ: este sistema não usa certificado digital.';
+  /* Lista da API sem itens nulos (um null derrubava a ficha e, como o cache grava antes
+     do render, cada nova consulta voltava a chamar a API). */
+  const cnpjLista=(v)=>Array.isArray(v)?v.filter(x=>x&&typeof x==='object'):[];
+  /* Campo que a API manda como texto ou como objeto {descricao}. */
+  const cnpjTxt=(v)=>v&&typeof v==='object'?String(v.descricao||''):String(v==null?'':v);
+  const cnpjSit=(est)=>cnpjTxt(est&&est.situacao_cadastral).trim();
+  const cnpjData=(v)=>{const t=v==null?'':String(v);return t?dataHoraBr(t,true):'';};
+  const cnpjBase=(j)=>cnpjData((j&&j.estabelecimento&&j.estabelecimento.atualizado_em)||(j&&j.atualizado_em));
+  const cnpjCEP=(v)=>{const t=String(v||'').replace(/\D/g,'');return t.length===8?t.slice(0,5)+'-'+t.slice(5):String(v||'');};
+  const cnpjFone=(ddd,tel)=>{const t=String(tel||'').replace(/\D/g,'');if(!t)return '';const f=t.length===9?t.slice(0,5)+'-'+t.slice(5):t.length===8?t.slice(0,4)+'-'+t.slice(4):t;return (ddd?'('+ddd+') ':'')+f;};
+  const cnpjCnae=(a)=>a&&(a.descricao||a.subclasse)?`${a.subclasse?a.subclasse+' · ':''}${a.descricao||''}`:'—';
+  const cnpjCapital=(v)=>/\d/.test(String(v==null?'':v))?moeda(v):'—';
+  /* Situação da IE: o booleano ausente não é "inativa". */
+  const cnpjIESit=(e)=>e.ativo===true?'Ativa':e.ativo===false?'Inativa':'Não informada';
+  /* Contribuinte de ICMS pelo CADASTRO PÚBLICO (inscrições estaduais que o
+     publica.cnpj.ws coletou do Sintegra). Não é consulta na SEFAZ: o sistema não
+     usa certificado digital. Lista vazia não prova "não contribuinte". */
+  function cnpjContrib(ies){
+    const lista=cnpjLista(ies);
+    const ativas=lista.filter(e=>e.ativo===true);
+    const ufs=[...new Set(ativas.map(e=>(e.estado&&e.estado.sigla)||'').filter(Boolean))];
+    if(ativas.length)return {v:'Sim',cls:'ok',txt:'IE ativa em '+(ufs.join(', ')||'UF não informada'),ativas,lista};
+    if(lista.length)return {v:'Não',cls:'',txt:'nenhuma IE ativa no cadastro público',ativas,lista};
+    return {v:'Sem dado',cls:'',txt:'o cadastro público não traz IE',ativas,lista};
+  }
+  function fmtIE(arr){const l=cnpjLista(arr);if(!l.length) return '—';return l.map(e=>`${(e.estado&&e.estado.sigla)||'?'}: ${e.inscricao_estadual||'—'} (${cnpjIESit(e).toLowerCase()}${e.atualizado_em?', vista em '+cnpjData(e.atualizado_em):''})`).join(', ');}
+  function fmtSocios(arr){const l=cnpjLista(arr);if(!l.length) return '';return l.map(s=>`  ${s.nome||'—'}${s.tipo?' ('+s.tipo+')':''}\n    CPF/CNPJ: ${s.cpf_cnpj_socio||'—'}\n    Entrada: ${cnpjData(s.data_entrada)||'—'}  Faixa: ${s.faixa_etaria||'—'}\n    Qualificacao: ${cnpjTxt(s.qualificacao_socio)||'—'}`).join('\n');}
   function renderTexto(dados,c){
-    const est=dados.estabelecimento||{}, sit=est.situacao_cadastral||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
-    const cnpj=c||d(est.cnpj||'')||'';
-    const fC=fmtCnpj(cnpj); 
-    return `CNPJ: ${fC}\nRazao Social: ${dados.razao_social||'—'}\nNome Fantasia: ${est.nome_fantasia||'—'}\nCapital Social: ${moeda(dados.capital_social)}\nPorte: ${porte.descricao||'—'}\nNatureza Juridica: ${nat.descricao||'—'}\n\nTipo: ${est.tipo||'—'}\nSituacao Cadastral: ${typeof sit==='object'?(sit.descricao||'—'):(sit||'—')}\nData Situacao: ${est.data_situacao_cadastral||'—'}\nData Inicio Atividade: ${est.data_inicio_atividade||'—'}\n\nAtividade Principal:\n  ${atv.descricao||'—'} (${atv.subclasse||''})\n\nAtividades Secundarias:\n${(est.atividades_secundarias||[]).length?(est.atividades_secundarias||[]).map(a=>`  ${a.descricao||'—'} (${a.subclasse||''})`).join('\n'):'  —'}\n\nEndereco:\n  ${est.tipo_logradouro||''} ${est.logradouro||'—'}, ${est.numero||'—'}\n  Complemento: ${est.complemento||'—'}\n  Bairro: ${est.bairro||'—'}\n  CEP: ${est.cep||'—'}\n  Cidade: ${cidade.nome||'—'} / ${estado.sigla||'—'} (IBGE: ${cidade.ibge_id||'—'})\n\nContato:\n  Telefone: ${(est.ddd1||'')+' '+(est.telefone1||'')}${est.telefone2?' / '+(est.ddd2||'')+' '+(est.telefone2||''):''}\n  Email: ${est.email||'—'}\n\nContribuinte de ICMS (cadastro publico, nao e validacao na SEFAZ): ${cnpjContrib(est.inscricoes_estaduais).v}\nInscricoes Estaduais: ${fmtIE(est.inscricoes_estaduais||[])}\n\nSimples Nacional:\n  Optante: ${simpl.simples||'Nao'}\n  Data Opcao: ${simpl.data_opcao_simples||'—'}\n  Data Exclusao: ${simpl.data_exclusao_simples||'—'}\nMEI:\n  Optante: ${simpl.mei||'Nao'}\n  Data Opcao: ${simpl.data_opcao_mei||'—'}\n  Data Exclusao: ${simpl.data_exclusao_mei||'—'}\n\nSocios:\n${fmtSocios(dados.socios||[])||'—'}\n\nFonte: Receita Federal, base publica${(est.atualizado_em||dados.atualizado_em)?' de '+dataHoraBr(est.atualizado_em||dados.atualizado_em,true):''} (dados abertos); inscricoes estaduais do cadastro publico (Sintegra) via publica.cnpj.ws. Nao e validacao na SEFAZ.`;
+    const est=dados.estabelecimento||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
+    const fC=fmtCnpj(c||d(est.cnpj||'')||'');
+    const sec=cnpjLista(est.atividades_secundarias),base=cnpjBase(dados);
+    const fones=[cnpjFone(est.ddd1,est.telefone1),cnpjFone(est.ddd2,est.telefone2)].filter(Boolean).join(' / ');
+    return `CNPJ: ${fC}\nRazao Social: ${dados.razao_social||'—'}\nNome Fantasia: ${est.nome_fantasia||'—'}\nCapital Social: ${cnpjCapital(dados.capital_social)}\nPorte: ${porte.descricao||'—'}\nNatureza Juridica: ${nat.descricao||'—'}\n\nTipo: ${est.tipo||'—'}\nSituacao Cadastral: ${cnpjSit(est)||'—'}\nData Situacao: ${cnpjData(est.data_situacao_cadastral)||'—'}\nData Inicio Atividade: ${cnpjData(est.data_inicio_atividade)||'—'}\n\nAtividade Principal:\n  ${cnpjCnae(atv)}\n\nAtividades Secundarias:\n${sec.length?sec.map(a=>`  ${cnpjCnae(a)}`).join('\n'):'  —'}\n\nEndereco:\n  ${[est.tipo_logradouro,est.logradouro].filter(Boolean).join(' ')||'—'}, ${est.numero||'—'}\n  Complemento: ${est.complemento||'—'}\n  Bairro: ${est.bairro||'—'}\n  CEP: ${cnpjCEP(est.cep)||'—'}\n  Cidade: ${cidade.nome||'—'} / ${estado.sigla||'—'} (IBGE: ${cidade.ibge_id||'—'})\n\nContato:\n  Telefone: ${fones||'—'}\n  Email: ${est.email||'—'}\n\nContribuinte de ICMS (cadastro publico): ${cnpjContrib(est.inscricoes_estaduais).v}\nInscricoes Estaduais: ${fmtIE(est.inscricoes_estaduais)}\n\nSimples Nacional:\n  Optante: ${simpl.simples||'—'}\n  Data Opcao: ${cnpjData(simpl.data_opcao_simples)||'—'}\n  Data Exclusao: ${cnpjData(simpl.data_exclusao_simples)||'—'}\nMEI:\n  Optante: ${simpl.mei||'—'}\n  Data Opcao: ${cnpjData(simpl.data_opcao_mei)||'—'}\n  Data Exclusao: ${cnpjData(simpl.data_exclusao_mei)||'—'}\n\nSocios:\n${fmtSocios(dados.socios)||'—'}\n\nFonte: Receita Federal, base publica${base?' de '+base:''} (dados abertos, mensal); inscricoes estaduais do cadastro publico (Sintegra) via publica.cnpj.ws.\n${NAO_SEFAZ}`;
   }
   inp?.addEventListener('input',e=>{let v=d(e.target.value);if(v.length>14) v=v.slice(0,14);let f=v;if(v.length>12) f=v.replace(/(.{2})(.{3})(.{3})(.{4})(.+)/,'$1.$2.$3/$4-$5');else if(v.length>8) f=v.replace(/(.{2})(.{3})(.{3})(.+)/,'$1.$2.$3/$4');else if(v.length>5) f=v.replace(/(.{2})(.{3})(.+)/,'$1.$2.$3');else if(v.length>2) f=v.replace(/(.{2})(.+)/,'$1.$2');e.target.value=f;});
   /* Cache de CNPJ: TTL de 30 dias + try/catch dedicado (quota cheia não pode virar erro visível falso)
@@ -4623,6 +4645,7 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
       /* A segunda interpolação da mensagem saía CRUA: qualquer <img onerror>
          vindo do corpo da resposta virava HTML interpretado. Uma vez só, e
          escapada — o marcador de erro vai antes do texto, não no meio. */
+      fichaTexto='';fichaCnpj='';
       res.innerHTML=`<div style="padding:12px;background:var(--err-bg);border:1px solid var(--err-line);border-radius:var(--radius);color:var(--err-ink);font-size:12px">✗ ${esc(e.message)}</div>`;
       st.textContent='✗ erro'; st.style.color='var(--err)';
     }finally{btn.disabled=false; btn.textContent='Consultar';}
@@ -4642,24 +4665,9 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     for(const k in v){if(Object.prototype.hasOwnProperty.call(v,k))out[k]=escProfundo(v[k],(prof||0)+1);}
     return out;
   }
-  /* Formatos da ficha (o valor já chega escapado pelo escProfundo). */
-  const cnpjData=(v)=>{const t=v==null?'':String(v);return t?dataHoraBr(t,true):'';};
-  const cnpjCEP=(v)=>{const t=String(v||'').replace(/\D/g,'');return t.length===8?t.slice(0,5)+'-'+t.slice(5):(v||'');};
-  const cnpjFone=(ddd,tel)=>{const t=String(tel||'').replace(/\D/g,'');if(!t)return '';const f=t.length===9?t.slice(0,5)+'-'+t.slice(5):t.length===8?t.slice(0,4)+'-'+t.slice(4):t;return (ddd?'('+ddd+') ':'')+f;};
-  const cnpjCnae=(a)=>a&&(a.descricao||a.subclasse)?`${a.subclasse?a.subclasse+' · ':''}${a.descricao||''}`:'—';
   const SINTEGRA='https://www.sintegra.gov.br/';
-  /* Contribuinte de ICMS pelo CADASTRO PÚBLICO (inscrições estaduais que o
-     publica.cnpj.ws coletou do Sintegra). Não é consulta na SEFAZ: o sistema não
-     usa certificado digital. Lista vazia não prova "não contribuinte". */
-  function cnpjContrib(ies){
-    const lista=Array.isArray(ies)?ies.filter(e=>e&&typeof e==='object'):[];
-    const ativas=lista.filter(e=>e.ativo===true);
-    const ufs=[...new Set(ativas.map(e=>(e.estado&&e.estado.sigla)||'').filter(Boolean))];
-    if(ativas.length)return {v:'Sim',cls:'ok',txt:'IE ativa em '+(ufs.join(', ')||'UF não informada'),ativas,lista};
-    if(lista.length)return {v:'Não',cls:'',txt:'nenhuma IE ativa no cadastro público',ativas,lista};
-    return {v:'Sem dado',cls:'',txt:'o cadastro público não traz IE',ativas,lista};
-  }
-  let fichaTexto='';
+  /* O que os botões da ficha copiam: foto tirada no render (o campo pode mudar depois). */
+  let fichaTexto='',fichaCnpj='';
   function render(dados,cached){
     /* Escape no RENDER, não na fronteira de quem trouxe o dado. Assim o
        invariante é garantido pelo código e não por "qual versão gravou isto" —
@@ -4669,33 +4677,36 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
     dados=escProfundo(dados);
     const est=dados.estabelecimento||{}, atv=est.atividade_principal||{}, estado=est.estado||{}, cidade=est.cidade||{}, simpl=dados.simples||{}, porte=dados.porte||{}, nat=dados.natureza_juridica||{};
     const c=d(inp.value)||d(dados.estabelecimento?.cnpj)||d(dados.cnpj)||'';
-    fichaTexto=renderTexto(cru,c);
-    const sit=String(typeof est.situacao_cadastral==='object'&&est.situacao_cadastral?est.situacao_cadastral.descricao||'':est.situacao_cadastral||'');
-    const ativa=/^ativa$/i.test(sit.trim());
+    fichaTexto=renderTexto(cru,c);fichaCnpj=fmtCnpj(c);
+    const sit=cnpjSit(est);
+    /* verde só para "Ativa"; vazio fica neutro (sem prova não há vermelho) */
+    const sitCls=/^ativa$/i.test(sit)?'ok':sit?'err':'';
     const ct=cnpjContrib(est.inscricoes_estaduais);
-    const base=cnpjData(est.atualizado_em||dados.atualizado_em);
+    const base=cnpjBase(dados);
     const simples=String(simpl.simples||'—'),mei=String(simpl.mei||'—');
     const simplesSub=[simpl.data_opcao_simples?'optou em '+cnpjData(simpl.data_opcao_simples):'',simpl.data_exclusao_simples?'excluída em '+cnpjData(simpl.data_exclusao_simples):''].filter(Boolean).join('; ');
-    const meiTxt=mei+([simpl.data_opcao_mei?'optou em '+cnpjData(simpl.data_opcao_mei):'',simpl.data_exclusao_mei?'excluída em '+cnpjData(simpl.data_exclusao_mei):''].filter(Boolean).join('; ').replace(/^(.+)$/,' <span class="dim">($1)</span>'));
-    const cap=dados.capital_social!=null&&dados.capital_social!==''?moeda(dados.capital_social):'—';
+    const meiDatas=[simpl.data_opcao_mei?'optou em '+cnpjData(simpl.data_opcao_mei):'',simpl.data_exclusao_mei?'excluída em '+cnpjData(simpl.data_exclusao_mei):''].filter(Boolean).join('; ');
+    const meiTxt=mei+(meiDatas?` <span class="dim">(${meiDatas})</span>`:'');
+    const cap=cnpjCapital(dados.capital_social);
     const end=[[est.tipo_logradouro,est.logradouro].filter(Boolean).join(' '),est.numero].filter(Boolean).join(', ')+(est.complemento?' — '+est.complemento:'')+(est.bairro?', '+est.bairro:'');
-    const fones=[cnpjFone(est.ddd1,est.telefone1),cnpjFone(est.ddd2,est.telefone2)].filter(Boolean).join(' · ')+(est.fax?' · fax '+cnpjFone(est.ddd_fax,est.fax):'');
-    const ieLin=ct.lista.map(e=>`<tr><td>${(e.estado&&e.estado.sigla)||'—'}</td><td class="mono">${e.inscricao_estadual||'—'}</td><td><span class="cnpj-st${e.ativo===true?' ok':''}">${e.ativo===true?'Ativa':'Inativa'}</span></td><td>${cnpjData(e.atualizado_em)||'—'}</td></tr>`).join('');
-    const socios=Array.isArray(dados.socios)?dados.socios:[];
-    const socLin=socios.map(x=>{const q=(x.qualificacao_socio&&x.qualificacao_socio.descricao)||'—',rep=x.nome_representante?`${x.nome_representante}${x.qualificacao_representante&&x.qualificacao_representante.descricao?' ('+x.qualificacao_representante.descricao+')':''}`:'—';
+    const fax=cnpjFone(est.ddd_fax,est.fax);
+    const fones=[cnpjFone(est.ddd1,est.telefone1),cnpjFone(est.ddd2,est.telefone2),fax?'fax '+fax:''].filter(Boolean).join(' · ');
+    const ieLin=ct.lista.map(e=>`<tr><td>${(e.estado&&e.estado.sigla)||'—'}</td><td class="mono">${e.inscricao_estadual||'—'}</td><td><span class="cnpj-st${e.ativo===true?' ok':''}">${cnpjIESit(e)}</span></td><td>${cnpjData(e.atualizado_em)||'—'}</td></tr>`).join('');
+    const socios=cnpjLista(dados.socios);
+    const socLin=socios.map(x=>{const q=cnpjTxt(x.qualificacao_socio)||'—',qr=cnpjTxt(x.qualificacao_representante),rep=x.nome_representante?`${x.nome_representante}${qr?' ('+qr+')':''}`:'—';
       return `<tr><td>${x.nome||'—'}</td><td>${q}</td><td class="mono">${x.cpf_cnpj_socio||'—'}</td><td>${cnpjData(x.data_entrada)||'—'}</td><td>${x.faixa_etaria||'—'}</td><td>${rep}</td></tr>`;}).join('');
-    const sec=Array.isArray(est.atividades_secundarias)?est.atividades_secundarias:[];
+    const sec=cnpjLista(est.atividades_secundarias);
     const fonte=`<div class="cnpj-fonte" role="note"><b>De onde vêm estes dados</b><ul>
       <li>Empresa, situação, Simples e sócios: Receita Federal, <b>base pública${base?' de '+base:''}</b> (dados abertos, atualizados uma vez por mês). O que mudou depois dessa data não aparece.</li>
-      <li>Inscrições estaduais e "Contribuinte de ICMS": cadastro público (Sintegra), via publica.cnpj.ws, com a data em que cada inscrição foi vista. <b>Não é validação na SEFAZ</b>: este sistema não usa certificado digital.</li>
+      <li>Inscrições estaduais e "Contribuinte de ICMS": cadastro público (Sintegra), via publica.cnpj.ws, com a data em que cada inscrição foi vista. <b>${NAO_SEFAZ.split(':')[0]}</b>:${NAO_SEFAZ.slice(NAO_SEFAZ.indexOf(':')+1)}</li>
       <li>"Sem dado" ou "Não" não provam que a empresa não é contribuinte. Para confirmar, consulte o <a href="${SINTEGRA}" target="_blank" rel="noopener noreferrer">Sintegra da UF</a>.</li></ul></div>`;
     res.style.display='block';
     res.innerHTML=`<article class="cnpj-ficha" aria-label="Ficha do CNPJ">
-      <div class="cnpj-cab"><span class="nome">${dados.razao_social||'—'}</span><span class="doc">${fmtCnpj(c)}</span>${cached?'<span class="orig">do cache deste navegador (até 30 dias)</span>':''}
+      <div class="cnpj-cab"><span class="nome">${dados.razao_social||'—'}</span><span class="doc">${fmtCnpj(c)}</span>${cached?`<span class="orig">do cache deste navegador (até ${Math.round(CACHE_TTL/86400000)} dias)</span>`:''}
         <div class="sub">${[est.nome_fantasia,est.tipo,[cidade.nome,estado.sigla].filter(Boolean).join(' / ')].filter(Boolean).join(' · ')||'—'}</div></div>
       <div class="cnpj-kpis">
-        <div class="cnpj-kpi ${ativa?'ok':'err'}"><div class="l">Situação</div><div class="v">${sit||'—'}</div><div class="s">${est.data_situacao_cadastral?'desde '+cnpjData(est.data_situacao_cadastral):'&nbsp;'}</div></div>
-        <div class="cnpj-kpi ${ct.cls}"><div class="l">Contribuinte de ICMS</div><div class="v">${ct.v}*</div><div class="s">${ct.txt} · cadastro público, não SEFAZ</div></div>
+        <div class="cnpj-kpi ${sitCls}"><div class="l">Situação</div><div class="v">${sit||'—'}</div><div class="s">${est.data_situacao_cadastral?'desde '+cnpjData(est.data_situacao_cadastral):'&nbsp;'}</div></div>
+        <div class="cnpj-kpi ${ct.cls}"><div class="l">Contribuinte de ICMS</div><div class="v">${ct.v}</div><div class="s">${ct.txt} · cadastro público, não SEFAZ</div></div>
         <div class="cnpj-kpi"><div class="l">Simples / MEI</div><div class="v">${simples} / ${mei}</div><div class="s">${simplesSub||'&nbsp;'}</div></div>
         <div class="cnpj-kpi"><div class="l">Porte</div><div class="v">${porte.descricao||'—'}</div><div class="s">capital ${cap}</div></div>
       </div>
@@ -4705,37 +4716,41 @@ const gar=!r.completo?`<span class="pdfiso-badge err" data-para="garantia" title
         <section class="cnpj-sec"><h4>Dados da empresa</h4><dl class="cnpj-dl">
           <dt>Natureza jurídica</dt><dd>${nat.descricao||'—'}${nat.id?` <span class="dim">(${nat.id})</span>`:''}</dd>
           <dt>Início da atividade</dt><dd>${cnpjData(est.data_inicio_atividade)||'—'}</dd>
-          <dt>Motivo da situação</dt><dd>${(est.motivo_situacao_cadastral&&est.motivo_situacao_cadastral.descricao)||est.motivo_situacao_cadastral||'—'}</dd>
-          <dt>Situação especial</dt><dd>${est.situacao_especial?est.situacao_especial+(est.data_situacao_especial?' <span class="dim">(desde '+cnpjData(est.data_situacao_especial)+')</span>':''):'—'}</dd>
-          <dt>Qualificação do responsável</dt><dd>${(dados.qualificacao_do_responsavel&&dados.qualificacao_do_responsavel.descricao)||'—'}</dd>
+          <dt>Motivo da situação</dt><dd>${cnpjTxt(est.motivo_situacao_cadastral)||'—'}</dd>
+          <dt>Situação especial</dt><dd>${cnpjTxt(est.situacao_especial)?cnpjTxt(est.situacao_especial)+(est.data_situacao_especial?' <span class="dim">(desde '+cnpjData(est.data_situacao_especial)+')</span>':''):'—'}</dd>
+          <dt>Qualificação do responsável</dt><dd>${cnpjTxt(dados.qualificacao_do_responsavel)||'—'}</dd>
           <dt>MEI</dt><dd>${meiTxt}</dd>
           <dt>Endereço</dt><dd>${end||'—'}${est.cep?' <span class="dim">CEP '+cnpjCEP(est.cep)+'</span>':''}</dd>
           <dt>Município</dt><dd>${[cidade.nome,estado.sigla].filter(Boolean).join(' / ')||'—'}${cidade.ibge_id?` <span class="dim">(IBGE ${cidade.ibge_id})</span>`:''}</dd>
           <dt>Contato</dt><dd>${[fones,est.email].filter(Boolean).join(' · ')||'—'}</dd>
           <dt>CNAE principal</dt><dd>${cnpjCnae(atv)}</dd>
         </dl></section>
-        <details class="cnpj-mais"><summary>Sócios (${socios.length}) e atividades secundárias (${sec.length})</summary>
+        <details class="cnpj-mais"><summary><svg class="i" aria-hidden="true"><use href="#i-chevron"></use></svg> Sócios (${socios.length}) e atividades secundárias (${sec.length})</summary>
           <section class="cnpj-sec"><h4>Sócios</h4>${socios.length?`<div class="cnpj-tw" tabindex="0" role="region" aria-label="Sócios"><table><thead><tr><th scope="col">Nome</th><th scope="col">Qualificação</th><th scope="col">CPF/CNPJ</th><th scope="col">Entrada</th><th scope="col">Faixa etária</th><th scope="col">Representante legal</th></tr></thead><tbody>${socLin}</tbody></table></div>`:'<p class="cnpj-nada">Sem sócios no cadastro.</p>'}</section>
           <section class="cnpj-sec"><h4>Atividades secundárias</h4>${sec.length?'<dl class="cnpj-dl">'+sec.map(a=>`<dt>${a.subclasse||'—'}</dt><dd>${a.descricao||'—'}</dd>`).join('')+'</dl>':'<p class="cnpj-nada">Nenhuma.</p>'}</section>
         </details>
         <div class="cnpj-acoes"><button type="button" class="btn btn-sec" data-cnpj-acao="cnpj">Copiar CNPJ</button><button type="button" class="btn btn-sec" data-cnpj-acao="ficha">Copiar ficha</button><button type="button" class="btn btn-sec" data-cnpj-acao="json" aria-controls="cnpj-raw" aria-expanded="false">Ver resposta completa</button></div>
       </div></article>`;
     raw.style.display='none';
-    raw.textContent=JSON.stringify(dados,null,2);
+    /* textContent: o cru é seguro aqui e é a resposta de verdade (o escapado mostraria &amp;) */
+    raw.textContent=JSON.stringify(cru,null,2);
   }
   /* Botões da ficha por delegação (nada de onclick no HTML). */
   res?.addEventListener('click',e=>{
     const b=e.target.closest&&e.target.closest('[data-cnpj-acao]');if(!b)return;
-    const a=b.dataset.cnpjAcao,txt=b.textContent;
-    const aviso=(t)=>{b.textContent=t;setTimeout(()=>{b.textContent=txt;},1200);};
-    const copia=(v,t)=>{try{navigator.clipboard.writeText(v).then(()=>aviso(t),()=>aviso('não copiou'));}catch(x){aviso('não copiou');}};
-    if(a==='cnpj')copia(fmtCnpj(d(inp.value)),'✓ copiado');
-    else if(a==='ficha')copia(fichaTexto,'✓ ficha copiada');
+    const a=b.dataset.cnpjAcao;
+    /* rótulo original guardado uma vez: dois cliques seguidos não o perdem */
+    if(!b.dataset.rotulo)b.dataset.rotulo=b.textContent;
+    const aviso=(t,msg)=>{b.textContent=t;st.textContent=msg;clearTimeout(b._volta);b._volta=setTimeout(()=>{b.textContent=b.dataset.rotulo;},1200);};
+    const falhou=()=>aviso('não copiou','Não copiou: selecione o texto e use Ctrl+C.');
+    const copia=(v,t,msg)=>{if(!v){falhou();return;}try{navigator.clipboard.writeText(v).then(()=>aviso(t,msg),falhou);}catch(x){falhou();}};
+    if(a==='cnpj')copia(fichaCnpj,'✓ copiado','CNPJ copiado.');
+    else if(a==='ficha')copia(fichaTexto,'✓ ficha copiada','Ficha copiada.');
     else if(a==='json'){const on=raw.style.display==='none';raw.style.display=on?'block':'none';b.setAttribute('aria-expanded',String(on));}
   });
   btn?.addEventListener('click',consultar);
   inp?.addEventListener('keydown',e=>{if(e.key==='Enter') consultar();});
-  clr?.addEventListener('click',()=>{inp.value='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';const n=limparCache();st.textContent=n?`${n} resultado(s) de CNPJ apagados do navegador`:'Nada em cache';st.style.color=n?'var(--success)':'var(--text3)';document.dispatchEvent(new CustomEvent('gcon:cache-limpo'));});
+  clr?.addEventListener('click',()=>{inp.value='';fichaTexto='';fichaCnpj='';res.style.display='none';raw.style.display='none';raw.textContent='';st.textContent='';const n=limparCache();st.textContent=n?`${n} resultado(s) de CNPJ apagados do navegador`:'Nada em cache';st.style.color=n?'var(--success)':'var(--text3)';document.dispatchEvent(new CustomEvent('gcon:cache-limpo'));});
   /* CONTRATO ENTRE MÓDULOS: publica window.consultarCNPJ(cnpj). O consumidor
      (leitura de PDF) chama por window.abrirConsultaCNPJ, que verifica a
      existência deste registro antes de usá-lo. */
@@ -4770,8 +4785,8 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
          pode ser a mensagem de erro vinda da API. */
       const rows=janela.map(r=>`<tr><td style="font-family:var(--font-mono)">${esc(fmtCnpj(r.cnpj))}</td><td>${esc(r.razao)||'—'}</td><td>${esc(r.fantasia)||'—'}</td><td>${esc(r.uf)||'—'}</td><td>${esc(r.situacao)||'—'}</td><td>${esc(r.ie)||'—'}</td><td>${esc(r.contrib)||'—'}</td><td style="font-family:var(--font-mono);font-size:11px">${esc(r.iesAtivas)||'—'}</td><td><span class="pdfiso-badge ${r.ok?'ok':'err'}">${r.ok?'OK':'ERRO'}</span></td><td style="font-size:10px">${esc(r.msg||'')}</td></tr>`).join('');
       const aviso=(fora>0?`<p style="font-size:11px;color:var(--text3);margin:0 0 8px">Mostrando os últimos ${janela.length} de ${resultados.length} resultados — a exportação traz todos.</p>`:'')
-        +`<p class="cnpj-nada" style="margin:0 0 8px">* Contribuinte ICMS pelo cadastro público (Sintegra, via publica.cnpj.ws). <b>Não é validação na SEFAZ</b>: este sistema não usa certificado digital. Dados da empresa: base pública da Receita, atualizada uma vez por mês.</p>`;
-      tbl.innerHTML=`<div class="table-wrap"><table><thead><tr><th scope="col">CNPJ</th><th scope="col">Razão</th><th scope="col">Fantasia</th><th scope="col">UF</th><th scope="col">Situação</th><th scope="col">IE</th><th scope="col">Contribuinte ICMS*</th><th scope="col">IE ativas</th><th scope="col">Status</th><th scope="col">Obs</th></tr></thead><tbody>${rows}</tbody></table></div>`.replace('<tbody>',aviso+'<tbody>');
+        +`<p class="cnpj-nada" style="margin:0 0 8px">* Contribuinte ICMS pelo cadastro público (Sintegra, via publica.cnpj.ws). <b>${NAO_SEFAZ}</b> Dados da empresa: base pública da Receita, atualizada uma vez por mês.</p>`;
+      tbl.innerHTML=aviso+`<div class="table-wrap"><table><thead><tr><th scope="col">CNPJ</th><th scope="col">Razão</th><th scope="col">Fantasia</th><th scope="col">UF</th><th scope="col">Situação</th><th scope="col">IE</th><th scope="col">Contribuinte ICMS*</th><th scope="col">IE ativas</th><th scope="col">Status</th><th scope="col">Obs</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     /* A cota do navegador é o motivo nº1 de "o cache só funciona em outro
        navegador". O aviso fica visível na tela em vez de a falha sumir. */
@@ -4866,7 +4881,7 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
       ['De onde vêm estes dados'],[''],
       ['- Empresa, situação, Simples e sócios: Receita Federal, base pública (dados abertos, atualizada uma vez por mês). Coluna Base_Receita = data da base.'],
       ['- Contribuinte_ICMS_cadastro_publico e IE_ativas: inscrições estaduais do cadastro público (Sintegra), via publica.cnpj.ws.'],
-      ['- NÃO é validação na SEFAZ: este sistema não usa certificado digital.'],
+      ['- '+NAO_SEFAZ],
       ['- "Sem dado" ou "Não" não provam que a empresa não é contribuinte. Para confirmar, consulte o Sintegra da UF (https://www.sintegra.gov.br/).'],
     ];
     function gerarModelo(){
@@ -4962,9 +4977,9 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
     });
     function registra(c,j,msg){
       const est=j.estabelecimento||{};
-      const ct=cnpjContrib(est.inscricoes_estaduais),sit=est.situacao_cadastral;
-      resultados.push({cnpj:c,razao:j.razao_social||'',fantasia:est.nome_fantasia||'',uf:(est.estado||{}).sigla||'',situacao:typeof sit==='object'&&sit?sit.descricao||'':sit||'',ie:(ct.ativas[0]&&ct.ativas[0].inscricao_estadual)||'',ok:true,msg:msg||'',
-        contrib:ct.v,iesAtivas:ct.ativas.map(e=>((e.estado&&e.estado.sigla)||'?')+' '+(e.inscricao_estadual||'')).join(' · '),base:(est.atualizado_em||j.atualizado_em)?dataHoraBr(est.atualizado_em||j.atualizado_em,true):''});
+      const ct=cnpjContrib(est.inscricoes_estaduais);
+      resultados.push({cnpj:c,razao:j.razao_social||'',fantasia:est.nome_fantasia||'',uf:(est.estado||{}).sigla||'',situacao:cnpjSit(est),ie:(ct.ativas[0]&&ct.ativas[0].inscricao_estadual)||'',ok:true,msg:msg||'',
+        contrib:ct.v,iesAtivas:ct.ativas.map(e=>((e.estado&&e.estado.sigla)||'?')+' '+(e.inscricao_estadual||'')).join(' · '),base:cnpjBase(j)});
     }
     /* "~45 min" ou "~6h45": 20s por CNPJ (3/min). */
     function tempoLote(n){const m=Math.ceil(n/3);if(m<60)return`~${m} min`;const h=Math.floor(m/60),r=m%60;return`~${h}h${String(r).padStart(2,'0')}`;}
@@ -5151,7 +5166,7 @@ const infoSet=(t)=>{info.textContent=t;info.parentElement.hidden=!t;};
       if(!resultados.length)return;
       /* Colunas novas só no fim; a fonte vai em cada linha (o CSV não tem aba). */
       const header=['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs','Contribuinte_ICMS_cadastro_publico','IE_ativas','Base_Receita','Fonte'];
-      const FONTE='Cadastro publico (Receita dados abertos + Sintegra via publica.cnpj.ws). Nao e validacao na SEFAZ.';
+      const FONTE='Cadastro público (Receita dados abertos + Sintegra via publica.cnpj.ws). '+NAO_SEFAZ;
       const rows=resultados.map(r=>[fmtCnpj(r.cnpj),r.razao,r.fantasia,r.uf,r.situacao,r.ie,r.ok?'OK':'ERRO',r.msg,r.contrib||'',r.iesAtivas||'',r.base||'',r.ok?FONTE:'']);
       if(window.XLSX){
         const ws=XLSX.utils.aoa_to_sheet([header,...rows]);

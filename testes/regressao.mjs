@@ -1052,7 +1052,7 @@ function extrairCnpjModule() {
     + ' step, carregar: (l) => { lista = l; idx = 0; resultados = []; abort = false; pausaAte = 0; recusas = 0; },'
     + ' estado: () => ({ idx, pausaAte, recusas }), tempo: tempoLote, fimDaPausa: () => { pausaAte = 0; }, parar: () => { abort = true; } };\n  '
     + html.slice(ultimo + 'avisoCache();'.length, fim)
-    + '\n  this.__t = { consultar, render, lerCache, gravarCache, cacheResumo, expurgarCacheLegado, CHAVE_CACHE, CHAVE_CACHE_LEGADO };\n  })();';
+    + '\n  this.__t = { consultar, render, lerCache, gravarCache, cacheResumo, expurgarCacheLegado, CHAVE_CACHE, CHAVE_CACHE_LEGADO, ficha: () => ({ texto: fichaTexto, cnpj: fichaCnpj }) };\n  })();';
 }
 function stubEl(id) {
   const el = {
@@ -1479,10 +1479,10 @@ await (async () => {
   {
     const ficha = async (api) => {
       const storage = storageReal();
-      const { t, els, erros } = rodarCnpj({ storage, fetchImpl: () => Promise.resolve({ ok: true, status: 200, json: async () => api }), modPdf: { vC: modPdf } });
+      const { t, els, erros, sandbox } = rodarCnpj({ storage, fetchImpl: () => Promise.resolve({ ok: true, status: 200, json: async () => api }), modPdf: { vC: modPdf } });
       if (erros.length) return { erro: erros.map((e) => e.message).join('|') };
       els['cnpj-input'].value = cnpjValido; await t.consultar();
-      return { h: els['cnpj-result'].innerHTML, t };
+      return { h: els['cnpj-result'].innerHTML, t, els, raw: els['cnpj-raw'], sandbox };
     };
     const base = {
       razao_social: 'EMPRESA EXEMPLO LTDA', capital_social: '1500000.00', atualizado_em: '2026-11-14T03:00:00.000Z',
@@ -1501,7 +1501,7 @@ await (async () => {
     ok('ficha do CNPJ: empresa "Ativa" sai em verde (a API manda texto, não objeto)',
       !a.erro && /<div class="cnpj-kpi ok"><div class="l">Situação<\/div><div class="v">Ativa<\/div><div class="s">desde 03\/11\/2005<\/div>/.test(h), a.erro || h.slice(h.indexOf('cnpj-kpis'), h.indexOf('cnpj-kpis') + 300));
     ok('ficha do CNPJ: contribuinte de ICMS pelo cadastro público, com a UF da IE ativa e "não SEFAZ"',
-      /<div class="l">Contribuinte de ICMS<\/div><div class="v">Sim\*<\/div><div class="s">IE ativa em SP · cadastro público, não SEFAZ<\/div>/.test(h));
+      /<div class="l">Contribuinte de ICMS<\/div><div class="v">Sim<\/div><div class="s">IE ativa em SP · cadastro público, não SEFAZ<\/div>/.test(h));
     ok('ficha do CNPJ: tabela das inscrições estaduais com situação e data em que foi vista',
       /<td>SP<\/td><td class="mono">110042490114<\/td><td><span class="cnpj-st ok">Ativa<\/span><\/td><td>10\/10\/2026<\/td>/.test(h)
       && /<td>GO<\/td><td class="mono">101234567<\/td><td><span class="cnpj-st">Inativa<\/span><\/td><td>15\/03\/2025<\/td>/.test(h));
@@ -1514,15 +1514,72 @@ await (async () => {
       /<td>SOCIA EXEMPLO<\/td><td>Sócio-Administrador<\/td><td class="mono">\*\*\*123456\*\*<\/td><td>01\/08\/2004<\/td>/.test(h) && !/onclick=/.test(h) && /data-cnpj-acao="ficha"/.test(h));
     const semIE = await ficha({ ...base, estabelecimento: { ...base.estabelecimento, situacao_cadastral: 'Baixada', inscricoes_estaduais: [] } });
     ok('ficha do CNPJ: sem IE no cadastro público sai "Sem dado", não "Não"; situação baixada em vermelho',
-      /<div class="v">Sem dado\*<\/div><div class="s">o cadastro público não traz IE · cadastro público, não SEFAZ<\/div>/.test(semIE.h || '')
+      /<div class="v">Sem dado<\/div><div class="s">o cadastro público não traz IE · cadastro público, não SEFAZ<\/div>/.test(semIE.h || '')
       && /<div class="cnpj-kpi err"><div class="l">Situação<\/div><div class="v">Baixada<\/div>/.test(semIE.h || ''), semIE.erro || '');
     const evil = await ficha({ ...base, estabelecimento: { ...base.estabelecimento, inscricoes_estaduais: [{ inscricao_estadual: '<img src=x onerror=1>', ativo: true, estado: { sigla: '<i>' } }] } });
     ok('ficha do CNPJ: inscrição estadual e UF hostis saem escapadas (na caixa e na tabela)',
       !/<img|<i>/.test(evil.h || '') && /&lt;img src=x onerror=1&gt;/.test(evil.h || '') && /IE ativa em &lt;i&gt;/.test(evil.h || ''), evil.erro || '');
+    const est = base.estabelecimento;
+    const inat = await ficha({ ...base, estabelecimento: { ...est, situacao_cadastral: 'INATIVA' } });
+    const vazia = await ficha({ ...base, estabelecimento: { ...est, situacao_cadastral: null } });
+    const obj = await ficha({ ...base, estabelecimento: { ...est, situacao_cadastral: { descricao: 'Ativa' } } });
+    ok('ficha do CNPJ: "INATIVA" fica vermelha, situação vazia fica neutra e o objeto {descricao} é lido',
+      /<div class="cnpj-kpi err"><div class="l">Situação<\/div><div class="v">INATIVA<\/div>/.test(inat.h || '')
+      && /<div class="cnpj-kpi "><div class="l">Situação<\/div><div class="v">—<\/div>/.test(vazia.h || '')
+      && /<div class="cnpj-kpi ok"><div class="l">Situação<\/div><div class="v">Ativa<\/div>/.test(obj.h || ''));
+    const nulos = await ficha({ ...base, socios: [null, base.socios[0]], estabelecimento: { ...est, ddd1: '11', telefone1: '987654321', fax: 'abc', capital_social: undefined,
+      atividades_secundarias: [null], inscricoes_estaduais: [null, { inscricao_estadual: '110042490114', estado: { sigla: 'SP' } }],
+      motivo_situacao_cadastral: { id: 1, descricao: null }, situacao_especial: { descricao: 'RECUPERACAO JUDICIAL' } } });
+    const hn = nulos.h || '';
+    ok('ficha do CNPJ: item nulo nas listas não derruba a ficha; IE sem "ativo" é "Não informada", não "Inativa"',
+      !nulos.erro && /class="cnpj-ficha"/.test(hn) && /<td>SP<\/td><td class="mono">110042490114<\/td><td><span class="cnpj-st">Não informada<\/span>/.test(hn)
+      && /<div class="v">Não<\/div>/.test(hn) && /<td>SOCIA EXEMPLO<\/td>/.test(hn), nulos.erro || hn.slice(0, 200));
+    ok('ficha do CNPJ: celular de 9 dígitos com máscara, fax inválido some, objeto sem descrição não vira "[object Object]"',
+      /\(11\) 98765-4321/.test(hn) && !/fax/.test(hn.slice(hn.indexOf('<dt>Contato'), hn.indexOf('<dt>CNAE'))) && !/object Object/.test(hn)
+      && /<dt>Motivo da situação<\/dt><dd>—<\/dd>/.test(hn) && /<dt>Situação especial<\/dt><dd>RECUPERACAO JUDICIAL<\/dd>/.test(hn));
+    /* Botões por delegação: copiam a foto do render, não o campo de entrada. */
+    {
+      const amp = await ficha({ ...base, razao_social: 'A & B LTDA' });
+      const copiados = [];
+      amp.sandbox.navigator = { clipboard: { writeText: (v) => { copiados.push(v); return Promise.resolve(); } } };
+      amp.els['cnpj-input'].value = '12.345.678/0001-95';
+      const ouv = amp.els['cnpj-result']._ouv && amp.els['cnpj-result']._ouv.click;
+      const botao = (acao) => ({ dataset: { cnpjAcao: acao }, textContent: 'Copiar', setAttribute() { } });
+      const bC = botao('cnpj'), bF = botao('ficha');
+      if (ouv) { ouv({ target: { closest: () => bC } }); ouv({ target: { closest: () => bC } }); ouv({ target: { closest: () => bF } }); }
+      await new Promise((r) => setTimeout(r, 0));
+      const f = amp.t ? amp.t.ficha() : {};
+      ok('ficha do CNPJ: "Copiar CNPJ" e "Copiar ficha" copiam a foto do render (editar o campo depois não muda o que se copia)',
+        typeof ouv === 'function' && copiados[0] === '11.222.333/0001-81' && copiados[1] === '11.222.333/0001-81' && copiados[2] === f.texto
+        && /^CNPJ: 11\.222\.333\/0001-81\n/.test(f.texto) && /Data Situacao: 03\/11\/2005/.test(f.texto) && /CEP: 13010-000/.test(f.texto)
+        && /Razao Social: A & B LTDA/.test(f.texto) && /Não é validação na SEFAZ/.test(f.texto), JSON.stringify(copiados).slice(0, 200));
+      ok('ficha do CNPJ: dois cliques seguidos não perdem o rótulo do botão',
+        bC.dataset.rotulo === 'Copiar' && bC.textContent === '✓ copiado', bC.dataset.rotulo + ' / ' + bC.textContent);
+      ok('ficha do CNPJ: "Ver resposta completa" mostra o JSON cru (A & B, não A &amp; B)',
+        /"razao_social": "A & B LTDA"/.test(amp.raw.textContent || '') && !/&amp;/.test(amp.raw.textContent || ''), String(amp.raw.textContent).slice(0, 120));
+    }
+    /* Lote: registra de verdade e confere os campos que vão para a exportação. */
+    {
+      const storage = storageReal();
+      const { sandbox, erros } = rodarCnpj({ storage, fetchImpl: () => Promise.reject(new Error('x')), modPdf: { vC: modPdf } });
+      let rs = [];
+      if (!erros.length && sandbox.__lote) {
+        sandbox.__lote.carregar([]);
+        sandbox.__lote.registrar('11222333000181', base, '');
+        sandbox.__lote.registrar('12345678000195', { ...base, estabelecimento: { ...est, inscricoes_estaduais: [{ inscricao_estadual: '1', ativo: false, estado: { sigla: 'RJ' } }] } }, '');
+        sandbox.__lote.registrar('11222333000181', { ...base, estabelecimento: { ...est, situacao_cadastral: { descricao: 'Baixada' }, inscricoes_estaduais: [] } }, '');
+        rs = sandbox.__lote.resultados();
+      }
+      ok('lote do CNPJ: contribuinte Sim / Não / Sem dado, IE ativas por UF, situação como texto e a data da base',
+        rs.length === 3 && rs[0].contrib === 'Sim' && rs[0].iesAtivas === 'SP 110042490114' && rs[0].base === '14/11/2026' && rs[0].situacao === 'Ativa'
+        && rs[1].contrib === 'Não' && rs[1].iesAtivas === '' && rs[2].contrib === 'Sem dado' && rs[2].situacao === 'Baixada', JSON.stringify(rs).slice(0, 300));
+      ok('lote do CNPJ: as linhas da exportação levam contrib, IE ativas, base e a fonte, nessa ordem, no fim',
+        /r\.msg,r\.contrib\|\|'',r\.iesAtivas\|\|'',r\.base\|\|'',r\.ok\?FONTE:''\]/.test(html));
+    }
   }
   ok('lote do CNPJ: exportação com as colunas novas só no fim e a aba "Fonte dos dados"',
     /const header=\['CNPJ','Razao','Fantasia','UF','Situacao','IE','Status','Obs','Contribuinte_ICMS_cadastro_publico','IE_ativas','Base_Receita','Fonte'\];/.test(html)
-    && /XLSX\.utils\.book_append_sheet\(wb,wf,'Fonte dos dados'\)/.test(html) && /NÃO é validação na SEFAZ: este sistema não usa certificado digital/.test(html));
+    && /XLSX\.utils\.book_append_sheet\(wb,wf,'Fonte dos dados'\)/.test(html) && /const NAO_SEFAZ='Não é validação na SEFAZ: este sistema não usa certificado digital\.';/.test(html) && /\['- '\+NAO_SEFAZ\]/.test(html));
 
   // ── B7: injeção de fórmula no CSV (um helper só, compartilhado) ──
   {
@@ -1884,7 +1941,7 @@ ok('o rótulo do botão volta por um caminho só (sem dataset.orig)', !/dataset\
   ok('nenhuma cor rgba escrita à mão em style="" (tokenize, B16)',
     rgbaInline.length === 0, rgbaInline.slice(0, 3).join(' | '));
   ok('a ficha do CNPJ diz quando o resultado veio do cache do navegador',
-    /\$\{cached\?'<span class="orig">do cache deste navegador \(até 30 dias\)<\/span>':''\}/.test(html)
+    /\$\{cached\?`<span class="orig">do cache deste navegador \(até \$\{Math\.round\(CACHE_TTL\/86400000\)\} dias\)<\/span>`:''\}/.test(html)
     && /\.cnpj-cab \.orig\{font-size:12px;color:var\(--text2\);border:1px solid var\(--border\)/.test(html));
   /* Nomenclatura e copy. */
   ok('"Separar notas" com n minúsculo', /id="btn-processar" class="btn">Separar notas</.test(html));
