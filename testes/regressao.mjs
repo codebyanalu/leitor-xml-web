@@ -779,7 +779,7 @@ ok('HNFE tem 130 campos (93 + 24 do veicProd + 13 das NTs de 14/12/2026)', nHnfe
   ok('as 117 colunas anteriores às NTs de 14/12/2026 estão idênticas e na mesma ordem (impressão digital)',
     createHash('sha256').update(cols.slice(0, 117).join(',')).digest('hex') === 'd8e1f3c21603c0f8320ae628217645f806b95e43c10a0968eb4b62be06139fcd' && cols[116] === 'Veic_tpRest');
   ok('as 13 colunas das NTs de 14/12/2026 vêm depois do veicProd, sem repetir nome',
-    cols.slice(117).join() === 'vUnComLiq,vProdLiq,cAtivSN,ICMS_vICMSPrevisto,IBSSN_pIBSSN,IBSSN_vIBSSN,CBSSN_pCBSSN,CBSSN_vCBSSN,tpRegimeIBSCBS,Tot_vProdLiqTot,Tot_vIBSSN,Tot_vCBSSN,Pgto_Vinculado'
+    cols.slice(117).join() === 'vUnComLiq,vProdLiq,cAtivSN,ICMS_Previsto,IBSSN_pIBSSN,IBSSN_vIBSSN,CBSSN_pCBSSN,CBSSN_vCBSSN,tpRegimeIBSCBS,Tot_vProdLiqTot,Tot_vIBSSN,Tot_vCBSSN,Pgto_Vinculado'
     && new Set(cols).size === cols.length, cols.slice(117).join());
   ok('as 93 colunas antigas não mudaram de posição (a 93ª continua sendo Arquivo_Origem)',
     cols[92] === 'Arquivo_Origem' && cols[0] === 'Tipo_Nota', 'col93=' + cols[92]);
@@ -821,6 +821,8 @@ ok('HNFSE tem 121 campos (56 + 65 da leitura completa)', nHnfse === 121, 'achou 
     new Set(cols).size === cols.length && cols.indexOf('Descricao_Completa') > 55 && cols.indexOf('Cod_Mun_Tomador') > 55, cols.slice(56, 60).join(','));
   ok('README diz 121 colunas NFS-e (bate com o código)', /121 NFS-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 }
+ok('README e painel não citam mais 117 como total de campos do XML da NF-e',
+  !/117 (campos|colunas)|XML (lê|extrai) 117/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8') + fs.readFileSync(path.join(RAIZ, 'painel-gerencial.html'), 'utf8')));
 ok('README diz 130 colunas NF-e (bate com o código)', /130 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 /* 61 colunas originais do CT-e + 29 da leitura do CT-e OS (modelo 67), anexadas no FIM. */
 {
@@ -5041,7 +5043,7 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             .replace('</IBSCBS>', '<gTribSN><gIBSSN><pIBSSN>0.1000</pIBSSN><vIBSSN>0.10</vIBSSN></gIBSSN><gCBSSN><pCBSSN>0.9000</pCBSSN><vCBSSN>0.90</vCBSSN></gCBSSN></gTribSN></IBSCBS>')
             .replace('</IBSCBSTot>', '<gTribSN><vIBSSN>0.10</vIBSSN><vCBSSN>0.90</vCBSSN></gTribSN></IBSCBSTot>')
             .replace('</total>', '<vProdLiqTot>142.50</vProdLiqTot></total>')
-            .replace('</infNFe>', '<gPgtoVinc><gPgto nPag="1" idTransacao="&lt;img src=x onerror=1&gt;"><tpMeioPgto>01</tpMeioPgto><CNPJReceb>11222333000181</CNPJReceb><CNPJBasePSP>12345678</CNPJBasePSP></gPgto><gPgto nPag="2" idTransacao="T2"><tpMeioPgto>03</tpMeioPgto><CNPJReceb>12345678000195</CNPJReceb><CNPJBasePSP>87654321</CNPJBasePSP></gPgto></gPgtoVinc></infNFe>');
+            .replace('</infNFe>', '<gPgtoVinc><gPgto nPag="1" idTransacao="&lt;img src=x onerror=1&gt;"><tpMeioPgto>01</tpMeioPgto><CNPJReceb>11222333000181</CNPJReceb><CNPJBasePSP>12345678</CNPJBasePSP></gPgto><gPgto nPag="2" idTransacao="T|2;b"><tpMeioPgto>03</tpMeioPgto><CNPJReceb>12345678000195</CNPJReceb><CNPJBasePSP>87654321</CNPJBasePSP></gPgto><gPgto/></gPgtoVinc></infNFe>');
           let rv = null, rn = null, erroN = '';
           try {
             vm.runInContext('__XV=' + JSON.stringify(velho) + ';__XN=' + JSON.stringify(novo), sb);
@@ -5049,13 +5051,13 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
           } catch (e) { erroN = e.message; }
           const hn130 = vm.runInContext('HNFE', sb), n0 = rn && rn.produtos && rn.produtos[0], n1 = rn && rn.produtos && rn.produtos[1], v0 = rv && rv.produtos && rv.produtos[0];
           ok('NTs de 14/12/2026: o XML novo é lido (valor líquido, ICMS previsto, Simples, regime e vínculo com o pagamento)',
-            !erroN && rn.ok && n0.vUnComLiq === '47.50' && n0.vProdLiq === '95.00' && n0.cAtivSN === '01' && n0.ICMS_vICMSPrevisto === '4.00'
+            !erroN && rn.ok && n0.vUnComLiq === '47.50' && n0.vProdLiq === '95.00' && n0.cAtivSN === '01' && n0.ICMS_Previsto === '4.00'
             && n0.IBSSN_pIBSSN === '0.1000' && n0.IBSSN_vIBSSN === '0.10' && n0.CBSSN_pCBSSN === '0.9000' && n0.CBSSN_vCBSSN === '0.90'
             && n0.tpRegimeIBSCBS === '2' && n0.Tot_vProdLiqTot === '142.50' && n0.Tot_vIBSSN === '0.10' && n0.Tot_vCBSSN === '0.90'
             && n0.PgtoVinc.length === 2 && n0.PgtoVinc[1].CNPJBasePSP === '87654321' && n0.PgtoVinc[0].nPag === '1'
-            && n0.Pgto_Vinculado === '1 | 01 | <img src=x onerror=1> | 11222333000181 | 12345678 ; 2 | 03 | T2 | 12345678000195 | 87654321'
-            && n1.vProdLiq === '' && n1.ICMS_vICMSPrevisto === '' && n1.IBSSN_vIBSSN === '' && n1.tpRegimeIBSCBS === '2',
-            erroN || JSON.stringify(n0 && { a: n0.vProdLiq, b: n0.ICMS_vICMSPrevisto, c: n0.Tot_vIBSSN, d: n0.Pgto_Vinculado }));
+            && n0.Pgto_Vinculado === '1 | 01 | <img src=x onerror=1> | 11222333000181 | 12345678 ; 2 | 03 | T/2/b | 12345678000195 | 87654321'
+            && n1.vProdLiq === '' && n1.ICMS_Previsto === '' && n1.IBSSN_vIBSSN === '' && n1.tpRegimeIBSCBS === '2',
+            erroN || JSON.stringify(n0 && { a: n0.vProdLiq, b: n0.ICMS_Previsto, c: n0.Tot_vIBSSN, d: n0.Pgto_Vinculado }));
           ok('NTs de 14/12/2026: o grupo novo não muda nenhuma das 117 colunas anteriores; no XML antigo as 13 novas saem vazias',
             !erroN && rv.ok && hn130.slice(0, 117).every((c) => JSON.stringify(rv.produtos[0][c]) === JSON.stringify(n0[c]) && JSON.stringify(rv.produtos[1][c]) === JSON.stringify(n1[c]))
             && hn130.slice(117).every((c) => v0[c] === '') && Array.isArray(v0.PgtoVinc) && v0.PgtoVinc.length === 0,
@@ -5067,9 +5069,28 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
             hN = vm.runInContext('nfeDanfe("KN",{info:__RN[0],itens:__RN})', sb); hV = vm.runInContext('nfeDanfe("KV",{info:__RV[0],itens:__RV})', sb);
           } catch (e) { erroN = e.message; }
           ok('NTs de 14/12/2026: o DANFE mostra os campos novos só quando o XML os traz, e o id da transação sai escapado',
-            !erroN && /Regime do IBS\/CBS/.test(hN) && /Vínculo com o pagamento/.test(hN) && /Valor líquido dos produtos \(vProdLiqTot\)/.test(hN) && /IBS do Simples Nacional/.test(hN)
-            && /Valor líquido do item/.test(hN) && /ICMS previsto/.test(hN) && /IBS do Simples</.test(hN) && /&lt;img src=x onerror=1&gt;/.test(hN) && !/<img/.test(hN)
-            && !/Regime do IBS\/CBS|Vínculo com o pagamento|vProdLiqTot|IBS do Simples|Valor líquido do item|ICMS previsto/.test(hV), erroN);
+            !erroN && /Regime do IBS\/CBS/.test(hN) && /Vínculo com o pagamento/.test(hN) && /Valor líquido dos produtos/.test(hN) && /IBS do Simples Nacional/.test(hN)
+            && /Valor líquido do item/.test(hN) && /ICMS previsto/.test(hN) && /&lt;img src=x onerror=1&gt;/.test(hN) && !/<img/.test(hN)
+            && !/Regime do IBS\/CBS|Vínculo com o pagamento|Valor líquido dos produtos|IBS do Simples|Valor líquido do item|ICMS previsto/.test(hV), erroN);
+          ok('NTs de 14/12/2026: gPgto vazio é descartado (nem na tela nem na planilha)',
+            n0.PgtoVinc.length === 2 && (hN.match(/Pagamento nº · meio/g) || []).length === 2);
+          /* O ICMS previsto e o IBS/CBS do Simples não somam no total de impostos do item. */
+          const totItem = (h) => (/<tr class="tot"><td>Total de impostos do item<\/td><td><\/td><td><\/td><td><\/td><td class="n">([^<]*)<\/td>/.exec(h) || [])[1];
+          ok('NTs de 14/12/2026: o total de impostos do item não muda com o ICMS previsto e o IBS/CBS do Simples',
+            !!totItem(hN) && totItem(hN) === totItem(hV), totItem(hN) + ' / ' + totItem(hV));
+          /* Código hostil em cada subcampo do vínculo (o gate geral não passa por listas de objetos). */
+          {
+            const PAYV = '<img src=x onerror=1>';
+            let hP = '';
+            try {
+              vm.runInContext('__RP=' + JSON.stringify(rn.produtos.map((r) => ({ ...r, PgtoVinc: [{ nPag: PAYV, tpMeioPgto: PAYV, idTransacao: PAYV, CNPJReceb: PAYV, CNPJBasePSP: PAYV }] }))), sb);
+              vm.runInContext('dnfUI("KP").abertos.add("0")', sb);
+              hP = vm.runInContext('nfeDanfe("KP",{info:__RP[0],itens:__RP})', sb);
+            } catch (e) { erroN = e.message; }
+            const sec = hP.slice(hP.indexOf('Vínculo com o pagamento'), hP.indexOf('Cálculo do imposto'));
+            ok('NTs de 14/12/2026: código hostil em todos os campos do vínculo sai escapado',
+              !erroN && !/<img/.test(sec) && (sec.match(/&lt;img src=x onerror=1&gt;/g) || []).length === 5, erroN || sec.slice(0, 300));
+          }
         }
         /* 3 · totais oficiais, vNFTot e aviso */
         ok('Cálculo do imposto: as caixas vêm do <total> do XML (FCP, vNFTot e tributos aproximados só existem lá)',
