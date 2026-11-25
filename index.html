@@ -1799,7 +1799,12 @@ const HNFE=['Tipo_Nota','Chave_NFe','Numero_NFe','Serie_NFe','Mod_NFe','NatOp','
    'Arquivo_Origem',
    /* Grupo veicProd (veículo novo): no FIM da lista, para não deslocar nenhuma
       coluna de quem lê a planilha por posição. Vazio em item que não é veículo. */
-   'Veic_tpOp','Veic_Chassi','Veic_cCor','Veic_xCor','Veic_Pot','Veic_Cilin','Veic_PesoL','Veic_PesoB','Veic_nSerie','Veic_tpComb','Veic_nMotor','Veic_CMT','Veic_Dist','Veic_AnoMod','Veic_AnoFab','Veic_tpPint','Veic_tpVeic','Veic_espVeic','Veic_VIN','Veic_condVeic','Veic_cMod','Veic_cCorDENATRAN','Veic_Lota','Veic_tpRest'];
+   'Veic_tpOp','Veic_Chassi','Veic_cCor','Veic_xCor','Veic_Pot','Veic_Cilin','Veic_PesoL','Veic_PesoB','Veic_nSerie','Veic_tpComb','Veic_nMotor','Veic_CMT','Veic_Dist','Veic_AnoMod','Veic_AnoFab','Veic_tpPint','Veic_tpVeic','Veic_espVeic','Veic_VIN','Veic_condVeic','Veic_cMod','Veic_cCorDENATRAN','Veic_Lota','Veic_tpRest',
+   /* Campos das NTs que entram em produção em 14/12/2026, também no FIM: valor líquido
+      (NT 2026.008), ICMS previsto, Simples (NT 2026.005) e o vínculo da nota com o
+      pagamento (NT 2026.006, uma célula por nota). Vazios no XML antigo. */
+   'vUnComLiq','vProdLiq','cAtivSN','ICMS_vICMSPrevisto','IBSSN_pIBSSN','IBSSN_vIBSSN','CBSSN_pCBSSN','CBSSN_vCBSSN',
+   'tpRegimeIBSCBS','Tot_vProdLiqTot','Tot_vIBSSN','Tot_vCBSSN','Pgto_Vinculado'];
 const HNFSE=['Tipo_Nota','Formato','Chave_NFSe','Numero_NFSe','Serie_RPS',
   'Data_Emissao','Data_Competencia','Municipio_Prestacao',
   'cTribNac','xDescServ','cNBS_DPS','Cod_Servico_Mun','Desc_Servico','Cod_Item_Lei116','Cod_NBS',
@@ -1934,7 +1939,7 @@ function extrairNFE(nome,texto){
     Duplicatas:cobr?[...cobr.querySelectorAll('dup')].map(d=>({nDup:t(d,'nDup'),dVenc:t(d,'dVenc'),vDup:t(d,'vDup')})):[],
     Pagamentos:pagEl?[...pagEl.querySelectorAll('detPag')].map(d=>({tPag:t(d,'tPag'),xPag:t(d,'xPag'),vPag:t(d,'vPag')})):[],
     vTroco:t(pagEl,'vTroco'),infAdFisco:t(infAdic,'infAdFisco'),
-    /* Campos das NTs que entram em produção em 14/12/2026 (só tela): regime do IBS/CBS
+    /* Campos das NTs que entram em produção em 14/12/2026 (tela e o fim do HNFE): regime do IBS/CBS
        do emitente (NT 2026.005), total do valor líquido dos produtos (NT 2026.008),
        totais de IBS/CBS do Simples e o vínculo da nota com o pagamento (NT 2026.006:
        nPag e idTransacao são atributos de gPgto). XML antigo: tudo vazio. */
@@ -1943,6 +1948,8 @@ function extrairNFE(nome,texto){
     PgtoVinc:[...inf.querySelectorAll('gPgtoVinc gPgto')].map(g=>({nPag:g.getAttribute('nPag')||'',idTransacao:g.getAttribute('idTransacao')||'',
       tpMeioPgto:t(g,'tpMeioPgto'),CNPJReceb:t(g,'CNPJReceb'),CNPJBasePSP:t(g,'CNPJBasePSP')}))
   };
+  /* Na planilha, o vínculo vai numa célula: "nPag | meio | idTransacao | CNPJ do recebedor | CNPJ raiz do PSP", um por ";". */
+  nota.Pgto_Vinculado=nota.PgtoVinc.map(x=>[x.nPag,x.tpMeioPgto,x.idTransacao,x.CNPJReceb,x.CNPJBasePSP].join(' | ')).join(' ; ');
   for(const det of dets){
     const prod=det.querySelector('prod');if(!prod)continue;
     const imp=det.querySelector('imposto');
@@ -1973,7 +1980,7 @@ function extrairNFE(nome,texto){
          COFINS do grupo próprio do item (sem o PISST/COFINSST, que o campo exportado
          recebe quando o próprio vem vazio) e a redução de alíquota (gRed). */
       indTot:t(prod,'indTot'),PIS_vPISProprio:'',COFINS_vCOFINSProprio:'',
-      /* NTs de 14/12/2026 (só tela): valor líquido do item, atividade no Simples,
+      /* NTs de 14/12/2026 (tela e o fim do HNFE): valor líquido do item, atividade no Simples,
          ICMS previsto de pagamento antecipado e IBS/CBS do Simples (gTribSN). */
       vUnComLiq:t(prod,'vUnComLiq'),vProdLiq:t(prod,'vProdLiq'),cAtivSN:t(prod,'cAtivSN'),
       ICMS_vICMSPrevisto:'',IBSSN_pIBSSN:'',IBSSN_vIBSSN:'',CBSSN_pCBSSN:'',CBSSN_vCBSSN:'',

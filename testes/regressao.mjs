@@ -766,8 +766,8 @@ const hnfe = /const HNFE=\[([\s\S]*?)\];/.exec(html)[1];
 const hnfse = /const HNFSE=\[([\s\S]*?)\];/.exec(html)[1];
 const nHnfe = (hnfe.match(/'[^']+'/g) || []).length;
 const nHnfse = (hnfse.match(/'[^']+'/g) || []).length;
-/* 93 colunas originais + 24 do grupo veicProd (veículo novo), anexadas no FIM. */
-ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe);
+/* 93 colunas originais + 24 do grupo veicProd (veículo novo) + 13 das NTs de 14/12/2026, anexadas no FIM. */
+ok('HNFE tem 130 campos (93 + 24 do veicProd + 13 das NTs de 14/12/2026)', nHnfe === 130, 'achou ' + nHnfe);
 {
   const cols = (hnfe.match(/'[^']+'/g) || []).map((s) => s.slice(1, -1));
   /* Quem lê a planilha por posição não pode ver coluna andar: as 93 antigas
@@ -776,13 +776,18 @@ ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe)
      separada por vírgula). Conferir só as pontas congelava o tamanho, não a ordem. */
   ok('as 93 colunas antigas estão idênticas e na mesma ordem (impressão digital da lista)',
     createHash('sha256').update(cols.slice(0, 93).join(',')).digest('hex') === '0dbeb787619b914eea24f5b315afbf04f81d610065d6b8dda132e03319047685');
+  ok('as 117 colunas anteriores às NTs de 14/12/2026 estão idênticas e na mesma ordem (impressão digital)',
+    createHash('sha256').update(cols.slice(0, 117).join(',')).digest('hex') === 'd8e1f3c21603c0f8320ae628217645f806b95e43c10a0968eb4b62be06139fcd' && cols[116] === 'Veic_tpRest');
+  ok('as 13 colunas das NTs de 14/12/2026 vêm depois do veicProd, sem repetir nome',
+    cols.slice(117).join() === 'vUnComLiq,vProdLiq,cAtivSN,ICMS_vICMSPrevisto,IBSSN_pIBSSN,IBSSN_vIBSSN,CBSSN_pCBSSN,CBSSN_vCBSSN,tpRegimeIBSCBS,Tot_vProdLiqTot,Tot_vIBSSN,Tot_vCBSSN,Pgto_Vinculado'
+    && new Set(cols).size === cols.length, cols.slice(117).join());
   ok('as 93 colunas antigas não mudaram de posição (a 93ª continua sendo Arquivo_Origem)',
     cols[92] === 'Arquivo_Origem' && cols[0] === 'Tipo_Nota', 'col93=' + cols[92]);
   {
     const m = /const VEIC_CAMPOS=\[([\s\S]*?)\];/.exec(html);
     const daTabela = m ? [...m[1].matchAll(/\['[^']+','([^']+)'\]/g)].map((x) => x[1]) : [];
     ok('a tabela VEIC_CAMPOS e a cauda do HNFE são a mesma lista, na mesma ordem',
-      daTabela.length === 24 && daTabela.join() === cols.slice(93).join(), daTabela.join());
+      daTabela.length === 24 && daTabela.join() === cols.slice(93, 117).join(), daTabela.join());
   }
   {
     const readme = fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8');
@@ -799,8 +804,8 @@ ok('HNFE tem 117 campos (93 + 24 do veicProd)', nHnfe === 117, 'achou ' + nHnfe)
       kpi ? kpi[1] + ' + ' + kpi[2] + ' + ' + kpi[3] + ' (código: ' + nHnfe + ' + ' + nHnfse + ' + ' + nHcte + ')' : 'KPI não encontrado');
   }
   ok('as 24 colunas do veicProd vêm depois, todas Veic_* e com o chassi',
-    cols.slice(93).length === 24 && cols.slice(93).every((c) => c.startsWith('Veic_')) && cols.includes('Veic_Chassi'),
-    cols.slice(93).join(','));
+    cols.slice(93, 117).length === 24 && cols.slice(93, 117).every((c) => c.startsWith('Veic_')) && cols.includes('Veic_Chassi'),
+    cols.slice(93, 117).join(','));
 }
 /* 56 colunas originais + 65 da leitura completa da NFS-e, anexadas no FIM. */
 ok('HNFSE tem 121 campos (56 + 65 da leitura completa)', nHnfse === 121, 'achou ' + nHnfse);
@@ -816,7 +821,7 @@ ok('HNFSE tem 121 campos (56 + 65 da leitura completa)', nHnfse === 121, 'achou 
     new Set(cols).size === cols.length && cols.indexOf('Descricao_Completa') > 55 && cols.indexOf('Cod_Mun_Tomador') > 55, cols.slice(56, 60).join(','));
   ok('README diz 121 colunas NFS-e (bate com o código)', /121 NFS-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 }
-ok('README diz 117 colunas NF-e (bate com o código)', /117 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
+ok('README diz 130 colunas NF-e (bate com o código)', /130 NF-e/.test(fs.readFileSync(path.join(RAIZ, 'README.md'), 'utf8')));
 /* 61 colunas originais do CT-e + 29 da leitura do CT-e OS (modelo 67), anexadas no FIM. */
 {
   const m = /const HCTE=\[([\s\S]*?)\];/.exec(html);
@@ -3387,7 +3392,14 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         erro || `payload ${fp && fp.tags}/${fp && fp.handler} vs benigno ${fb && fb.tags}`);
       const colunas = vm.runInContext('DNF_COLS.reduce((a,g)=>a.concat(g[1].map(c=>c[0])),[])', sb);
       const daNota = ['Tipo_Nota', 'Chave_NFe', 'Numero_NFe', 'Serie_NFe', 'Mod_NFe', 'NatOp', 'Tp_NF', 'Data_Emissao', 'CNPJ_Emitente', 'Nome_Emitente', 'NomeFantasia_Emit', 'IE_Emitente', 'UF_Emitente', 'Mun_Emitente', 'CNPJ_Destinatario', 'CPF_Destinatario', 'Nome_Destinatario', 'IE_Destinatario', 'UF_Destinatario', 'Mun_Destinatario', 'Status_NFe', 'Motivo_Status_NFe', 'vFrete', 'vSeg', 'vDesc', 'vOutro', 'vNF', 'vTotTrib', 'infCpl', 'Arquivo_Origem'];
-      const falta = camposHNFE.filter((c) => !colunas.includes(c) && !daNota.includes(c));
+      /* Campos das NTs de 14/12/2026: os do item aparecem no painel do item aberto (lidos
+         por nome em dnfItemAberto); os da nota, no DANFE (n.X); o vínculo com o pagamento
+         é a lista n.PgtoVinc (a célula Pgto_Vinculado é a mesma lista em texto). */
+      const fPainel = html.slice(html.indexOf('function dnfItemAberto('), html.indexOf('function dnfTotais('));
+      const doPainel = camposHNFE.filter((c) => fPainel.includes("'" + c + "'"));
+      const fDanfe = html.slice(html.indexOf('function nfeDanfe('), html.indexOf('function renderNFE('));
+      const notaNova = camposHNFE.slice(117).filter((c) => fDanfe.includes('n.' + c) || (c === 'Pgto_Vinculado' && fDanfe.includes('n.PgtoVinc')));
+      const falta = camposHNFE.filter((c) => !colunas.includes(c) && !daNota.includes(c) && !doPainel.includes(c) && !notaNova.includes(c));
       ok('o DANFE cobre os ' + camposHNFE.length + ' campos da exportação (colunas dos itens + cabeçalho da nota)', falta.length === 0, falta.join(','));
       const fonte = html.slice(html.indexOf('function nfeDanfe('), html.indexOf('function renderNFE('));
       ok('cada campo do cabeçalho da nota está no DANFE', daNota.every((c) => fonte.includes('n.' + c)), daNota.filter((c) => !fonte.includes('n.' + c)).join(','));
@@ -5017,9 +5029,48 @@ grupo('15 · RENDER XML: o dado do arquivo no DOM (executa os renders de verdade
         const cols = vm.runInContext('[HNFE.length,HNFSE.length,HCTE.length]', sb);
         const novos = ['Tot_vProd', 'Tot_vIBS', 'Tot_vNFTot', 'Protocolo_NFe', 'Transp_Nome', 'Volumes', 'Duplicatas', 'Pagamentos', 'infAdFisco', 'pAliqEfetCBS', 'End_Emitente', 'indTot', 'PIS_vPISProprio', 'COFINS_vCOFINSProprio'];
         const hn = vm.runInContext('HNFE', sb);
-        ok('exportação inalterada: HNFE 117, HNFSE 121, HCTE 90, nenhum campo novo nas colunas e o item lido tem todas as do HNFE',
-          cols[0] === 117 && cols[1] === 121 && cols[2] === 90 && novos.every((c) => !hn.includes(c)) && hn.every((c) => Object.prototype.hasOwnProperty.call(r0, c)),
+        ok('exportação: HNFE 130 (117 + 13 das NTs de 14/12/2026), HNFSE 121, HCTE 90, nenhum campo só de tela nas colunas e o item lido tem todas as do HNFE',
+          cols[0] === 130 && cols[1] === 121 && cols[2] === 90 && novos.every((c) => !hn.includes(c)) && hn.every((c) => Object.prototype.hasOwnProperty.call(r0, c)),
           JSON.stringify(cols));
+        /* 2b · NTs que entram em produção em 14/12/2026: o XML novo é lido, o antigo segue igual */
+        {
+          const velho = nfeXml({});
+          let novo = velho.replace('</emit>', '<tpRegimeIBSCBS>2</tpRegimeIBSCBS></emit>')
+            .replace('</prod>', '<vUnComLiq>47.50</vUnComLiq><vProdLiq>95.00</vProdLiq><cAtivSN>01</cAtivSN></prod>')
+            .replace('</ICMS>', '<ICMSPrevistoPagtoAntecip><vICMSPrevisto>4.00</vICMSPrevisto></ICMSPrevistoPagtoAntecip></ICMS>')
+            .replace('</IBSCBS>', '<gTribSN><gIBSSN><pIBSSN>0.1000</pIBSSN><vIBSSN>0.10</vIBSSN></gIBSSN><gCBSSN><pCBSSN>0.9000</pCBSSN><vCBSSN>0.90</vCBSSN></gCBSSN></gTribSN></IBSCBS>')
+            .replace('</IBSCBSTot>', '<gTribSN><vIBSSN>0.10</vIBSSN><vCBSSN>0.90</vCBSSN></gTribSN></IBSCBSTot>')
+            .replace('</total>', '<vProdLiqTot>142.50</vProdLiqTot></total>')
+            .replace('</infNFe>', '<gPgtoVinc><gPgto nPag="1" idTransacao="&lt;img src=x onerror=1&gt;"><tpMeioPgto>01</tpMeioPgto><CNPJReceb>11222333000181</CNPJReceb><CNPJBasePSP>12345678</CNPJBasePSP></gPgto><gPgto nPag="2" idTransacao="T2"><tpMeioPgto>03</tpMeioPgto><CNPJReceb>12345678000195</CNPJReceb><CNPJBasePSP>87654321</CNPJBasePSP></gPgto></gPgtoVinc></infNFe>');
+          let rv = null, rn = null, erroN = '';
+          try {
+            vm.runInContext('__XV=' + JSON.stringify(velho) + ';__XN=' + JSON.stringify(novo), sb);
+            rv = vm.runInContext('extrairNFE("n.xml",__XV)', sb); rn = vm.runInContext('extrairNFE("n.xml",__XN)', sb);
+          } catch (e) { erroN = e.message; }
+          const hn130 = vm.runInContext('HNFE', sb), n0 = rn && rn.produtos && rn.produtos[0], n1 = rn && rn.produtos && rn.produtos[1], v0 = rv && rv.produtos && rv.produtos[0];
+          ok('NTs de 14/12/2026: o XML novo é lido (valor líquido, ICMS previsto, Simples, regime e vínculo com o pagamento)',
+            !erroN && rn.ok && n0.vUnComLiq === '47.50' && n0.vProdLiq === '95.00' && n0.cAtivSN === '01' && n0.ICMS_vICMSPrevisto === '4.00'
+            && n0.IBSSN_pIBSSN === '0.1000' && n0.IBSSN_vIBSSN === '0.10' && n0.CBSSN_pCBSSN === '0.9000' && n0.CBSSN_vCBSSN === '0.90'
+            && n0.tpRegimeIBSCBS === '2' && n0.Tot_vProdLiqTot === '142.50' && n0.Tot_vIBSSN === '0.10' && n0.Tot_vCBSSN === '0.90'
+            && n0.PgtoVinc.length === 2 && n0.PgtoVinc[1].CNPJBasePSP === '87654321' && n0.PgtoVinc[0].nPag === '1'
+            && n0.Pgto_Vinculado === '1 | 01 | <img src=x onerror=1> | 11222333000181 | 12345678 ; 2 | 03 | T2 | 12345678000195 | 87654321'
+            && n1.vProdLiq === '' && n1.ICMS_vICMSPrevisto === '' && n1.IBSSN_vIBSSN === '' && n1.tpRegimeIBSCBS === '2',
+            erroN || JSON.stringify(n0 && { a: n0.vProdLiq, b: n0.ICMS_vICMSPrevisto, c: n0.Tot_vIBSSN, d: n0.Pgto_Vinculado }));
+          ok('NTs de 14/12/2026: o grupo novo não muda nenhuma das 117 colunas anteriores; no XML antigo as 13 novas saem vazias',
+            !erroN && rv.ok && hn130.slice(0, 117).every((c) => JSON.stringify(rv.produtos[0][c]) === JSON.stringify(n0[c]) && JSON.stringify(rv.produtos[1][c]) === JSON.stringify(n1[c]))
+            && hn130.slice(117).every((c) => v0[c] === '') && Array.isArray(v0.PgtoVinc) && v0.PgtoVinc.length === 0,
+            erroN || hn130.slice(0, 117).filter((c) => JSON.stringify(rv.produtos[0][c]) !== JSON.stringify(n0[c])).join(','));
+          let hN = '', hV = '';
+          try {
+            vm.runInContext('__RN=' + JSON.stringify(rn.produtos) + ';__RV=' + JSON.stringify(rv.produtos), sb);
+            vm.runInContext('dnfUI("KN").abertos.add("0");dnfUI("KV").abertos.add("0")', sb);
+            hN = vm.runInContext('nfeDanfe("KN",{info:__RN[0],itens:__RN})', sb); hV = vm.runInContext('nfeDanfe("KV",{info:__RV[0],itens:__RV})', sb);
+          } catch (e) { erroN = e.message; }
+          ok('NTs de 14/12/2026: o DANFE mostra os campos novos só quando o XML os traz, e o id da transação sai escapado',
+            !erroN && /Regime do IBS\/CBS/.test(hN) && /Vínculo com o pagamento/.test(hN) && /Valor líquido dos produtos \(vProdLiqTot\)/.test(hN) && /IBS do Simples Nacional/.test(hN)
+            && /Valor líquido do item/.test(hN) && /ICMS previsto/.test(hN) && /IBS do Simples</.test(hN) && /&lt;img src=x onerror=1&gt;/.test(hN) && !/<img/.test(hN)
+            && !/Regime do IBS\/CBS|Vínculo com o pagamento|vProdLiqTot|IBS do Simples|Valor líquido do item|ICMS previsto/.test(hV), erroN);
+        }
         /* 3 · totais oficiais, vNFTot e aviso */
         ok('Cálculo do imposto: as caixas vêm do <total> do XML (FCP, vNFTot e tributos aproximados só existem lá)',
           cx(h, 'Valor do ICMS') === '27,00' && cx(h, 'Valor do FCP') === '1,50' && cx(h, 'Tributos aproximados (Lei 12.741)') === '30,00'
