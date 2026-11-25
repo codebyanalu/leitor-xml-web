@@ -1933,7 +1933,15 @@ function extrairNFE(nome,texto){
     Fat_Numero:t(fat,'nFat'),Fat_vOrig:t(fat,'vOrig'),Fat_vDesc:t(fat,'vDesc'),Fat_vLiq:t(fat,'vLiq'),
     Duplicatas:cobr?[...cobr.querySelectorAll('dup')].map(d=>({nDup:t(d,'nDup'),dVenc:t(d,'dVenc'),vDup:t(d,'vDup')})):[],
     Pagamentos:pagEl?[...pagEl.querySelectorAll('detPag')].map(d=>({tPag:t(d,'tPag'),xPag:t(d,'xPag'),vPag:t(d,'vPag')})):[],
-    vTroco:t(pagEl,'vTroco'),infAdFisco:t(infAdic,'infAdFisco')
+    vTroco:t(pagEl,'vTroco'),infAdFisco:t(infAdic,'infAdFisco'),
+    /* Campos das NTs que entram em produção em 14/12/2026 (só tela): regime do IBS/CBS
+       do emitente (NT 2026.005), total do valor líquido dos produtos (NT 2026.008),
+       totais de IBS/CBS do Simples e o vínculo da nota com o pagamento (NT 2026.006:
+       nPag e idTransacao são atributos de gPgto). XML antigo: tudo vazio. */
+    tpRegimeIBSCBS:t(emit,'tpRegimeIBSCBS'),Tot_vProdLiqTot:t(totG,'vProdLiqTot'),
+    Tot_vIBSSN:t(ibt,'gTribSN vIBSSN'),Tot_vCBSSN:t(ibt,'gTribSN vCBSSN'),
+    PgtoVinc:[...inf.querySelectorAll('gPgtoVinc gPgto')].map(g=>({nPag:g.getAttribute('nPag')||'',idTransacao:g.getAttribute('idTransacao')||'',
+      tpMeioPgto:t(g,'tpMeioPgto'),CNPJReceb:t(g,'CNPJReceb'),CNPJBasePSP:t(g,'CNPJBasePSP')}))
   };
   for(const det of dets){
     const prod=det.querySelector('prod');if(!prod)continue;
@@ -1965,6 +1973,10 @@ function extrairNFE(nome,texto){
          COFINS do grupo próprio do item (sem o PISST/COFINSST, que o campo exportado
          recebe quando o próprio vem vazio) e a redução de alíquota (gRed). */
       indTot:t(prod,'indTot'),PIS_vPISProprio:'',COFINS_vCOFINSProprio:'',
+      /* NTs de 14/12/2026 (só tela): valor líquido do item, atividade no Simples,
+         ICMS previsto de pagamento antecipado e IBS/CBS do Simples (gTribSN). */
+      vUnComLiq:t(prod,'vUnComLiq'),vProdLiq:t(prod,'vProdLiq'),cAtivSN:t(prod,'cAtivSN'),
+      ICMS_vICMSPrevisto:'',IBSSN_pIBSSN:'',IBSSN_vIBSSN:'',CBSSN_pCBSSN:'',CBSSN_vCBSSN:'',
       pRedIBSUF:'',pAliqEfetIBSUF:'',pRedIBSMun:'',pAliqEfetIBSMun:'',pRedCBS:'',pAliqEfetCBS:''
     };
     Object.assign(base,nota);
@@ -1986,6 +1998,7 @@ function extrairNFE(nome,texto){
           base.ICMS_pICMSEfet=t(f,'pICMSEfet');base.ICMS_vICMSEfet=t(f,'vICMSEfet');break;
         }
       }
+      if(icms)base.ICMS_vICMSPrevisto=t(icms,'vICMSPrevisto');
       const ipi=imp.querySelector('IPI');
       if(ipi){base.IPI_cEnq=t(ipi,'cEnq');for(const s of['IPITrib','IPINT']){const el=ipi.querySelector(s);if(el){base.IPI_CST=t(el,'CST');base.IPI_vBC=t(el,'vBC');base.IPI_pIPI=t(el,'pIPI');base.IPI_vIPI=t(el,'vIPI');break;}}}
       const pis=imp.querySelector('PIS');
@@ -2000,6 +2013,8 @@ function extrairNFE(nome,texto){
       let ibscbs=imp.querySelector('IBSCBS')||imp.querySelector('IBS');
       if(ibscbs){
         base.IBS_CST=t(ibscbs,'CST');base.cClassTrib=t(ibscbs,'cClassTrib');
+        const sn=ibscbs.querySelector('gTribSN');
+        if(sn){base.IBSSN_pIBSSN=t(sn,'gIBSSN pIBSSN');base.IBSSN_vIBSSN=t(sn,'gIBSSN vIBSSN');base.CBSSN_pCBSSN=t(sn,'gCBSSN pCBSSN');base.CBSSN_vCBSSN=t(sn,'gCBSSN vCBSSN');}
         let g=ibscbs.querySelector('gIBSCBS')||ibscbs;
         base.IBS_vBC=t(g,'vBC');
         /* gRed: redução de alíquota pelo cClassTrib. A alíquota que vale é a EFETIVA
@@ -2498,6 +2513,11 @@ function nfeDanfe(ch,g){
   const tp=dnfVal(n.Tp_NF,'c:tpNF').h;
   const itens=dnfItens(ch,g,u);
   const dups=Array.isArray(n.Duplicatas)?n.Duplicatas:[],pgts=Array.isArray(n.Pagamentos)?n.Pagamentos:[],vols=Array.isArray(n.Volumes)?n.Volumes:[];
+  const vinc=Array.isArray(n.PgtoVinc)?n.PgtoVinc.filter(x=>x&&typeof x==='object'):[];
+  /* Vínculo da nota com o pagamento: um quadro por pagamento vinculado. */
+  const pvinc=(x)=>`<div class="dnf-l g4">${dnfCampo('Pagamento nº · meio',[x.nPag,x.tpMeioPgto].filter(Boolean).join(' · '))}${dnfCampo('ID da transação',x.idTransacao)}${dnfCx('CNPJ do recebedor',dnfDoc(x.CNPJReceb),false,!dnfTem(x.CNPJReceb))}${dnfCampo('CNPJ raiz do PSP',x.CNPJBasePSP)}</div>`;
+  const totNovos=[dnfTem(n.Tot_vProdLiqTot)?dnfCampo('Valor líquido dos produtos (vProdLiqTot)',n.Tot_vProdLiqTot,'m'):'',
+    dnfTem(n.Tot_vIBSSN)?dnfCampo('IBS do Simples Nacional',n.Tot_vIBSSN,'m'):'',dnfTem(n.Tot_vCBSSN)?dnfCampo('CBS do Simples Nacional',n.Tot_vCBSSN,'m'):''].filter(Boolean);
   /* Lista do XML (duplicata, pagamento, volume): cada campo passa por dnfVal/dnfData como o resto. */
   const dup=(d)=>{const nd=dnfVal(d&&d.nDup,'t'),vd=dnfVal(d&&d.vDup,'m');return `<div class="dnf-cx"><span class="r">Duplicata</span><span class="v${nd.z?' z':''}">${nd.h}</span><span class="dim">Venc. ${dnfData(d&&d.dVenc)} · R$ ${vd.h}</span></div>`;};
   const pag=(x)=>{const fp=dnfVal(x&&x.tPag,'c:tPag'),vp=dnfVal(x&&x.vPag,'m');return `<div class="dnf-cx"><span class="r">Forma de pagamento</span><span class="v${fp.z?' z':''}">${fp.h}${x&&dnfTem(x.xPag)?' · '+esc(x.xPag):''}</span><span class="dim">R$ ${vp.h}</span></div>`;};
@@ -2511,7 +2531,7 @@ function nfeDanfe(ch,g){
   <div class="dnf-l g3">${dnfCampo('Natureza da operação',n.NatOp)}${dnfCx('Data de emissão',dnfData(n.Data_Emissao))}${dnfCampo('Arquivo de origem',n.Arquivo_Origem)}</div>
   <div class="dnf-l g4">${dnfCampo('Finalidade',n.Fin_NFe,'c:finNFe')}${dnfCampo('Destino da operação',n.Id_Dest,'c:idDest')}${dnfCampo('Consumidor final',n.Ind_Final,'c:indFinal')}${dnfCampo('Presença do comprador',n.Ind_Pres,'c:indPres')}</div>
   <div class="dnf-l g3">${dnfCx('CNPJ do emitente',dnfDoc(n.CNPJ_Emitente))}${dnfCampo('Inscrição estadual do emitente',n.IE_Emitente)}${dnfCx('Inscrição estadual do subst. trib.','—',false,true)}</div>
-  <div class="dnf-l g4">${dnfCampo('Endereço do emitente',n.End_Emitente)}${dnfCampo('CEP',n.CEP_Emitente)}${dnfCampo('Telefone',n.Fone_Emitente)}${dnfCampo('Regime tributário (CRT)',n.CRT_Emitente,'c:CRT')}</div>
+  <div class="dnf-l ${dnfTem(n.tpRegimeIBSCBS)?'g5':'g4'}">${dnfCampo('Endereço do emitente',n.End_Emitente)}${dnfCampo('CEP',n.CEP_Emitente)}${dnfCampo('Telefone',n.Fone_Emitente)}${dnfCampo('Regime tributário (CRT)',n.CRT_Emitente,'c:CRT')}${dnfTem(n.tpRegimeIBSCBS)?dnfCampo('Regime do IBS/CBS',n.tpRegimeIBSCBS):''}</div>
   <div class="dnf-sec">Destinatário / remetente</div>
   <div class="dnf-l g5">${dnfCampo('Nome / razão social',n.Nome_Destinatario)}${dnfCx('CNPJ',dnfDoc(n.CNPJ_Destinatario),false,!dnfTem(n.CNPJ_Destinatario))}${dnfCx('CPF',dnfDoc(n.CPF_Destinatario),false,!dnfTem(n.CPF_Destinatario))}${dnfCampo('Município',n.Mun_Destinatario)}${dnfCampo('UF',n.UF_Destinatario)}</div>
   <div class="dnf-l g5">${dnfCampo('Endereço',n.End_Destinatario)}${dnfCampo('CEP',n.CEP_Destinatario)}${dnfCampo('Inscrição estadual',n.IE_Destinatario)}${dnfCampo('Indicador da IE',n.IndIE_Destinatario,'c:indIEDest')}${dnfCampo('E-mail',n.Email_Destinatario)}</div>
@@ -2520,11 +2540,13 @@ function nfeDanfe(ch,g){
   <div class="dnf-l gdup">${dups.length?dups.map(dup).join(''):dnfCx('Duplicatas','—',false,true)}</div>
   <div class="dnf-sec">Pagamento</div>
   <div class="dnf-l gdup">${pgts.length?pgts.map(pag).join(''):dnfCx('Forma de pagamento','—',false,true)}${dnfCampo('Troco',n.vTroco,'m')}</div>
+  ${vinc.length?`<div class="dnf-sec">Vínculo com o pagamento</div>${vinc.map(pvinc).join('')}`:''}
   <div class="dnf-sec">Cálculo do imposto</div>
   <div class="dnf-l g7">${tot('Base de cálc. do ICMS','vBC')}${tot('Valor do ICMS','vICMS')}${tot('ICMS desonerado','vICMSDeson')}${tot('Valor do FCP','vFCP')}${tot('Base de cálc. ICMS ST','vBCST')}${tot('Valor do ICMS ST','vST')}${tot('Valor do FCP ST','vFCPST')}</div>
   <div class="dnf-l g7">${tot('FCP ST retido anteriormente','vFCPSTRet')}${tot('Valor do imp. de importação','vII')}${tot('Valor do IPI','vIPI')}${tot('IPI devolvido','vIPIDevol')}${tot('Valor do PIS','vPIS')}${tot('Valor da COFINS','vCOFINS')}${tot('Tributos aproximados (Lei 12.741)','vTotTrib')}</div>
   <div class="dnf-l g6">${tot('Valor total dos produtos','vProd')}${tot('Valor do frete','vFrete')}${tot('Valor do seguro','vSeg')}${tot('Desconto','vDesc')}${tot('Outras despesas','vOutro')}${dnfCampo('Valor total da nota',n.vNF,'m')}</div>
   <div class="dnf-l g7">${tot('Base IBS/CBS','vBCIBS')}${tot('IBS UF','vIBSUF')}${tot('IBS município','vIBSMun')}${tot('Valor do IBS','vIBS')}${tot('Valor da CBS','vCBS')}${dnfCx('IBS + CBS',esc(num2(T.ibscbs)),true,!T.ibscbs)}${dnfCampo(DNF_ROT_VNFTOT,n.Tot_vNFTot,'m')}</div>
+  ${totNovos.length?`<div class="dnf-l g3">${totNovos.join('')}</div>`:''}
   <div class="dnf-l g3">${soma('ICMS do substituto (soma dos itens)',p=>p.ICMS_vICMSSubstituto)}${soma('ICMS monofásico (soma dos itens)',p=>p.ICMS_vICMSMonoRet)}${soma('ICMS efetivo (soma dos itens)',p=>p.ICMS_vICMSEfet)}</div>
   ${dnfConfBotao(ch,T,u)}
   <div class="dnf-conf-box" id="${dnfConfId(ch)}"${u.conf?'':' hidden'}>
@@ -2566,10 +2588,18 @@ function dnfItemAberto(p){
   const cst=(c)=>{if(!c)return '<td class="z">—</td>';const v=dnfVal(p[c],'t');return `<td${v.z?' class="z"':''}>${v.h}</td>`;};
   const det=(pares)=>pares.map(([r,c,tp2])=>{const v=dnfVal(p[c],tp2);return esc(r)+' '+(v.z?'<span class="z">'+v.h+'</span>':'<b>'+v.h+'</b>');}).join(' · ');
   const tot=['ICMS_vICMS','ICMS_vICMSSTRet','ICMS_vICMSMonoRet','IPI_vIPI','PIS_vPIS','COFINS_vCOFINS','IBS_vIBS','CBS_vCBS'].reduce((a,c)=>a+f(p[c]),0);
+  /* Linhas das NTs de 14/12/2026, só quando o XML as traz; não somam no total do item. */
+  const novaLin=(nome,aliq,val,nota)=>`<tr><td class="nome">${esc(nome)}</td><td class="z">—</td><td class="n z">—</td>${aliq?cel(aliq,'p'):'<td class="n z">—</td>'}${cel(val,'m')}<td class="det">${esc(nota)}</td></tr>`;
+  const trNovas=(dnfTem(p.ICMS_vICMSPrevisto)?novaLin('ICMS previsto','','ICMS_vICMSPrevisto','pagamento antecipado'):'')
+    +(dnfTem(p.IBSSN_vIBSSN)||dnfTem(p.IBSSN_pIBSSN)?novaLin('IBS do Simples','IBSSN_pIBSSN','IBSSN_vIBSSN','Simples Nacional'):'')
+    +(dnfTem(p.CBSSN_vCBSSN)||dnfTem(p.CBSSN_pCBSSN)?novaLin('CBS do Simples','CBSSN_pCBSSN','CBSSN_vCBSSN','Simples Nacional'):'');
   const trib='<table class="dnf-trib"><thead><tr><th>Imposto</th><th>CST</th><th class="n">Base</th><th class="n">Alíquota</th><th class="n">Valor</th><th>Detalhes</th></tr></thead><tbody>'
     +DNF_TRIB.map(([nome,c,b,a,v,d,nota])=>`<tr><td class="nome">${esc(nome)}</td>${cst(c)}${b?cel(b[0],b[1]):'<td class="n z">—</td>'}${a?cel(a[0],a[1]):'<td class="n z">—</td>'}${cel(v,'m')}<td class="det">${d.length?det(d):esc(nota||'')}</td></tr>`).join('')
+    +trNovas
     +`<tr class="tot"><td>Total de impostos do item</td><td></td><td></td><td></td><td class="n">${esc(num2(tot))}</td><td class="det">ICMS, ST, monofásico, IPI, PIS, COFINS, IBS e CBS</td></tr></tbody></table>`;
-  const prod=DNF_COLS[0][1].filter(([c])=>!['Item','cProd','xProd'].includes(c));
+  /* Campos das NTs de 14/12/2026: entram na lista do produto só quando o XML os traz. */
+  const prod=DNF_COLS[0][1].filter(([c])=>!['Item','cProd','xProd'].includes(c))
+    .concat([['vUnComLiq','Valor unitário líquido','m'],['vProdLiq','Valor líquido do item','m'],['cAtivSN','Atividade no Simples (cAtivSN)','t']].filter(([c])=>dnfTem(p[c])));
   const fin=DNF_COLS[1][1],veic=DNF_COLS[DNF_COLS.length-1][1];
   const vei=dnfTem(p.Veic_Chassi)?`<div class="dnf-sub">Veículo novo</div><div class="dnf-veic">${lst(veic)}</div>`:`<p class="dnf-nada">Veículo novo: não consta no XML (${veic.length} campos zerados).</p>`;
   return `<div class="dnf-aberto"><div class="dnf-ab-prod"><div class="dnf-sub">Produto</div>${lst(prod)}<div class="dnf-sub">Financeiro do item</div>${lst(fin)}</div><div class="dnf-ab-imp">${trib}</div></div>${vei}`;
